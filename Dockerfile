@@ -30,13 +30,24 @@ COPY resources/ resources/
 COPY --from=dependencies /app/vendor/ vendor/
 RUN npm run build
 
-FROM alpine:3.24 AS ieee
+FROM debian:trixie-slim AS ieee
 
+# The IEEE servers regularly refuse CI runners: fall back on the Debian
+# ieee-data package, which ships the same registries, when a download fails.
 WORKDIR /registries
-RUN wget -q https://standards-oui.ieee.org/oui/oui.csv \
-    && wget -q https://standards-oui.ieee.org/oui28/mam.csv \
-    && wget -q https://standards-oui.ieee.org/oui36/oui36.csv \
-    && wget -q https://standards-oui.ieee.org/iab/iab.csv
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ieee-data wget ca-certificates \
+    && for file in oui/oui oui28/mam oui36/oui36 iab/iab; do \
+        name="${file##*/}.csv"; \
+        if wget -q --tries=3 --waitretry=5 --timeout=30 -O "$name.tmp" "https://standards-oui.ieee.org/$file.csv" \
+            && head -n 1 "$name.tmp" | grep -q '^Registry,'; then \
+            mv "$name.tmp" "$name"; \
+        else \
+            echo "IEEE download failed for $name, using the Debian ieee-data copy"; \
+            rm -f "$name.tmp"; cp "/usr/share/ieee-data/$name" "$name"; \
+        fi; \
+    done \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM php-base AS runtime
 

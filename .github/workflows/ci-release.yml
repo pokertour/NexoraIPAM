@@ -34,6 +34,7 @@ jobs:
       - run: vendor/bin/phpunit
 
   image:
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -105,7 +106,6 @@ jobs:
           fi
 
       - name: Publier l’image dans GHCR
-        if: github.event_name == 'workflow_dispatch'
         env:
           IMAGE: ${{ steps.metadata.outputs.image }}
           APP_VERSION: ${{ steps.metadata.outputs.version }}
