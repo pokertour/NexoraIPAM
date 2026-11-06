@@ -4,7 +4,7 @@
         <div><h2>{{ __('Carte des adresses') }}</h2><p>{{ $subnet->name }} · <code>{{ $subnet->cidr }}</code></p></div>
         <a class="button button-secondary" href="{{ route('subnets', ['space' => $subnet->id]) }}" wire:navigate>{{ __('Voir le découpage') }}</a>
     </div>
-    <div class="px-5 pb-5">
+    <div class="p-5">
         @if ($cells)
             <div class="space-grid address-grid" aria-label="{{ __('Adresses du sous-réseau') }}">
                 @foreach ($cells as ['address' => $ip, 'record' => $record, 'child' => $child])
@@ -23,7 +23,7 @@
                     @endif
                 @endforeach
             </div>
-            <div class="space-legend mt-3">
+            <div class="space-legend mt-4">
                 @foreach (['free' => 'Libre', 'used' => 'Attribuée', 'reserved' => 'Réservée', 'available' => 'Disponible, inventoriée', 'delegated' => 'Déléguée'] as $state => $label)
                     <span><i class="space-cell" data-state="{{ $state }}" aria-hidden="true"></i>{{ __($label) }}</span>
                 @endforeach

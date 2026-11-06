@@ -21,6 +21,7 @@
         @case('edit') <path d="m14 6 4 4M4 20l5-1L20 8l-4-4L5 15l-1 5Z"/> @break
         @case('trash') <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/> @break
         @case('menu') <path d="M4 6h16M4 12h16M4 18h16"/> @break
+        @case('tools') <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/> @break
         @case('key') <circle cx="8" cy="9" r="4"/><path d="m11 12 8 8m-3-3 3-3m-5 1 2-2"/> @break
     @endswitch
 </svg>

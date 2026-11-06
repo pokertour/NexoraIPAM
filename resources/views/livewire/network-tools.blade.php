@@ -11,10 +11,10 @@
                 <x-button type="submit" class="justify-self-start">{{ __('Calculer') }}</x-button>
             </form>
             @if ($network)
-                <dl class="grid gap-2 border-t border-slate-500/20 pt-4 text-sm">
+                <dl class="result-list">
                     @foreach (['version' => 'Famille', 'cidr' => 'Réseau', 'mask' => 'Masque', 'broadcast' => 'Broadcast', 'first' => 'Première adresse', 'last' => 'Dernière adresse', 'capacity' => 'Adresses dans la plage utilisable'] as $key => $label)
                         @if ($network[$key] !== null)
-                            <div class="flex flex-wrap justify-between gap-x-3"><dt class="muted">{{ __($label) }}</dt><dd><code>{{ $network[$key] }}</code></dd></div>
+                            <div><dt class="muted">{{ __($label) }}</dt><dd><code>{{ $network[$key] }}</code></dd></div>
                         @endif
                     @endforeach
                 </dl>
@@ -28,7 +28,7 @@
                 <x-button type="submit" class="justify-self-start">{{ __('Rechercher') }}</x-button>
             </form>
             @if ($vendor)
-                <div class="border-t border-slate-500/20 pt-4">
+                <div class="result-list">
                     <code>{{ $vendor['mac'] }}</code>
                     @switch($vendor['kind'])
                         @case('found')

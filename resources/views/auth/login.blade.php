@@ -6,11 +6,16 @@
                 <span class="eyebrow"><span class="pulse-dot"></span> {{ __('GESTION D’INFRASTRUCTURE') }}</span>
                 <h2>{{ __('Votre réseau,') }}<br><span>{{ __('en clair.') }}</span></h2>
                 <p>{{ __('Un espace unique pour cartographier vos sous-réseaux, suivre vos adresses IP et organiser vos VLAN.') }}</p>
+                <div class="login-chips" aria-hidden="true">
+                    <span class="login-chip"><i></i>10.20.0.0/16</span>
+                    <span class="login-chip"><i></i>VLAN 120</span>
+                    <span class="login-chip"><i></i>2001:db8::/48</span>
+                </div>
             </div>
-            <div class="text-sm text-slate-400">{{ __('NexoraIPAM · Gestion des adresses IP') }}</div>
+            <div class="text-sm text-indigo-200/60">{{ __('NexoraIPAM · Gestion des adresses IP') }}</div>
         </div>
         <div class="login-panel">
-            <div class="w-full max-w-sm">
+            <div class="login-card">
                 <x-logo class="mb-10 block w-44 lg:hidden"/>
                 <span class="eyebrow">{{ __('ESPACE DE TRAVAIL') }}</span>
                 <h1 class="page-title mt-3">{{ __('Connexion') }}</h1>

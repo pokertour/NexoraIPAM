@@ -46,10 +46,10 @@
                     <x-nav-link name="subnets" icon="subnets">{{ __('Sous-réseaux') }}</x-nav-link>
                     <x-nav-link name="addresses" icon="addresses">{{ __('Adresses IP') }}</x-nav-link>
                     <x-nav-link name="vlans" icon="vlans">VLAN</x-nav-link>
-                    <x-nav-link name="tools" icon="preferences">{{ __('Outils') }}</x-nav-link>
+                    <x-nav-link name="tools" icon="tools">{{ __('Outils') }}</x-nav-link>
                     <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>
                     @can('administer')
-                        <p class="nav-label mt-7">{{ __('Administration') }}</p>
+                        <p class="nav-label mt-6">{{ __('Administration') }}</p>
                         <x-nav-link name="accounts" icon="accounts">{{ __('Utilisateurs') }}</x-nav-link>
                         <x-nav-link name="preferences" icon="preferences">{{ __('Paramètres') }}</x-nav-link>
                     @endcan
@@ -70,13 +70,14 @@
             </aside>
             <button type="button" x-cloak x-show="menu" @click="menu = false" class="mobile-backdrop" aria-label="{{ __('Fermer le menu') }}"></button>
             <header class="topbar gap-2">
-                <div class="flex min-w-0 items-center gap-3">
+                <div class="breadcrumb">
                     <button type="button" class="icon-button mobile-menu" @click="menu = !menu" :aria-expanded="menu" aria-label="Menu"><x-icon name="menu"/></button>
                     <span class="muted hidden sm:inline">{{ __('Espace de travail') }}</span>
-                    <span class="muted hidden sm:inline" aria-hidden="true">/</span>
+                    <span class="breadcrumb-sep hidden sm:inline-block" aria-hidden="true"></span>
                     <span class="truncate font-semibold">{{ $title }}</span>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
+                    <span class="topbar-status" title="NexoraIPAM {{ config('app.version') }}"><span class="pulse-dot"></span><span class="font-mono">{{ config('app.version') }}</span></span>
                     <x-language-select/>
                     <x-account-menu/>
                     <x-theme-switch/>

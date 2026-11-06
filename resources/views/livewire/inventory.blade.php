@@ -42,7 +42,7 @@
                     <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
                 </x-select>
             @endif
-            <span class="muted ml-auto text-sm">{{ $records->total() }} {{ $records->total() === 1 ? __('entrée') : __('entrées') }}</span>
+            <span class="count-pill ml-auto">{{ $records->total() }} {{ $records->total() === 1 ? __('entrée') : __('entrées') }}</span>
         </div>
         @if (count($displayRows) === 0)
             <x-empty-state :icon="$section" :title="__('Aucun résultat')" :text="$search ? __('Essayez une autre recherche.') : __('Les entrées de cet inventaire s’afficheront ici.')"/>
