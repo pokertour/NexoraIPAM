@@ -2,9 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Models\CustomField;
 use App\Models\IpAddress;
 use App\Models\Location;
 use App\Models\Subnet;
+use App\Models\Tag;
 use App\Models\Vlan;
 use App\Support\AddressAvailability;
 use App\Support\DiscoveryQueue;
@@ -60,6 +62,9 @@ class Inventory extends Component
     #[Url(except: '')]
     public string $space = '';
 
+    #[Url(except: '')]
+    public string $tag = '';
+
     #[Locked]
     public ?int $allocationParent = null;
 
@@ -82,6 +87,11 @@ class Inventory extends Component
     }
 
     public function updatedSubnet(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTag(): void
     {
         $this->resetPage();
     }
@@ -178,6 +188,12 @@ class Inventory extends Component
             'name' => '', 'cidr' => '', 'vlan_id' => null, 'description' => '', 'number' => '',
             'discovery_interval' => null, 'location_id' => null, 'gateway' => '', 'dns_servers' => '', 'domain' => '', 'dhcp_start' => '', 'dhcp_end' => '', 'kind' => 'agency', 'parent_id' => null, 'subnet_id' => null, 'address' => '', 'hostname' => '', 'status' => 'used',
         ] : $this->query()->findOrFail($id)->getAttributes();
+        unset($this->form['custom_values']);
+        if ($this->hasMetadata()) {
+            $record = $id === null ? null : $this->query()->with('tags')->findOrFail($id);
+            $this->form['tags'] = $record?->tags->map(fn (Tag $tag): string => (string) $tag->id)->all() ?? [];
+            $this->form['custom'] = $record?->custom_values ?? [];
+        }
         $this->editing = true;
     }
 
@@ -306,6 +322,7 @@ class Inventory extends Component
                 'form.address.required' => __('Saisissez une adresse IPv4 ou IPv6 valide.'),
             ])['form'];
             $data = array_intersect_key($data, $rules);
+            $metadata = $this->hasMetadata() ? $this->validateMetadata() : null;
 
             if ($record instanceof IpAddress) {
                 $subnet = Subnet::lockForUpdate()->findOrFail($data['subnet_id']);
@@ -354,14 +371,56 @@ class Inventory extends Component
             }
 
             $record->fill($data);
+            if ($metadata !== null) {
+                $record->custom_values = $metadata['custom'] ?: null;
+            }
             if ($record instanceof IpAddress && $record->exists && $record->isDirty(['address', 'subnet_id'])) {
                 $record->forceFill(['last_probe_at' => null, 'last_seen_at' => null, 'resolved_hostname' => null, 'mac_address' => null, 'last_probe_responded' => null]);
             }
             $record->save();
+            if ($metadata !== null) {
+                $record->syncTagsWithAudit($metadata['tags']);
+            }
         }, attempts: 3);
 
         $this->close();
         $this->dispatch('nexora-toast', message: __('Entrée enregistrée.'), tone: 'success');
+    }
+
+    private function hasMetadata(): bool
+    {
+        return isset(CustomField::TARGETS[$this->section]);
+    }
+
+    /** @return array{tags: list<int>, custom: array<string, mixed>} */
+    private function validateMetadata(): array
+    {
+        $fields = CustomField::for($this->section);
+        $this->form['tags'] = array_values(array_filter((array) ($this->form['tags'] ?? []), 'filled'));
+        $custom = (array) ($this->form['custom'] ?? []);
+        foreach ($fields as $field) {
+            $value = $custom[$field->key] ?? null;
+            $custom[$field->key] = is_string($value) ? (trim($value) === '' ? null : trim($value)) : $value;
+        }
+        $this->form['custom'] = array_intersect_key($custom, $fields->keyBy('key')->all());
+
+        $rules = ['form.tags' => ['array', 'max:20'], 'form.tags.*' => ['integer', 'exists:tags,id']];
+        $attributes = [];
+        foreach ($fields as $field) {
+            $rules['form.custom.'.$field->key] = $field->rules();
+            $attributes['form.custom.'.$field->key] = $field->label;
+        }
+        $data = $this->validate($rules, [], $attributes)['form'];
+
+        $values = [];
+        foreach ($fields as $field) {
+            $value = $data['custom'][$field->key] ?? null;
+            if ($value !== null) {
+                $values[$field->key] = $field->type === 'number' ? $value + 0 : $value;
+            }
+        }
+
+        return ['tags' => array_map('intval', $data['tags'] ?? []), 'custom' => $values];
     }
 
     private function scopeId(): int
@@ -453,20 +512,26 @@ class Inventory extends Component
             }
         }
 
+        if ($this->hasMetadata()) {
+            $query->with('tags')->when(ctype_digit($this->tag), fn (Builder $query) => $query->whereHas('tags', fn (Builder $query) => $query->whereKey((int) $this->tag)));
+        }
+        $metadataSearch = fn (Builder $query): Builder => $query->orWhereHas('tags', fn (Builder $query) => $query->whereLike('name', '%'.$search.'%'))
+            ->orWhereLike('custom_values', '%'.$search.'%');
+
         if ($this->section === 'subnets') {
             $query->with(['vlan', 'location.parent.parent', 'childSubnets'])->withCount([
                 'addresses as assigned' => fn (Builder $query) => $query->whereIn('status', ['used', 'reserved']),
             ])
-                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('name', '%'.$search.'%')->orWhereLike('cidr', '%'.$search.'%')))
+                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('name', '%'.$search.'%')->orWhereLike('cidr', '%'.$search.'%')->orWhereLike('gateway', '%'.$search.'%')->orWhereLike('domain', '%'.$search.'%')->orWhere($metadataSearch)))
                 ->orderBy('name');
         } elseif ($this->section === 'addresses') {
             $query->with('subnet.location.parent.parent')
                 ->when($selectedSubnet, fn (Builder $query) => $query->where('subnet_id', $selectedSubnet->id))
-                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('address', '%'.$search.'%')->orWhereLike('hostname', '%'.$search.'%')->orWhereLike('resolved_hostname', '%'.$search.'%')->orWhereLike('mac_address', '%'.(MacAddress::normalize($search) ?? $search).'%')))
+                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('address', '%'.$search.'%')->orWhereLike('hostname', '%'.$search.'%')->orWhereLike('resolved_hostname', '%'.$search.'%')->orWhereLike('mac_address', '%'.(MacAddress::normalize($search) ?? $search).'%')->orWhere($metadataSearch)))
                 ->orderBy('address_key');
         } elseif ($this->section === 'vlans') {
             $query->with('location.parent.parent')->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('name', '%'.$search.'%')
-                ->when(ctype_digit($search) && (int) $search <= 4094, fn ($query) => $query->orWhere('number', (int) $search))))
+                ->when(ctype_digit($search) && (int) $search <= 4094, fn ($query) => $query->orWhere('number', (int) $search))->orWhere($metadataSearch)))
                 ->orderBy('number');
         } else {
             $query->with('parent.parent')->withCount(['subnets', 'vlans'])
@@ -489,6 +554,8 @@ class Inventory extends Component
             'spaceMap' => $spaceSubnet ? app(SubnetSpace::class)->map($spaceSubnet) : [],
 
             'locations' => Location::with('parent.parent')->orderBy('name')->get(),
+            'allTags' => $this->hasMetadata() ? Tag::orderBy('name')->get() : collect(),
+            'customFields' => $this->hasMetadata() ? CustomField::for($this->section) : collect(),
             'scanSubnet' => $this->scanId ? Subnet::find($this->scanId) : null,
             'options' => $this->editing ? match ($this->section) {
                 'subnets' => Vlan::with('location.parent.parent')->orderBy('number')->get(),

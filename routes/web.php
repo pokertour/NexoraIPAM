@@ -10,6 +10,7 @@ use App\Http\Middleware\WorkspaceAccess;
 use App\Livewire\Accounts;
 use App\Livewire\AuditTrail;
 use App\Livewire\Inventory;
+use App\Livewire\Metadata;
 use App\Livewire\NetworkTools;
 use App\Livewire\Preferences;
 use Illuminate\Support\Facades\Route;
@@ -51,5 +52,6 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
         Route::livewire('/settings', Preferences::class)->name('preferences');
         Route::livewire('/users', Accounts::class)->name('accounts');
         Route::livewire('/audit', AuditTrail::class)->name('audit');
+        Route::livewire('/metadata', Metadata::class)->name('metadata');
     });
 });

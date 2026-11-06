@@ -37,6 +37,12 @@
                     @endforeach
                 </x-select>
             @endif
+            @if ($allTags->isNotEmpty())
+                <x-select class="location-filter" name="tag" wire:model.live="tag" aria-label="{{ __('Filtrer par étiquette') }}">
+                    <option value="">{{ __('Toutes les étiquettes') }}</option>
+                    @foreach ($allTags as $option)<option value="{{ $option->id }}">{{ $option->name }}</option>@endforeach
+                </x-select>
+            @endif
             @if (! $selectedSubnet && $section !== 'locations' && $locations->isNotEmpty())
                 <x-select class="location-filter" name="location" wire:model.live="location" aria-label="{{ __('Filtrer par emplacement') }}">
                     <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
@@ -81,6 +87,7 @@
                                             <a class="table-link font-semibold" href="{{ route('addresses', ['subnet' => $record->id]) }}" wire:navigate>{{ $record->name }}</a>
                                             <small class="muted block">{{ $record->location?->path() ?? __('Sans emplacement') }}</small>
                                             <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>{{ __('Découpage') }}</a>
+                                            <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td>
                                         <td><code>{{ $record->cidr }}</code>@if ($record->gateway)<small class="muted block">{{ __('Passerelle') }} <code>{{ $record->gateway }}</code></small>@endif</td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
                                             @if (str_contains($record->cidr, ':'))
@@ -99,6 +106,7 @@
                                                 <small class="muted mt-1 block">MAC <a class="table-link" href="{{ route('tools', ['mac' => $record->mac_address]) }}" wire:navigate>{{ $record->mac_address }}</a></small>
                                             @endif
                                             @if ($record->description)<small class="muted mt-1 block">{{ $record->description }}</small>@endif
+                                            <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td><td>{{ $record->hostname ?: ($record->resolved_hostname ?: '—') }}
                                             @if ($record->resolved_hostname && $record->hostname !== $record->resolved_hostname)
                                                 <small class="muted block">{{ __('Résolution inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
@@ -108,7 +116,7 @@
                                         <td><x-ping-status :address="$record"/></td>
                                         @break
                                     @case('vlans')
-                                        <td><code>{{ $record->number }}</code></td><td class="font-semibold">{{ $record->name }}@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif</td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
+                                        <td><code>{{ $record->number }}</code></td><td><span class="font-semibold">{{ $record->name }}</span>@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif<x-record-metadata :record="$record" :fields="$customFields"/></td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
                                         @break
                                     @case('locations')
                                         <td><span class="font-semibold">{{ $record->name }}</span>@if ($record->parent)<small class="muted block">{{ $record->parent->path() }}</small>@endif</td>
@@ -209,6 +217,28 @@
                         @break
                 @endswitch
                 <x-field name="form.description" label="Description" wire:model="form.description" maxlength="255"/>
+                @if (isset(\App\Models\CustomField::TARGETS[$section]))
+                    @if ($allTags->isNotEmpty())
+                        <x-field name="form.tags" :label="__('Étiquettes')" wire:model="form.tags" multiple :placeholder="__('Ajouter des étiquettes…')">
+                            @foreach ($allTags as $option)<option value="{{ $option->id }}">{{ $option->name }}</option>@endforeach
+                        </x-field>
+                    @endif
+                    @if ($customFields->isNotEmpty())
+                        <fieldset class="form-section">
+                            <legend>{{ __('Champs personnalisés') }}</legend>
+                            @foreach ($customFields as $field)
+                                @if ($field->type === 'select')
+                                    <x-field name="form.custom.{{ $field->key }}" :label="$field->label" wire:model="form.custom.{{ $field->key }}" :required="$field->required">
+                                        <option value="">—</option>
+                                        @foreach ($field->options ?? [] as $choice)<option value="{{ $choice }}">{{ $choice }}</option>@endforeach
+                                    </x-field>
+                                @else
+                                    <x-field name="form.custom.{{ $field->key }}" :label="$field->label" wire:model="form.custom.{{ $field->key }}" :type="['number' => 'number', 'url' => 'url', 'date' => 'date'][$field->type] ?? 'text'" :required="$field->required" maxlength="500" step="any"/>
+                                @endif
+                            @endforeach
+                        </fieldset>
+                    @endif
+                @endif
                 <div class="dialog-actions">
                     <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
                     <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>

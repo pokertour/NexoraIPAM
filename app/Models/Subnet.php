@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\HasMetadata;
 use App\Support\IpNetwork;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subnet extends Model
 {
-    use Auditable, HasFactory;
+    use Auditable, HasFactory, HasMetadata;
 
     protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id', 'gateway', 'dns_servers', 'domain', 'dhcp_start', 'dhcp_end'];
 

@@ -1,5 +1,11 @@
 import TomSelect from 'tom-select';
 
+const normalize = (value, multiple) => multiple
+    ? (Array.isArray(value) ? value : []).map(String)
+    : String(value ?? '');
+
+const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('nexoraSelect', () => {
         let control;
@@ -9,15 +15,23 @@ document.addEventListener('alpine:init', () => {
             init() {
                 const select = this.$el.querySelector('select');
                 const { model, live, noResults } = this.$el.dataset;
+                const multiple = select.multiple;
 
                 if (model) {
-                    select.value = String(this.$wire.$get(model) ?? '');
+                    const value = normalize(this.$wire.$get(model), multiple);
+                    if (multiple) {
+                        Array.from(select.options).forEach(option => { option.selected = value.includes(option.value); });
+                    } else {
+                        select.value = value;
+                    }
                 }
 
                 label = select.labels[0];
                 control = new TomSelect(select, {
-                    allowEmptyOption: true,
+                    allowEmptyOption: !multiple,
                     create: false,
+                    plugins: multiple ? ['remove_button'] : [],
+                    hidePlaceholder: multiple,
                     render: {
                         no_results: () => {
                             const message = document.createElement('div');
@@ -29,10 +43,10 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 if (model) {
-                    control.on('change', value => this.$wire.$set(model, value, live !== undefined));
+                    control.on('change', value => this.$wire.$set(model, normalize(value, multiple), live !== undefined));
                     this.$watch(() => this.$wire.$get(model), value => {
-                        const selected = String(value ?? '');
-                        if (control.getValue() !== selected) control.setValue(selected, true);
+                        const selected = normalize(value, multiple);
+                        if (!same(normalize(control.getValue(), multiple), selected)) control.setValue(selected, true);
                     });
                 }
             },
