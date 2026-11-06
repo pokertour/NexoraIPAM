@@ -1,0 +1,17 @@
+.git
+.github
+.agents
+.aws
+.codex
+.env*
+auth.json
+node_modules
+vendor
+tests
+database/*.sqlite*
+bootstrap/cache/*.php
+public/build
+public/hot
+public/storage
+.phpunit*
+storage

@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class IpAddress extends Model
+{
+    use HasFactory;
+
+    public const STATUSES = ['used' => 'Attribuée', 'reserved' => 'Réservée', 'available' => 'Disponible'];
+
+    protected $fillable = ['subnet_id', 'address', 'hostname', 'status', 'description'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $address): void {
+            $address->address_key = bin2hex(inet_pton($address->address));
+        });
+    }
+
+    protected function casts(): array
+    {
+        return ['last_seen_at' => 'datetime', 'last_probe_at' => 'datetime', 'last_probe_responded' => 'boolean'];
+    }
+
+    public function lastPingResponded(): ?bool
+    {
+        return $this->last_probe_responded ?? ($this->last_probe_at ? ($this->last_seen_at?->equalTo($this->last_probe_at) ?? false) : null);
+    }
+
+    public function subnet(): BelongsTo
+    {
+        return $this->belongsTo(Subnet::class);
+    }
+}

@@ -1,0 +1,143 @@
+name: Tests et publication
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version de la release, par exemple v1.2.3'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'release' || format('ci-{0}-{1}', github.event_name, github.ref) }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_sqlite, ldap
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction
+      - run: vendor/bin/phpunit
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.metadata.outputs.image }}
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Préparer la version
+        id: metadata
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=local-dev
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            version="$REQUESTED_VERSION"
+            if [[ ! "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::La version doit suivre le format vX.X.X."
+              exit 1
+            fi
+            matching_tags=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$version" --jq '.[].ref')
+            if grep -Fxq "refs/tags/$version" <<< "$matching_tags"; then
+              echo "::error::Le tag $version existe déjà."
+              exit 1
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Construire l’image Alpine
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          APP_VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          docker build --build-arg APP_VERSION="$APP_VERSION" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$IMAGE:$APP_VERSION" .
+
+      - name: Démarrer et vérifier l’image
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          APP_VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          cleanup() {
+            status=$?
+            if [[ "$status" != 0 ]]; then docker logs nexora-ci || true; fi
+            docker rm -f nexora-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          export APP_KEY="base64:$(openssl rand -base64 32)"
+          docker run --detach --name nexora-ci --env APP_KEY --publish 127.0.0.1::8080 "$IMAGE:$APP_VERSION"
+          docker exec nexora-ci php artisan migrate --force --no-interaction
+          docker exec nexora-ci php artisan config:show app.version --no-interaction | grep -F "$APP_VERSION"
+          url="http://$(docker port nexora-ci 8080/tcp)"
+          curl --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 1 "$url/up" >/dev/null
+          html=$(curl --fail --silent --show-error "$url/connexion")
+          grep -Fq 'NexoraIPAM' <<< "$html"
+          if [[ "$html" =~ (/build/assets/[^\"]+\.css) ]]; then
+            curl --fail --silent --show-error "$url${BASH_REMATCH[1]}" >/dev/null
+          else
+            echo "::error::Feuille de style Vite absente."
+            exit 1
+          fi
+
+      - name: Publier l’image dans GHCR
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          APP_VERSION: ${{ steps.metadata.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$APP_VERSION"
+          docker tag "$IMAGE:$APP_VERSION" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.image.outputs.version }}
+      IMAGE: ${{ needs.image.outputs.image }}
+    steps:
+      - name: Publier la release GitHub
+        run: |
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$VERSION" \
+            --jq ".[] | select(.ref == \"refs/tags/$VERSION\") | .object.sha")
+          if [[ -z "$tag_sha" ]]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$VERSION" -f sha="$GITHUB_SHA" >/dev/null
+          elif [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Le tag $VERSION pointe vers un autre commit."
+            exit 1
+          fi
+          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$VERSION" --latest --generate-notes \
+            --notes "Image conteneur disponible sur GHCR avec \`docker pull $IMAGE:$VERSION\`."
