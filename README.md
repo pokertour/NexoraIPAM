@@ -1,10 +1,122 @@
-# NexoraIPAM
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/nexora-logo-dark.svg">
+    <img src="public/brand/nexora-logo-light.svg" alt="NexoraIPAM" width="360">
+  </picture>
+</p>
 
-NexoraIPAM est une application de gestion d’adresses IP à code source accessible, construite avec Laravel 13, Livewire 4 et Tailwind CSS 4. Cette première version gère les sous-réseaux IPv4 et IPv6, leurs adresses et les VLAN associés.
+<p align="center">
+  <strong>Modern IP address management for teams who want to see their network, not a spreadsheet.</strong>
+</p>
 
-## Installation locale
+<p align="center">
+  <a href="https://github.com/pokertour/NexoraIPAM/actions/workflows/ci-release.yml"><img src="https://github.com/pokertour/NexoraIPAM/actions/workflows/ci-release.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/pokertour/NexoraIPAM/releases"><img src="https://img.shields.io/github/v/release/pokertour/NexoraIPAM?color=7c3aed" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/PHP-8.5-777bb4?logo=php&logoColor=white" alt="PHP 8.5">
+  <img src="https://img.shields.io/badge/Laravel-13-ff2d20?logo=laravel&logoColor=white" alt="Laravel 13">
+  <img src="https://img.shields.io/badge/Livewire-4-fb70a9" alt="Livewire 4">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-source--available-2563eb" alt="Source-available license"></a>
+</p>
 
-Prérequis : PHP 8.3 ou supérieur, Composer, Node.js 20.19+ ou 22.12+, npm et PDO SQLite. Activez l’extension PHP LDAP uniquement pour utiliser l’annuaire.
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#quick-start-with-docker">Quick start</a> ·
+  <a href="#local-development">Development</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#license">License</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/dashboard-dark.png">
+    <img src=".github/assets/dashboard-light.png" alt="NexoraIPAM dashboard" width="100%">
+  </picture>
+</p>
+
+NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices in one place. It discovers hosts with ICMP, reads switches and routers over SNMP, raises alerts on conflicts and full subnets, and records every change in an audit log. The interface is available in English and French, with light and dark themes.
+
+## Features
+
+### 🗺️ Inventory
+- **IPv4 and IPv6 subnets** organised by location: agency, office and floor.
+- **Interactive address map** showing free, assigned and reserved addresses, the gateway and the DHCP pool.
+- **Subnet planning**: split a range into smaller blocks and delegate them.
+- **Next free IP** in one click, skipping the gateway, the DHCP pool and delegated blocks.
+- **Network settings** per subnet: gateway, DNS servers, DNS domain and DHCP range.
+- **VLANs**, **tags** and **custom fields** (text, number, link, date, list) on subnets, addresses and VLANs.
+
+### 🔌 Switches and routers over SNMP
+- SNMP v2c and v3, with credentials encrypted at rest.
+- A **live front panel** of each switch. For every port: link state, speed, native and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.
+- Uses standard MIBs (IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB, IP-MIB), so it works across vendors.
+
+<p align="center"><img src=".github/assets/switch-dark.png" alt="Switch front panel with port details" width="100%"></p>
+
+### 📡 Discovery, history and alerts
+- **ICMP discovery** with reverse DNS and ARP/NDP MAC collection, on demand or on a schedule.
+- **Address history**: every MAC address and host name seen on an IP, plus the switch port it is plugged into.
+- **Alerts** for subnets over a usage threshold, unknown hosts, available addresses that respond, MAC changes, hosts that go silent and unreachable devices. Alerts can be acknowledged and sent by e-mail.
+
+### 🔍 Global search
+Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>/</kbd>) anywhere to open the search:
+- An IP address also lists every subnet that contains it.
+- A MAC address, in any format, shows the switch port where it was learned.
+
+<p align="center"><img src=".github/assets/search-dark.png" alt="Global search" width="100%"></p>
+
+### 🛡️ Security and accountability
+- **Roles**: administrator, operator and viewer.
+- **Sign-in**: local accounts with TOTP two-factor authentication, LDAP group membership, or OpenID Connect with PKCE.
+- **Audit log**: every creation, change and deletion with its author, IP address and before/after values. Secrets are masked. Sign-ins, settings changes, discoveries, SNMP polls and alerts are recorded too.
+
+<p align="center"><img src=".github/assets/addresses-light.png" alt="Address map with gateway and DHCP pool" width="100%"></p>
+
+## Quick start with Docker
+
+The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs FrankenPHP on PHP 8.5 and listens on port 8080.
+
+1. Generate an application key:
+
+   ```sh
+   docker run --rm ghcr.io/pokertour/nexoraipam:vX.X.X php artisan key:generate --show
+   ```
+
+2. Create a `nexora.env` file:
+
+   ```ini
+   APP_KEY=base64:...
+   APP_URL=https://ipam.example.com
+   ```
+
+3. Start the container:
+
+   ```sh
+   docker volume create nexora-data
+   docker run -d --name nexora --env-file nexora.env \
+     -v nexora-data:/var/lib/nexora -p 8080:8080 \
+     ghcr.io/pokertour/nexoraipam:vX.X.X
+   ```
+
+4. Read the temporary administrator password in the logs, then sign in as `admin@example.com`. You will be asked to change the password on first sign-in.
+
+   ```sh
+   docker logs nexora
+   ```
+
+On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXORA_AUTO_MIGRATE` | `true` | Apply migrations and create the initial account on start. |
+| `NEXORA_WORKER` | `true` | Run the discovery and SNMP queue worker. |
+| `NEXORA_SCHEDULER` | `true` | Run scheduled discoveries and SNMP polls. |
+
+The worker probes networks from its own position, so it must be able to reach them. To probe from another site, run a second container with only the worker enabled. In that case both containers need a shared database such as MySQL, because a SQLite file cannot be shared between hosts. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
+
+## Local development
+
+Requirements: PHP 8.3+ with PDO SQLite, Composer, Node.js 20.19+ or 22.12+ and npm. Install the PHP LDAP extension only if you use directory sign-in.
 
 ```sh
 composer install
@@ -12,88 +124,75 @@ cp .env.example .env
 php artisan key:generate
 touch database/database.sqlite
 php artisan migrate
-npm ci
-npm run build
-php artisan nexora:install
+npm ci && npm run build
+php artisan nexora:install   # prints the temporary administrator password
 php artisan serve
 ```
 
-Connectez-vous sur [localhost:8000](http://localhost:8000) avec `admin@example.com` et le mot de passe temporaire affiché par la commande. Le premier accès impose de le changer. Relancer la commande conserve le compte et son mot de passe existants. En production, configurez `APP_ENV=production`, renseignez l’URL HTTPS dans `APP_URL` et pointez le serveur web vers `public/`. Conservez la clé `APP_KEY` avec les sauvegardes. Elle permet de déchiffrer les paramètres enregistrés.
-
-## Comptes et paramètres
-
-| Rôle | Accès |
-| --- | --- |
-| Administrateur | Inventaire, utilisateurs et paramètres |
-| Opérateur | Consultation et modification de l’inventaire |
-| Lecteur | Consultation de l’inventaire |
-
-- **Interne** — créez le compte dans **Utilisateurs** et transmettez le mot de passe temporaire à la personne concernée. Le compte d’installation garde un accès local de secours si cette méthode est désactivée.
-- **LDAP** — renseignez l’URL LDAPS, la base DN, le groupe AD autorisé (DN) et le compte de recherche dans **Paramètres**. Installez l’autorité de certification de l’annuaire dans le magasin de confiance du serveur si nécessaire. Les membres directs ou imbriqués de ce groupe se connectent avec leur adresse `mail`. Leur compte Lecteur est créé au premier accès autorisé.
-- **OpenID Connect** — configurez un client confidentiel avec découverte HTTPS, flux Authorization Code, PKCE S256 et signature RSA. Enregistrez l’URL de retour `/auth/openid/callback` affichée dans **Paramètres** chez le fournisseur, puis attribuez l’accès à l’application dans le fournisseur SSO. NexoraIPAM crée un compte Lecteur au premier accès autorisé et l’associe au couple émetteur et sujet.
-- **SMTP** — configurez l’expéditeur, le serveur et ses identifiants dans **Paramètres**, puis utilisez **Envoyer un test**. TLS implicite et STARTTLS sont disponibles.
-
-Les réglages d’authentification et SMTP sont chiffrés dans la base. SQLite est utilisé par défaut. Les paramètres nécessaires à une connexion vers une autre base relèvent de la configuration de démarrage de Laravel.
-
-## Emplacements et découverte réseau
-
-Créez une agence, puis ses bureaux et leurs étages dans **Emplacements**. Rattachez les sous-réseaux et les VLAN au niveau voulu. Une adresse IP hérite de l’emplacement de son sous-réseau. Les entrées historiques restent accessibles et peuvent être rattachées depuis l’inventaire.
-
-Pour activer l’exécution des découvertes, installez `ping` (iputils) et `getent` sur l’hôte Linux du worker, puis lancez la file dédiée :
+Discoveries and SNMP polls run on the `discovery` queue. Start the worker and the scheduler next to the web server:
 
 ```sh
 php artisan queue:work database --queue=discovery
-```
-
-Un administrateur lance ensuite la découverte depuis la liste **Sous-réseaux**. Le worker teste jusqu’à 256 cibles. Pour une plage plus grande, il ne teste que les premières adresses déjà inventoriées, jusqu’à cette limite. Il résout les noms des hôtes répondants avec le résolveur système, sans écraser les noms manuels. Le worker doit pouvoir joindre la plage ciblée depuis son propre réseau. Une absence de réponse ICMP ne suffit pas à conclure qu’une adresse est libre.
-
-Pour la découverte automatique, réglez l’intervalle en minutes dans la fiche **Emplacements** avec un compte administrateur. Le réglage concerne les sous-réseaux directement rattachés. Un champ vide désactive la planification. En complément du worker, lancez le planificateur en développement :
-
-```sh
 php artisan schedule:work
 ```
 
-En production, exécutez `php artisan schedule:run` chaque minute et gardez le worker de la file `discovery` actif. Pour relever les MAC accessibles par ARP/NDP, installez `iproute2` sur l’hôte du worker. Pour la recherche de fabricant dans **Outils**, installez le paquet `ieee-data` ou placez ses CSV IEEE dans `/usr/share/ieee-data`. La recherche se fait localement.
+The worker host needs a few system tools:
 
-Dans **Sous-réseaux**, cliquez sur un nom pour ouvrir sa carte d’adresses et les plages libres. Le lien **Découpage** ouvre les six longueurs de préfixe suivantes lorsqu’elles existent. Les sous-réseaux créés depuis cette carte sont délégués et gèrent leurs adresses séparément du parent.
+| Feature | Tools |
+| --- | --- |
+| ICMP discovery and reverse DNS | `ping` (iputils) and `getent` |
+| MAC addresses from ARP/NDP | `iproute2` |
+| SNMP | `snmp` on Debian/Ubuntu, `net-snmp-tools` on Alpine |
+| MAC vendor lookup in **Tools** | `ieee-data`, or the IEEE CSV files in `/usr/share/ieee-data` |
 
-## Équipements SNMP
+In production, set `APP_ENV=production` and an HTTPS `APP_URL`, point the web server to `public/`, run `php artisan schedule:run` every minute, and keep the `discovery` worker running.
 
-Dans **Équipements**, un administrateur ajoute un switch ou un routeur avec son adresse, son port UDP et ses identifiants SNMP v2c (communauté) ou v3 (utilisateur, authentification et chiffrement). Les identifiants sont chiffrés dans la base. Le worker de la file `discovery` interroge l’équipement avec les outils net-snmp : installez le paquet `snmp` (Debian/Ubuntu) ou `net-snmp-tools` (Alpine, déjà présent dans l’image Docker) sur l’hôte du worker. Un accès en lecture seule suffit.
+## Configuration
 
-L’application lit les MIB standard IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB et IP-MIB. La page de l’équipement dessine la façade avec l’état de chaque port, sa vitesse, son VLAN natif, ses VLAN taggés, son débit, ses adresses MAC apprises et son voisin LLDP. Le débit est calculé à partir de la deuxième interrogation. La table ARP complète l’inventaire : les adresses connues reçoivent leur MAC et celles d’un sous-réseau inventorié sont ajoutées. Renseignez un intervalle pour interroger automatiquement l’équipement avec le planificateur.
+Administrators configure everything from **Settings** in the application. Authentication and SMTP settings are stored encrypted.
 
-## Alertes, historique et journal d’audit
+| Role | Access |
+| --- | --- |
+| Administrator | Inventory, devices, users, tags and fields, audit log and settings |
+| Operator | Read and edit the inventory, acknowledge alerts |
+| Viewer | Read the inventory, devices and alerts |
 
-Les découvertes et interrogations signalent les hôtes non inventoriés, les adresses disponibles qui répondent, les changements de MAC, les hôtes attribués qui ne répondent plus, les équipements injoignables et les sous-réseaux IPv4 qui dépassent le seuil d’occupation. Réglez le seuil et l’envoi par e-mail dans **Paramètres**. Chaque adresse garde l’historique des MAC et noms d’hôte observés. Le **Journal d’audit** trace les modifications de l’inventaire, des comptes et des paramètres ainsi que les événements de sécurité. Dans **Étiquettes et champs**, définissez des étiquettes et des champs personnalisés pour les sous-réseaux, adresses et VLAN.
+- **Local accounts**: create them in **Users** and share the temporary password. The installation account keeps local access as a fallback when local sign-in is disabled.
+- **LDAP**: enter the LDAPS URL, base DN, allowed AD group DN and service account. Direct and nested members of the group sign in with their `mail` attribute and get a viewer account on first sign-in. Install the directory CA in the server trust store if needed.
+- **OpenID Connect**: register a confidential client using HTTPS discovery, the authorization code flow, PKCE S256 and RSA signatures. Declare the callback URL shown in **Settings** (`/auth/openid/callback`) at your provider. Authorized users get a viewer account on first sign-in.
+- **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
+- **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
+- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll.
+- **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
-## Docker
+SQLite is the default database. Other databases are configured through the standard Laravel `DB_*` variables.
 
-La version publiée est disponible dans GHCR sous le nom `ghcr.io/pokertour/nexoraipam:vX.X.X`. Le conteneur écoute sur le port 8080. Fournissez `APP_KEY` et `APP_URL` avec un fichier d’environnement de déploiement. L’image contient déjà son `APP_VERSION`. Réutilisez le même fichier d’environnement et le même volume lors des mises à jour.
+## Releases
 
-```sh
-image=ghcr.io/pokertour/nexoraipam:vX.X.X
-docker volume create nexora-data
-docker run --rm --env-file nexora.env -v nexora-data:/var/lib/nexora "$image" php artisan migrate --force
-docker run --rm --env-file nexora.env -v nexora-data:/var/lib/nexora "$image" php artisan nexora:install
-docker run -d --name nexora --env-file nexora.env -v nexora-data:/var/lib/nexora -p 8080:8080 "$image"
-```
+Pushes and pull requests run the test suite. To publish a version, open **Actions → Tests et publication → Run workflow** and enter `vX.X.X`. The workflow then:
+1. runs the tests;
+2. builds and checks the image;
+3. pushes the version and `latest` tags to GHCR;
+4. creates the GitHub release.
 
-Pour générer la valeur initiale de `APP_KEY`, utilisez `docker run --rm "$image" php artisan key:generate --show`. Pour la découverte réseau, lancez des conteneurs séparés avec le même volume et le même fichier d’environnement. Utilisez respectivement `php artisan queue:work database --queue=discovery` et `php artisan schedule:work` comme commande. Le worker doit pouvoir joindre les réseaux ciblés.
+The **About** page checks for the latest release. For a private repository, set `GITHUB_RELEASE_TOKEN` to a token with read access.
 
-Dans **Actions → Tests et publication → Run workflow**, saisissez la version `vX.X.X`. Le workflow lance les tests, construit et démarre l’image, pousse les tags de version et `latest` dans GHCR, puis publie la release GitHub. Les pushs et pull requests exécutent les vérifications.
-
-La page **À propos** vérifie la dernière release GitHub. Pour un dépôt privé, fournissez éventuellement `GITHUB_RELEASE_TOKEN` avec un accès en lecture au dépôt.
-
-## Tests
+## Testing
 
 ```sh
 vendor/bin/phpunit
 npm run build
 ```
 
-## Licence
+## License
 
-License: NexoraIPAM Source Available License v1.0
+NexoraIPAM is **source-available**, not open source. It is released under the [NexoraIPAM Source Available License v1.0](LICENSE). In short:
 
-Consultez le [texte de la licence](LICENSE) et les [conditions de contribution](CONTRIBUTING.md).
+- ✅ You may read the code and use NexoraIPAM for free, including inside a company, for your own internal needs.
+- ✅ You may modify it for your own internal use.
+- ❌ You may not redistribute it, publish forks, or offer it as a hosted service without written permission.
+- ❌ Paid services built on NexoraIPAM require prior authorization: installation, integration, hosting, support or training for third parties.
+
+This summary is for convenience only: the [license text](LICENSE) is authoritative. Contributions are welcome under the terms described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+<p align="center"><sub>Made by <a href="https://github.com/pokertour">pokertour</a></sub></p>
