@@ -92,10 +92,11 @@ jobs:
           trap cleanup EXIT
           export APP_KEY="base64:$(openssl rand -base64 32)"
           docker run --detach --name nexora-ci --env APP_KEY --publish 127.0.0.1::8080 "$IMAGE:$APP_VERSION"
-          docker exec nexora-ci php artisan migrate --force --no-interaction
-          docker exec nexora-ci php artisan config:show app.version --no-interaction | grep -F "$APP_VERSION"
           url="http://$(docker port nexora-ci 8080/tcp)"
-          curl --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 1 "$url/up" >/dev/null
+          # The entrypoint applies the migrations before the web server starts.
+          curl --fail --silent --show-error --retry 60 --retry-connrefused --retry-delay 1 "$url/up" >/dev/null
+          docker logs nexora-ci 2>&1 | grep -Fq 'admin@example.com'
+          docker exec nexora-ci php artisan config:show app.version --no-interaction | grep -F "$APP_VERSION"
           html=$(curl --fail --silent --show-error "$url/auth")
           grep -Fq 'NexoraIPAM' <<< "$html"
           if [[ "$html" =~ (/build/assets/[^\"]+\.css) ]]; then
