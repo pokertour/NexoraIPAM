@@ -76,17 +76,23 @@ Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>/</kbd>) anywhere to open the sear
 
 The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs FrankenPHP on PHP 8.5 and listens on port 8080.
 
-1. Generate an application key:
+1. Generate an application key. It is 32 random bytes, base64-encoded with the `base64:` prefix:
 
    ```sh
-   docker run --rm ghcr.io/pokertour/nexoraipam:vX.X.X php artisan key:generate --show
+   echo "base64:$(openssl rand -base64 32)"
    ```
 
-2. Create a `nexora.env` file:
+2. Create a `nexora.env` file with this key and the public URL of the application:
 
    ```ini
    APP_KEY=base64:...
    APP_URL=https://ipam.example.com
+   ```
+
+   Or generate the file in one go:
+
+   ```sh
+   printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" https://ipam.example.com > nexora.env
    ```
 
 3. Start the container:
