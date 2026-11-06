@@ -94,7 +94,7 @@ jobs:
           docker run --detach --name nexora-ci --env APP_KEY --publish 127.0.0.1::8080 "$IMAGE:$APP_VERSION"
           url="http://$(docker port nexora-ci 8080/tcp)"
           # The entrypoint applies the migrations before the web server starts.
-          curl --fail --silent --show-error --retry 60 --retry-connrefused --retry-delay 1 "$url/up" >/dev/null
+          curl --fail --silent --show-error --retry 60 --retry-all-errors --retry-delay 1 --max-time 5 "$url/up" >/dev/null
           docker logs nexora-ci 2>&1 | grep -Fq 'admin@example.com'
           docker exec nexora-ci php artisan config:show app.version --no-interaction | grep -F "$APP_VERSION"
           html=$(curl --fail --silent --show-error "$url/auth")
