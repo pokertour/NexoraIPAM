@@ -33,9 +33,43 @@ jobs:
       - run: composer install --prefer-dist --no-interaction
       - run: vendor/bin/phpunit
 
+  test-mariadb:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:12.3
+        env:
+          MARIADB_DATABASE: nexora_test
+          MARIADB_USER: nexora
+          MARIADB_PASSWORD: nexora
+          MARIADB_RANDOM_ROOT_PASSWORD: '1'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: nexora_test
+      DB_USERNAME: nexora
+      DB_PASSWORD: nexora
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql, ldap
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction
+      - run: vendor/bin/phpunit
+
   image:
     if: github.event_name == 'workflow_dispatch'
-    needs: test
+    needs: [test, test-mariadb]
     runs-on: ubuntu-latest
     permissions:
       contents: read

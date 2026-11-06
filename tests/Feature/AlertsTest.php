@@ -15,6 +15,7 @@ use App\Support\AlertMonitor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -60,8 +61,9 @@ class AlertsTest extends TestCase
             "*'getent'*" => Process::result(exitCode: 2),
             "*'ip'*'neigh'*" => Process::result(output: '[{"dst":"192.0.2.2","lladdr":"00:00:00:00:00:02","state":["REACHABLE"]}]'),
         ]);
-        $subnet->forceFill(['scan_token' => 'token', 'scan_status' => 'queued'])->save();
-        app()->call([new DiscoverSubnet($subnet->id, 'token'), 'handle']);
+        $token = (string) Str::uuid();
+        $subnet->forceFill(['scan_token' => $token, 'scan_status' => 'queued'])->save();
+        app()->call([new DiscoverSubnet($subnet->id, $token), 'handle']);
 
         $alerts = Alert::orderBy('id')->get()->mapWithKeys(fn (Alert $alert): array => [$alert->type => $alert->subject_label]);
         $this->assertSame('192.0.2.1', $alerts['status_conflict']);
