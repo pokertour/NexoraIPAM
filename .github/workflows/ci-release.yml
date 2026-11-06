@@ -138,6 +138,33 @@ jobs:
             echo "::error::Le tag $VERSION pointe vers un autre commit."
             exit 1
           fi
+          cat > release-notes.md <<'NOTES'
+          ## 🐳 Container image
+
+          ```sh
+          docker pull __IMAGE__:__VERSION__
+          ```
+
+          The image runs FrankenPHP on PHP 8.5, with the discovery worker and the scheduler, and listens on port 8080. New installation: follow the [Docker quick start](__REPOSITORY__#quick-start-with-docker).
+
+          ## ⬆️ Upgrade
+
+          1. Back up the `nexora-data` volume.
+          2. Replace the container, keeping the same `APP_KEY` and volume:
+
+          ```sh
+          docker pull __IMAGE__:__VERSION__
+          docker stop nexora && docker rm nexora
+          docker run -d --name nexora --env-file nexora.env \
+            -v nexora-data:/var/lib/nexora -p 8080:8080 \
+            __IMAGE__:__VERSION__
+          ```
+
+          Database migrations run automatically when the container starts. Check them with `docker logs nexora`.
+          NOTES
+          sed -i -e 's/^          //' \
+            -e "s|__IMAGE__|$IMAGE|g" -e "s|__VERSION__|$VERSION|g" \
+            -e "s|__REPOSITORY__|$GITHUB_SERVER_URL/$GITHUB_REPOSITORY|g" release-notes.md
           gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "$VERSION" --latest --generate-notes \
-            --notes "Image conteneur disponible sur GHCR avec \`docker pull $IMAGE:$VERSION\`."
+            --title "NexoraIPAM $VERSION" --latest --generate-notes \
+            --notes-file release-notes.md
