@@ -1,7 +1,10 @@
 <x-layouts.app :title="__('Vue d’ensemble')">
     @php($scope = $location ? ['location' => $location->id] : [])
     <div class="dashboard-filter">
-        <h1 class="page-title">{{ __('Vue d’ensemble') }}</h1>
+        <div>
+            <p class="eyebrow">{{ __('ESPACE DE TRAVAIL') }}</p>
+            <h1 class="page-title mt-2">{{ __('Vue d’ensemble') }}</h1>
+        </div>
         @if ($locations->isNotEmpty())
             <form method="get" action="{{ route('dashboard') }}" class="dashboard-filter-form">
                 <x-select name="location" aria-label="{{ __('Emplacement du tableau de bord') }}">
@@ -12,12 +15,22 @@
         @endif
     </div>
 
-    <div class="stat-grid dashboard-reveal mt-4">
+    <div class="stat-grid dashboard-reveal mt-6">
         <x-stat-card icon="subnets" :label="__('Sous-réseaux')" :value="$networkCount" :href="route('subnets', $scope)"/>
         <x-stat-card icon="addresses" :label="__('IP inventoriées')" :value="$statuses->sum()" :href="route('addresses', $scope)" tone="blue"/>
         <x-stat-card icon="vlans" label="VLAN" :value="$vlanCount" :href="route('vlans', $scope)" tone="cyan"/>
         <x-stat-card icon="reserved" :label="__('IP réservées')" :value="$statuses['reserved']" :href="route('addresses', $scope)" tone="amber"/>
     </div>
+
+    @if ($alerts->isNotEmpty())
+        <section class="card dashboard-reveal mt-4">
+            <div class="section-heading">
+                <div><h2>{{ __('Alertes actives') }}</h2><p>{{ __('Anomalies à examiner sur le réseau.') }}</p></div>
+                <a class="button button-secondary" href="{{ route('alerts') }}" wire:navigate>{{ __('Voir les alertes') }} <x-icon name="arrow" class="size-4"/></a>
+            </div>
+            <ul class="alert-list">@foreach ($alerts as $alert)<x-alert-row :alert="$alert" :actions="false"/>@endforeach</ul>
+        </section>
+    @endif
 
     <div class="dashboard-grid dashboard-reveal mt-4">
         <section class="card">

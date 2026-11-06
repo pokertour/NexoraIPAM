@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Auditable, HasFactory, Notifiable;
 
     protected $attributes = [
         'role' => 'viewer',
@@ -37,5 +38,16 @@ class User extends Authenticatable
             'active' => 'boolean',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    /** @return list<string> */
+    public function auditIgnored(): array
+    {
+        return ['email_verified_at', 'password', 'two_factor'];
+    }
+
+    public function auditLabel(): string
+    {
+        return $this->name.' · '.$this->email;
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Models\Concerns\HasMetadata;
 use App\Support\IpNetwork;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subnet extends Model
 {
-    use HasFactory;
+    use Auditable, HasFactory, HasMetadata;
 
-    protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id'];
+    protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id', 'gateway', 'dns_servers', 'domain', 'dhcp_start', 'dhcp_end'];
 
     protected static function booted(): void
     {
@@ -69,8 +71,37 @@ class Subnet extends Model
         return $this->hasMany(self::class, 'parent_subnet_id');
     }
 
+    /** @return list<string> */
+    public function dnsServers(): array
+    {
+        return array_values(array_filter(preg_split('/[\s,;]+/', (string) $this->dns_servers)));
+    }
+
+    public function inDhcpRange(string $address): bool
+    {
+        if (! $this->dhcp_start || ! $this->dhcp_end) {
+            return false;
+        }
+
+        $packed = inet_pton($address);
+        $start = inet_pton($this->dhcp_start);
+
+        return strlen($packed) === strlen($start) && strcmp($packed, $start) >= 0 && strcmp($packed, inet_pton($this->dhcp_end)) <= 0;
+    }
+
     public function addresses(): HasMany
     {
         return $this->hasMany(IpAddress::class);
+    }
+
+    /** @return list<string> */
+    public function auditIgnored(): array
+    {
+        return ['scope_id', 'scan_token', 'scan_status', 'scan_requested_at', 'scanned_at', 'scan_targets', 'scan_responded'];
+    }
+
+    public function auditLabel(): string
+    {
+        return $this->name.' · '.$this->cidr;
     }
 }

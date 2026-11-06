@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Setting;
+use App\Support\AlertMonitor;
+use App\Support\Audit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -21,12 +23,15 @@ class Preferences extends Component
 
     public array $smtp = [];
 
+    public array $alerts = [];
+
     public function mount(): void
     {
         Gate::authorize('administer');
         $this->local = Setting::read('local') + ['enabled' => true];
         $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''], 'password');
         $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => ''], 'secret');
+        $this->alerts = AlertMonitor::settings();
         $this->smtp = $this->display('smtp', ['scheme' => 'smtps', 'host' => '', 'port' => 465, 'username' => '', 'password' => '', 'from' => ''], 'password');
     }
 
@@ -57,6 +62,20 @@ class Preferences extends Component
                 'password' => ['nullable', 'string', 'max:1024'],
                 'from' => [$required, 'nullable', 'email', 'max:255'],
             ],
+            'alerts' => [
+                'recipients' => [$required, 'nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+                    foreach (preg_split('/[\s,;]+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY) as $email) {
+                        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $fail(__('Saisissez des adresses e-mail séparées par des virgules.'));
+
+                            return;
+                        }
+                    }
+                }],
+                'threshold' => ['required', 'integer', 'between:1,100'],
+                'conflicts' => ['required', 'boolean'],
+                'host_down' => ['required', 'boolean'],
+            ],
             default => abort(404),
         };
 
@@ -79,7 +98,16 @@ class Preferences extends Component
             return;
         }
 
+        $previous = Setting::read($section);
         Setting::write($section, $data);
+        $changes = [];
+        foreach ($data as $key => $value) {
+            if (($previous[$key] ?? null) !== $value) {
+                $secret = in_array($key, ['password', 'secret'], true);
+                $changes[$key] = $secret ? [isset($previous[$key]) ? Audit::MASK : null, Audit::MASK] : [$previous[$key] ?? null, $value];
+            }
+        }
+        Audit::record('settings.updated', changes: $changes, subjectType: 'settings', subjectLabel: $section);
         $this->dispatch('nexora-toast', tone: 'success', message: __('Paramètres enregistrés.'));
     }
 
@@ -99,12 +127,14 @@ class Preferences extends Component
                     ->to(auth()->user()->email)->subject(__('Test SMTP NexoraIPAM'));
             });
         } catch (\Throwable $exception) {
+            Audit::record('mail.tested', changes: ['result' => [null, 'failed']], subjectType: 'settings', subjectLabel: 'smtp');
             Log::warning('Échec du test SMTP', ['type' => $exception::class]);
             $this->dispatch('nexora-toast', tone: 'error', message: __('Le serveur SMTP a refusé le test. Vérifiez les paramètres enregistrés.'));
 
             return;
         }
 
+        Audit::record('mail.tested', changes: ['result' => [null, 'sent']], subjectType: 'settings', subjectLabel: 'smtp');
         $this->dispatch('nexora-toast', tone: 'success', message: __('Message de test envoyé à :email.', ['email' => auth()->user()->email]));
     }
 

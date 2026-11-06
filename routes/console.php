@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\QueueScheduledDevicePolls;
 use App\Console\Commands\QueueScheduledDiscoveries;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -10,4 +11,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(QueueScheduledDiscoveries::class)
+    ->everyMinute()->withoutOverlapping(10);
+
+Schedule::command(QueueScheduledDevicePolls::class)
     ->everyMinute()->withoutOverlapping(10);

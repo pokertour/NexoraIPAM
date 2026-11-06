@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Location extends Model
 {
-    use HasFactory;
+    use Auditable, HasFactory;
 
     public const KINDS = ['agency' => 'Agence', 'office' => 'Bureau', 'floor' => 'Étage'];
 
@@ -58,5 +59,16 @@ class Location extends Model
     public function belongsToLocation(int $id): bool
     {
         return $this->id === $id || ($this->parent?->belongsToLocation($id) ?? false);
+    }
+
+    /** @return list<string> */
+    public function auditIgnored(): array
+    {
+        return ['next_discovery_at'];
+    }
+
+    public function auditLabel(): string
+    {
+        return $this->path();
     }
 }

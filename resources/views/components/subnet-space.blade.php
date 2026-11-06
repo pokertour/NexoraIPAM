@@ -10,10 +10,10 @@
             <a class="button button-secondary" href="{{ route('subnets') }}" wire:navigate>{{ __('Tous les réseaux') }}</a>
         </div>
     </div>
-    <div class="px-5 pb-5">
-        <p class="muted mb-4 text-sm">{{ __('Les blocs verts sont libres. Les blocs rouges contiennent une adresse inventoriée ou chevauchent un autre réseau de cet emplacement.') }}</p>
+    <div class="p-5">
+        <p class="muted mb-5 text-sm">{{ __('Les blocs verts sont libres. Les blocs rouges contiennent une adresse inventoriée ou chevauchent un autre réseau de cet emplacement.') }}</p>
         @forelse ($map as $prefix => $blocks)
-            <div class="mb-4">
+            <div class="space-group">
                 <h3 class="mb-2 text-sm font-semibold">/{{ $prefix }} · {{ __(':free / :total libres', ['free' => count(array_filter($blocks, fn (array $block): bool => ! $block['occupied'])), 'total' => count($blocks)]) }}</h3>
                 <div class="space-grid">
                     @foreach ($blocks as $block)

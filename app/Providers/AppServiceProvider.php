@@ -3,8 +3,13 @@
 namespace App\Providers;
 
 use App\Http\Middleware\WorkspaceAccess;
+use App\Models\IpAddress;
+use App\Models\NetworkDevice;
 use App\Models\Setting;
+use App\Models\Subnet;
 use App\Models\User;
+use App\Models\Vlan;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -16,6 +21,13 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('edit-inventory', fn (User $user): bool => in_array($user->role, ['admin', 'operator'], true));
         Gate::define('administer', fn (User $user): bool => $user->role === 'admin');
+
+        Relation::morphMap([
+            'subnet' => Subnet::class,
+            'ip_address' => IpAddress::class,
+            'vlan' => Vlan::class,
+            'network_device' => NetworkDevice::class,
+        ]);
 
         Livewire::addPersistentMiddleware([WorkspaceAccess::class]);
 

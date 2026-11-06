@@ -128,3 +128,11 @@ Before relying on a package's API, confirm its installed version:
 - Utiliser Tom Select pour toutes les listes déroulantes via `<x-select>` ou `<x-field>` avec des options.
 - Fournir l’interface en français et en anglais. Détecter la langue via les préférences du navigateur et utiliser le français par défaut. Passer les nouveaux textes visibles, messages d’erreur et libellés accessibles par le système de traduction Laravel, avec une clé en français et sa traduction dans lang/en.json.
 - Stocker les traductions de l’application uniquement dans les fichiers JSON de `lang/`, y compris les surcharges des messages Laravel de validation et de pagination.
+- Pour `trans_choice()`, ajouter aussi la clé française dans `lang/fr.json` avec la même valeur : sinon Laravel retombe sur la traduction anglaise.
+
+## Règles fonctionnelles NexoraIPAM
+
+- Toute fonctionnalité qui crée, modifie ou supprime des données, ou qui change l’état de sécurité (connexion, mot de passe, 2FA, paramètres, découverte, interrogation SNMP, alerte), doit être tracée dans le journal d’audit.
+- Pour un nouveau modèle, utiliser le trait `App\Models\Concerns\Auditable`, déclarer dans `auditIgnored()` les colonnes mises à jour automatiquement et fournir un `auditLabel()` lisible. Les attributs `$hidden` sont masqués automatiquement : y placer tous les secrets.
+- Pour une action qui ne passe pas par un modèle, appeler `App\Support\Audit::record()`. Ajouter toute nouvelle action dans `AuditLog::ACTIONS` et tout nouveau type d’objet dans `AuditLog::SUBJECTS`, avec leurs traductions.
+- Couvrir l’entrée du journal d’audit dans les tests de la fonctionnalité.

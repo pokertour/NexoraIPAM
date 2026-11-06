@@ -1,4 +1,5 @@
 import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
 import './select';
 
 function showToast({ message, tone = 'info' }) {

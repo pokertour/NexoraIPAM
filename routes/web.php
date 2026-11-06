@@ -8,7 +8,12 @@ use App\Http\Controllers\OpenIdController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\WorkspaceAccess;
 use App\Livewire\Accounts;
+use App\Livewire\Alerts;
+use App\Livewire\AuditTrail;
+use App\Livewire\DeviceDetail;
 use App\Livewire\Inventory;
+use App\Livewire\Metadata;
+use App\Livewire\NetworkDevices;
 use App\Livewire\NetworkTools;
 use App\Livewire\Preferences;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +46,9 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
 
     Route::livewire('/tools', NetworkTools::class)->name('tools');
+    Route::livewire('/alerts', Alerts::class)->name('alerts');
+    Route::livewire('/devices', NetworkDevices::class)->name('devices');
+    Route::livewire('/devices/{device}', DeviceDetail::class)->name('devices.show');
     Route::livewire('/locations', Inventory::class)->defaults('section', 'locations')->name('locations');
     Route::livewire('/subnets', Inventory::class)->defaults('section', 'subnets')->name('subnets');
     Route::livewire('/addresses', Inventory::class)->defaults('section', 'addresses')->name('addresses');
@@ -49,5 +57,7 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::middleware('can:administer')->group(function (): void {
         Route::livewire('/settings', Preferences::class)->name('preferences');
         Route::livewire('/users', Accounts::class)->name('accounts');
+        Route::livewire('/audit', AuditTrail::class)->name('audit');
+        Route::livewire('/metadata', Metadata::class)->name('metadata');
     });
 });

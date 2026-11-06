@@ -1,9 +1,9 @@
 <x-layouts.app :title="__('Profil')">
-    <div class="page-heading"><h1 class="page-title">{{ __('Mon profil') }}</h1></div>
+    <div class="page-heading"><div><p class="eyebrow">{{ __('MON COMPTE') }}</p><h1 class="page-title mt-2">{{ __('Mon profil') }}</h1></div></div>
     <div class="settings-grid">
         <section class="card settings-card">
             <h2>{{ __('Informations du compte') }}</h2>
-            <dl class="grid gap-2">
+            <dl class="result-list border-t-0 pt-0">
                 <div><dt class="muted">{{ __('Adresse e-mail') }}</dt><dd>{{ str_ends_with($user->email, '@accounts.invalid') ? __('Non disponible') : $user->email }}</dd></div>
                 <div><dt class="muted">{{ __('Source du compte') }}</dt><dd>{{ ['local' => __('Compte interne'), 'ldap' => __('Annuaire LDAP'), 'oidc' => 'OpenID Connect'][$user->provider] ?? $user->provider }}</dd></div>
                 <div><dt class="muted">{{ __('Rôle') }}</dt><dd>{{ __(\App\Livewire\Accounts::ROLES[$user->role]) }}</dd></div>
@@ -29,12 +29,12 @@
                     <x-password-form class="mt-3"/>
                 </details>
 
-                <div class="border-t border-slate-500/20 pt-3">
+                <div class="border-t border-[var(--line)] pt-3">
                     <h3 class="font-semibold">{{ __('Authentification à deux facteurs') }}</h3>
                     <p>{{ $user->two_factor ? __('Activée') : __('Désactivée') }} · {{ __('Application d’authentification TOTP') }}</p>
                 </div>
                 @if ($recoveryCodes)
-                    <div data-profile-secret class="rounded-lg border border-slate-500/20 p-3">
+                    <div data-profile-secret class="rounded-lg border border-[var(--line)] bg-[var(--surface-hover)] p-3">
                         <h3 class="font-semibold">{{ __('Codes de secours') }}</h3>
                         <p>{{ __('Conservez ces codes dans un endroit sûr. Chacun permet une connexion et ne s’affiche qu’ici.') }}</p>
                         <ul class="mt-2 grid gap-1 sm:grid-cols-2">

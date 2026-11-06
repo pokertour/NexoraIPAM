@@ -37,12 +37,18 @@
                     @endforeach
                 </x-select>
             @endif
+            @if ($allTags->isNotEmpty())
+                <x-select class="location-filter" name="tag" wire:model.live="tag" aria-label="{{ __('Filtrer par étiquette') }}">
+                    <option value="">{{ __('Toutes les étiquettes') }}</option>
+                    @foreach ($allTags as $option)<option value="{{ $option->id }}">{{ $option->name }}</option>@endforeach
+                </x-select>
+            @endif
             @if (! $selectedSubnet && $section !== 'locations' && $locations->isNotEmpty())
                 <x-select class="location-filter" name="location" wire:model.live="location" aria-label="{{ __('Filtrer par emplacement') }}">
                     <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
                 </x-select>
             @endif
-            <span class="muted ml-auto text-sm">{{ $records->total() }} {{ $records->total() === 1 ? __('entrée') : __('entrées') }}</span>
+            <span class="count-pill ml-auto">{{ $records->total() }} {{ $records->total() === 1 ? __('entrée') : __('entrées') }}</span>
         </div>
         @if (count($displayRows) === 0)
             <x-empty-state :icon="$section" :title="__('Aucun résultat')" :text="$search ? __('Essayez une autre recherche.') : __('Les entrées de cet inventaire s’afficheront ici.')"/>
@@ -81,8 +87,9 @@
                                             <a class="table-link font-semibold" href="{{ route('addresses', ['subnet' => $record->id]) }}" wire:navigate>{{ $record->name }}</a>
                                             <small class="muted block">{{ $record->location?->path() ?? __('Sans emplacement') }}</small>
                                             <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>{{ __('Découpage') }}</a>
+                                            <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td>
-                                        <td><code>{{ $record->cidr }}</code></td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
+                                        <td><code>{{ $record->cidr }}</code>@if ($record->gateway)<small class="muted block">{{ __('Passerelle') }} <code>{{ $record->gateway }}</code></small>@endif</td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
                                             @if (str_contains($record->cidr, ':'))
                                                 <span>{{ $record->assigned }} {{ $record->assigned === 1 ? __('IP occupée') : __('IP occupées') }}</span>
                                             @else
@@ -94,11 +101,13 @@
                                         @break
                                     @case('addresses')
                                         <td>
-                                            <code>{{ $record->address }}</code>
+                                            <span class="inline-flex items-center gap-1"><code>{{ $record->address }}</code>
+                                                <button type="button" class="icon-button size-6" title="{{ __('Historique') }}" aria-label="{{ __('Historique de :address', ['address' => $record->address]) }}" wire:click="showHistory({{ $record->id }})"><x-icon name="history" class="size-3.5"/></button></span>
                                             @if ($record->mac_address)
                                                 <small class="muted mt-1 block">MAC <a class="table-link" href="{{ route('tools', ['mac' => $record->mac_address]) }}" wire:navigate>{{ $record->mac_address }}</a></small>
                                             @endif
                                             @if ($record->description)<small class="muted mt-1 block">{{ $record->description }}</small>@endif
+                                            <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td><td>{{ $record->hostname ?: ($record->resolved_hostname ?: '—') }}
                                             @if ($record->resolved_hostname && $record->hostname !== $record->resolved_hostname)
                                                 <small class="muted block">{{ __('Résolution inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
@@ -108,7 +117,7 @@
                                         <td><x-ping-status :address="$record"/></td>
                                         @break
                                     @case('vlans')
-                                        <td><code>{{ $record->number }}</code></td><td class="font-semibold">{{ $record->name }}@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif</td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
+                                        <td><code>{{ $record->number }}</code></td><td><span class="font-semibold">{{ $record->name }}</span>@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif<x-record-metadata :record="$record" :fields="$customFields"/></td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
                                         @break
                                     @case('locations')
                                         <td><span class="font-semibold">{{ $record->name }}</span>@if ($record->parent)<small class="muted block">{{ $record->parent->path() }}</small>@endif</td>
@@ -180,6 +189,18 @@
                             <option value="">{{ __('Aucun VLAN') }}</option>
                             @foreach ($options as $vlan)<option value="{{ $vlan->id }}">{{ $vlan->number }} · {{ $vlan->name }}{{ $vlan->location ? " · ".$vlan->location->path() : "" }}</option>@endforeach
                         </x-field>
+                        <fieldset class="form-section">
+                            <legend>{{ __('Paramètres réseau') }}</legend>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <x-field name="form.gateway" :label="__('Passerelle')" wire:model="form.gateway" placeholder="192.0.2.1" maxlength="45"/>
+                                <x-field name="form.domain" :label="__('Domaine DNS')" wire:model="form.domain" placeholder="lan.exemple.fr" maxlength="253"/>
+                            </div>
+                            <x-field name="form.dns_servers" :label="__('Serveurs DNS')" wire:model="form.dns_servers" placeholder="192.0.2.53, 2001:db8::53" maxlength="255" :hint="__('Séparez les adresses par des virgules.')"/>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <x-field name="form.dhcp_start" :label="__('Début de la plage DHCP')" wire:model="form.dhcp_start" placeholder="192.0.2.100" maxlength="45"/>
+                                <x-field name="form.dhcp_end" :label="__('Fin de la plage DHCP')" wire:model="form.dhcp_end" placeholder="192.0.2.199" maxlength="45"/>
+                            </div>
+                        </fieldset>
                         @break
                     @case('addresses')
                         <x-field name="form.subnet_id" :label="__('Sous-réseau')" wire:model="form.subnet_id" required>
@@ -197,11 +218,91 @@
                         @break
                 @endswitch
                 <x-field name="form.description" label="Description" wire:model="form.description" maxlength="255"/>
+                @if (isset(\App\Models\CustomField::TARGETS[$section]))
+                    @if ($allTags->isNotEmpty())
+                        <x-field name="form.tags" :label="__('Étiquettes')" wire:model="form.tags" multiple :placeholder="__('Ajouter des étiquettes…')">
+                            @foreach ($allTags as $option)<option value="{{ $option->id }}">{{ $option->name }}</option>@endforeach
+                        </x-field>
+                    @endif
+                    @if ($customFields->isNotEmpty())
+                        <fieldset class="form-section">
+                            <legend>{{ __('Champs personnalisés') }}</legend>
+                            @foreach ($customFields as $field)
+                                @if ($field->type === 'select')
+                                    <x-field name="form.custom.{{ $field->key }}" :label="$field->label" wire:model="form.custom.{{ $field->key }}" :required="$field->required">
+                                        <option value="">—</option>
+                                        @foreach ($field->options ?? [] as $choice)<option value="{{ $choice }}">{{ $choice }}</option>@endforeach
+                                    </x-field>
+                                @else
+                                    <x-field name="form.custom.{{ $field->key }}" :label="$field->label" wire:model="form.custom.{{ $field->key }}" :type="['number' => 'number', 'url' => 'url', 'date' => 'date'][$field->type] ?? 'text'" :required="$field->required" maxlength="500" step="any"/>
+                                @endif
+                            @endforeach
+                        </fieldset>
+                    @endif
+                @endif
                 <div class="dialog-actions">
                     <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
                     <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
                 </div>
             </form>
+        </x-modal>
+    @endif
+
+    @if ($historyAddress)
+        <x-modal id="address-history" wide :title="__('Historique · :address', ['address' => $historyAddress->address])" :description="$historyAddress->subnet->name.' · '.$historyAddress->subnet->cidr">
+            <div class="mt-5 grid gap-5">
+                <section>
+                    <h3 class="history-title">{{ __('Observations réseau') }}</h3>
+                    @if ($historyAddress->observations->isEmpty())
+                        <p class="muted text-sm">{{ __('Aucune observation. Lancez une découverte ou interrogez un équipement SNMP.') }}</p>
+                    @else
+                        <ol class="timeline">
+                            @foreach ($historyAddress->observations as $observation)
+                                <li @class(['timeline-current' => $loop->first])>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        @if ($observation->mac_address)<a class="table-link font-mono text-xs" href="{{ route('tools', ['mac' => $observation->mac_address]) }}" wire:navigate>{{ $observation->mac_address }}</a>@else<span class="muted text-xs">{{ __('MAC inconnue') }}</span>@endif
+                                        @if ($observation->hostname)<span class="font-semibold">{{ $observation->hostname }}</span>@endif
+                                        <span class="badge tone-blue">{{ __(\App\Models\AddressObservation::SOURCES[$observation->source] ?? $observation->source) }}</span>
+                                        @if ($observation->location)<span class="muted text-xs">{{ $observation->location }}</span>@endif
+                                    </div>
+                                    <small class="muted block mt-1 tabular-nums">{{ $observation->first_seen_at->format(__('d/m/Y H:i')) }} → {{ $observation->last_seen_at->format(__('d/m/Y H:i')) }} · {{ trans_choice(':count fois|:count fois', $observation->times_seen) }}</small>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+                </section>
+                @if ($historyPorts->isNotEmpty())
+                    <section>
+                        <h3 class="history-title">{{ __('Branchement actuel') }}</h3>
+                        <ul class="grid gap-2">
+                            @foreach ($historyPorts as $location)
+                                <li class="flex flex-wrap items-center gap-2 text-sm">
+                                    <x-icon name="switch" class="muted size-4"/>
+                                    <a class="table-link font-semibold" href="{{ route('devices.show', ['device' => $location->network_device_id, 'port' => $location->port->if_index]) }}" wire:navigate>{{ $location->device->name }} · {{ $location->port->name }}</a>
+                                    @if ($location->vlan)<span class="badge tone-violet">VLAN {{ $location->vlan }}</span>@endif
+                                    <small class="muted">{{ __('vu le :date', ['date' => $location->seen_at->format(__('d/m/Y H:i'))]) }}</small>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+                <section>
+                    <h3 class="history-title">{{ __('Modifications') }}</h3>
+                    @if ($historyChanges->isEmpty())
+                        <p class="muted text-sm">{{ __('Aucune modification enregistrée.') }}</p>
+                    @else
+                        <ol class="timeline">
+                            @foreach ($historyChanges as $entry)
+                                <li>
+                                    <div class="flex flex-wrap items-center gap-2"><x-audit-action :action="$entry->action"/><span class="text-sm">{{ $entry->actor ?? __('Système') }}</span><small class="muted tabular-nums">{{ $entry->created_at->format(__('d/m/Y H:i')) }}</small></div>
+                                    <div class="mt-1.5"><x-audit-changes :changes="$entry->changes"/></div>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+                </section>
+            </div>
+            <div class="dialog-actions mt-6"><x-button variant="secondary" wire:click="close">{{ __('Fermer') }}</x-button></div>
         </x-modal>
     @endif
 

@@ -57,6 +57,16 @@ En production, exécutez `php artisan schedule:run` chaque minute et gardez le w
 
 Dans **Sous-réseaux**, cliquez sur un nom pour ouvrir sa carte d’adresses et les plages libres. Le lien **Découpage** ouvre les six longueurs de préfixe suivantes lorsqu’elles existent. Les sous-réseaux créés depuis cette carte sont délégués et gèrent leurs adresses séparément du parent.
 
+## Équipements SNMP
+
+Dans **Équipements**, un administrateur ajoute un switch ou un routeur avec son adresse, son port UDP et ses identifiants SNMP v2c (communauté) ou v3 (utilisateur, authentification et chiffrement). Les identifiants sont chiffrés dans la base. Le worker de la file `discovery` interroge l’équipement avec les outils net-snmp : installez le paquet `snmp` (Debian/Ubuntu) ou `net-snmp-tools` (Alpine, déjà présent dans l’image Docker) sur l’hôte du worker. Un accès en lecture seule suffit.
+
+L’application lit les MIB standard IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB et IP-MIB. La page de l’équipement dessine la façade avec l’état de chaque port, sa vitesse, son VLAN natif, ses VLAN taggés, son débit, ses adresses MAC apprises et son voisin LLDP. Le débit est calculé à partir de la deuxième interrogation. La table ARP complète l’inventaire : les adresses connues reçoivent leur MAC et celles d’un sous-réseau inventorié sont ajoutées. Renseignez un intervalle pour interroger automatiquement l’équipement avec le planificateur.
+
+## Alertes, historique et journal d’audit
+
+Les découvertes et interrogations signalent les hôtes non inventoriés, les adresses disponibles qui répondent, les changements de MAC, les hôtes attribués qui ne répondent plus, les équipements injoignables et les sous-réseaux IPv4 qui dépassent le seuil d’occupation. Réglez le seuil et l’envoi par e-mail dans **Paramètres**. Chaque adresse garde l’historique des MAC et noms d’hôte observés. Le **Journal d’audit** trace les modifications de l’inventaire, des comptes et des paramètres ainsi que les événements de sécurité. Dans **Étiquettes et champs**, définissez des étiquettes et des champs personnalisés pour les sous-réseaux, adresses et VLAN.
+
 ## Docker
 
 La version publiée est disponible dans GHCR sous le nom `ghcr.io/pokertour/nexoraipam:vX.X.X`. Le conteneur écoute sur le port 8080. Fournissez `APP_KEY` et `APP_URL` avec un fichier d’environnement de déploiement. L’image contient déjà son `APP_VERSION`. Réutilisez le même fichier d’environnement et le même volume lors des mises à jour.

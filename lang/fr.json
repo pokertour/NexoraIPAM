@@ -76,5 +76,10 @@
         "smtp.username": "identifiant SMTP",
         "smtp.password": "mot de passe SMTP",
         "smtp.from": "adresse d’expédition"
-    }
+    },
+    ":count alerte active|:count alertes actives": ":count alerte active|:count alertes actives",
+    ":count fois|:count fois": ":count fois|:count fois",
+    ":count réseau|:count réseaux": ":count réseau|:count réseaux",
+    ":count sous-réseau délégué. Ses adresses sont gérées depuis son propre inventaire.|:count sous-réseaux délégués. Leurs adresses sont gérées depuis leur propre inventaire.": ":count sous-réseau délégué. Ses adresses sont gérées depuis son propre inventaire.|:count sous-réseaux délégués. Leurs adresses sont gérées depuis leur propre inventaire.",
+    ":count adresse MAC apprise|:count adresses MAC apprises": ":count adresse MAC apprise|:count adresses MAC apprises"
 }

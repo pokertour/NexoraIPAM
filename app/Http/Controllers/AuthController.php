@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Console\Commands\InstallAdmin;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Audit;
 use App\Support\ExternalAccounts;
 use App\Support\LdapLogin;
 use App\Support\TwoFactor;
@@ -57,6 +58,8 @@ class AuthController extends Controller
         }
 
         if (! $valid) {
+            Audit::record('auth.failed', $user, ['email' => [null, $email], 'provider' => [null, $input['provider']]], 'user', $email);
+
             return back()->withErrors(['login' => __('Identifiants invalides ou compte non autorisé.')])->withInput($request->only('email', 'provider'));
         }
 
@@ -143,6 +146,7 @@ class AuthController extends Controller
     {
         Auth::login($user);
         $request->session()->regenerate(true);
+        Audit::record('auth.login', $user);
 
         return $user->must_change_password
             ? to_route('password.change')
@@ -168,12 +172,16 @@ class AuthController extends Controller
         $firstChange = $request->user()->must_change_password;
         $request->user()->update(['password' => Hash::make($input['password']), 'must_change_password' => false]);
         $request->session()->regenerate();
+        Audit::record('password.changed', $request->user());
 
         return to_route($firstChange ? 'dashboard' : 'profile')->with('notice', __('Mot de passe mis à jour.'));
     }
 
     public function logout(Request $request): RedirectResponse
     {
+        if ($request->user()) {
+            Audit::record('auth.logout', $request->user());
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\Audit;
 use App\Support\TwoFactor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,7 @@ class ProfileController extends Controller
             return $user;
         }, attempts: 3);
 
+        Audit::record('two_factor.enabled', $user);
         $request->session()->forget('two_factor_setup');
         $request->session()->put('two_factor_verified', TwoFactor::fingerprint($user));
         $request->session()->regenerate(true);
@@ -108,6 +110,7 @@ class ProfileController extends Controller
         }, attempts: 3);
 
         $request->session()->forget('two_factor_verified');
+        Audit::record('two_factor.disabled', $request->user());
 
         return to_route('profile')->with('notice', __('Authentification à deux facteurs désactivée.'));
     }
