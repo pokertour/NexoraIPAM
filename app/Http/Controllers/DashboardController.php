@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Alert;
 use App\Models\Location;
 use App\Support\NetworkStatistics;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class DashboardController extends Controller
         return view('dashboard', $statistics->forLocation($location) + [
             'location' => $location,
             'locations' => Location::with('parent.parent')->orderBy('name')->get(),
+            'alerts' => Alert::active()->orderByRaw("case severity when 'critical' then 0 else 1 end")->latest('last_seen_at')->limit(5)->get(),
         ]);
     }
 }

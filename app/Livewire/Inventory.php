@@ -10,6 +10,7 @@ use App\Models\Subnet;
 use App\Models\Tag;
 use App\Models\Vlan;
 use App\Support\AddressAvailability;
+use App\Support\AlertMonitor;
 use App\Support\DiscoveryQueue;
 use App\Support\IpNetwork;
 use App\Support\MacAddress;
@@ -227,8 +228,10 @@ class Inventory extends Component
         Gate::authorize('edit-inventory');
         abort_unless($this->deleting && $this->recordId, 409);
 
-        $error = DB::transaction(function (): ?string {
+        $subnetId = null;
+        $error = DB::transaction(function () use (&$subnetId): ?string {
             $record = $this->query()->lockForUpdate()->findOrFail($this->recordId);
+            $subnetId = $record instanceof IpAddress ? $record->subnet_id : null;
             if ($record instanceof Subnet && ($record->scanPending() || $record->addresses()->exists() || $record->childSubnets()->exists())) {
                 return __('Ce réseau a des adresses, des sous-réseaux ou une découverte en cours. Traitez-les avant de le supprimer.');
             }
@@ -240,6 +243,9 @@ class Inventory extends Component
             return null;
         }, attempts: 3);
 
+        if (! $error && $subnetId && ($subnet = Subnet::find($subnetId))) {
+            app(AlertMonitor::class)->checkCapacity($subnet);
+        }
         $this->close();
         $this->resetPage();
         if ($error) {
@@ -253,7 +259,8 @@ class Inventory extends Component
         Gate::authorize('edit-inventory');
         abort_unless($this->editing, 409);
 
-        DB::transaction(function () use ($space): void {
+        $affected = [];
+        DB::transaction(function () use ($space, &$affected): void {
             $record = $this->recordId === null
                 ? $this->query()->getModel()
                 : $this->query()->lockForUpdate()->findOrFail($this->recordId);
@@ -388,11 +395,18 @@ class Inventory extends Component
             if ($record instanceof IpAddress && $record->exists && $record->isDirty(['address', 'subnet_id'])) {
                 $record->forceFill(['last_probe_at' => null, 'last_seen_at' => null, 'resolved_hostname' => null, 'mac_address' => null, 'last_probe_responded' => null]);
             }
+            if ($record instanceof IpAddress) {
+                $affected = array_unique(array_filter([$record->getOriginal('subnet_id'), $record->subnet_id]));
+            }
             $record->save();
             if ($metadata !== null) {
                 $record->syncTagsWithAudit($metadata['tags']);
             }
         }, attempts: 3);
+
+        foreach (Subnet::whereKey($affected)->get() as $subnet) {
+            app(AlertMonitor::class)->checkCapacity($subnet);
+        }
 
         $this->close();
         $this->dispatch('nexora-toast', message: __('Entrée enregistrée.'), tone: 'success');

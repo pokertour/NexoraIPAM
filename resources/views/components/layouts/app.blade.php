@@ -46,6 +46,7 @@
                     <x-nav-link name="subnets" icon="subnets">{{ __('Sous-réseaux') }}</x-nav-link>
                     <x-nav-link name="addresses" icon="addresses">{{ __('Adresses IP') }}</x-nav-link>
                     <x-nav-link name="vlans" icon="vlans">VLAN</x-nav-link>
+                    <x-nav-link name="alerts" icon="bell">{{ __('Alertes') }}</x-nav-link>
                     <x-nav-link name="tools" icon="tools">{{ __('Outils') }}</x-nav-link>
                     <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>
                     @can('administer')
@@ -79,6 +80,11 @@
                     <span class="truncate font-semibold">{{ $title }}</span>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
+                    @php($activeAlerts = \App\Models\Alert::active()->count())
+                    <a href="{{ route('alerts') }}" wire:navigate class="icon-button bell-button" aria-label="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}" title="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}">
+                        <x-icon name="bell" class="size-[18px]"/>
+                        @if ($activeAlerts)<span class="bell-count">{{ $activeAlerts > 99 ? '99+' : $activeAlerts }}</span>@endif
+                    </a>
                     <span class="topbar-status" title="NexoraIPAM {{ config('app.version') }}"><span class="pulse-dot"></span><span class="font-mono">{{ config('app.version') }}</span></span>
                     <x-language-select/>
                     <x-account-menu/>

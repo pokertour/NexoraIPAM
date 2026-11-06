@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Setting;
+use App\Support\AlertMonitor;
 use App\Support\Audit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -22,12 +23,15 @@ class Preferences extends Component
 
     public array $smtp = [];
 
+    public array $alerts = [];
+
     public function mount(): void
     {
         Gate::authorize('administer');
         $this->local = Setting::read('local') + ['enabled' => true];
         $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''], 'password');
         $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => ''], 'secret');
+        $this->alerts = AlertMonitor::settings();
         $this->smtp = $this->display('smtp', ['scheme' => 'smtps', 'host' => '', 'port' => 465, 'username' => '', 'password' => '', 'from' => ''], 'password');
     }
 
@@ -57,6 +61,20 @@ class Preferences extends Component
                 'username' => ['nullable', 'string', 'max:255'],
                 'password' => ['nullable', 'string', 'max:1024'],
                 'from' => [$required, 'nullable', 'email', 'max:255'],
+            ],
+            'alerts' => [
+                'recipients' => [$required, 'nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+                    foreach (preg_split('/[\s,;]+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY) as $email) {
+                        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $fail(__('Saisissez des adresses e-mail séparées par des virgules.'));
+
+                            return;
+                        }
+                    }
+                }],
+                'threshold' => ['required', 'integer', 'between:1,100'],
+                'conflicts' => ['required', 'boolean'],
+                'host_down' => ['required', 'boolean'],
             ],
             default => abort(404),
         };

@@ -8,6 +8,7 @@ use App\Http\Controllers\OpenIdController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\WorkspaceAccess;
 use App\Livewire\Accounts;
+use App\Livewire\Alerts;
 use App\Livewire\AuditTrail;
 use App\Livewire\Inventory;
 use App\Livewire\Metadata;
@@ -43,6 +44,7 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
 
     Route::livewire('/tools', NetworkTools::class)->name('tools');
+    Route::livewire('/alerts', Alerts::class)->name('alerts');
     Route::livewire('/locations', Inventory::class)->defaults('section', 'locations')->name('locations');
     Route::livewire('/subnets', Inventory::class)->defaults('section', 'subnets')->name('subnets');
     Route::livewire('/addresses', Inventory::class)->defaults('section', 'addresses')->name('addresses');

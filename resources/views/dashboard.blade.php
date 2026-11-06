@@ -22,6 +22,16 @@
         <x-stat-card icon="reserved" :label="__('IP réservées')" :value="$statuses['reserved']" :href="route('addresses', $scope)" tone="amber"/>
     </div>
 
+    @if ($alerts->isNotEmpty())
+        <section class="card dashboard-reveal mt-4">
+            <div class="section-heading">
+                <div><h2>{{ __('Alertes actives') }}</h2><p>{{ __('Anomalies à examiner sur le réseau.') }}</p></div>
+                <a class="button button-secondary" href="{{ route('alerts') }}" wire:navigate>{{ __('Voir les alertes') }} <x-icon name="arrow" class="size-4"/></a>
+            </div>
+            <ul class="alert-list">@foreach ($alerts as $alert)<x-alert-row :alert="$alert" :actions="false"/>@endforeach</ul>
+        </section>
+    @endif
+
     <div class="dashboard-grid dashboard-reveal mt-4">
         <section class="card">
             <div class="section-heading"><div><h2>{{ __('Occupation IPv4') }}</h2><p>{{ __('Adresses attribuées et réservées sur la capacité utilisable.') }}</p></div></div>

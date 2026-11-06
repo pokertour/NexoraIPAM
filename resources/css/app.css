@@ -270,6 +270,19 @@
     .timeline li::before { content: ''; position: absolute; left: -1.2rem; top: .3rem; width: .65rem; height: .65rem; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-strong); }
     .timeline li.timeline-current::before { border-color: var(--highlight); background: var(--highlight); box-shadow: 0 0 0 3px var(--highlight-bg); }
 
+    /* Alerts */
+    .bell-button { position: relative; }
+    .bell-count { position: absolute; top: -.2rem; right: -.25rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .25rem; display: grid; place-items: center; border-radius: 999px; background: linear-gradient(135deg, #f43f5e, #e11d48); color: #fff; font-size: .62rem; font-weight: 700; box-shadow: 0 0 0 2px var(--surface), 0 0 12px #f43f5e88; }
+    .alert-list { display: grid; }
+    .alert-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .85rem; align-items: center; padding: .85rem 1.1rem; border-top: 1px solid var(--line); }
+    .alert-list .alert-row:first-child { border-top: 0; }
+    .alert-mark { width: .6rem; height: .6rem; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 4px var(--warning-bg); }
+    .alert-row[data-severity=critical] .alert-mark { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-bg), 0 0 14px var(--danger); animation: scan-pulse 1.4s ease-in-out infinite alternate; }
+    .segmented { display: inline-flex; flex-wrap: wrap; gap: .2rem; padding: .2rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft); }
+    .segmented button { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: .45rem; color: var(--muted); font-weight: 600; font-size: .8rem; }
+    .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+    .segmented .count-pill { padding: 0 .4rem; font-size: .68rem; }
+
     /* Dialogs */
     .dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: var(--shadow-overlay), var(--inner-light); }
     .dialog-wide { width: min(56rem, calc(100vw - 2rem)); }

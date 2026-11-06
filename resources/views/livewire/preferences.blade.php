@@ -33,6 +33,16 @@
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
         </form>
 
+        <form wire:submit="save('alerts')" class="card settings-card">
+            <div><h2>{{ __('Alertes') }}</h2><p>{{ __('Seuil d’occupation, conflits d’adresses et hôtes qui disparaissent lors des découvertes.') }}</p></div>
+            <x-field name="alerts.threshold" :label="__('Seuil d’occupation des sous-réseaux IPv4 (%)')" type="number" min="1" max="100" wire:model="alerts.threshold"/>
+            <label class="checkbox"><input type="checkbox" wire:model="alerts.conflicts"> {{ __('Signaler les conflits : hôte non inventorié, adresse disponible qui répond, changement de MAC') }}</label>
+            <label class="checkbox"><input type="checkbox" wire:model="alerts.host_down"> {{ __('Signaler les hôtes attribués qui ne répondent plus') }}</label>
+            <label class="checkbox"><input type="checkbox" wire:model="alerts.enabled"> {{ __('Envoyer les nouvelles alertes par e-mail (SMTP requis)') }}</label>
+            <x-field name="alerts.recipients" :label="__('Destinataires')" wire:model="alerts.recipients" placeholder="noc@exemple.fr, reseau@exemple.fr" maxlength="1000"/>
+            <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
+        </form>
+
         <form wire:submit="save('smtp')" class="card settings-card">
             <div><h2>{{ __('Serveur SMTP') }}</h2><p>{{ __('Configurez l’expédition des messages et envoyez un e-mail de test à votre compte.') }}</p></div>
             <label class="checkbox"><input type="checkbox" wire:model="smtp.enabled"> {{ __('Activer l’envoi via SMTP') }}</label>
