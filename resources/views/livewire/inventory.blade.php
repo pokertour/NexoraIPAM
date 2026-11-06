@@ -101,7 +101,8 @@
                                         @break
                                     @case('addresses')
                                         <td>
-                                            <code>{{ $record->address }}</code>
+                                            <span class="inline-flex items-center gap-1"><code>{{ $record->address }}</code>
+                                                <button type="button" class="icon-button size-6" title="{{ __('Historique') }}" aria-label="{{ __('Historique de :address', ['address' => $record->address]) }}" wire:click="showHistory({{ $record->id }})"><x-icon name="history" class="size-3.5"/></button></span>
                                             @if ($record->mac_address)
                                                 <small class="muted mt-1 block">MAC <a class="table-link" href="{{ route('tools', ['mac' => $record->mac_address]) }}" wire:navigate>{{ $record->mac_address }}</a></small>
                                             @endif
@@ -244,6 +245,49 @@
                     <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
                 </div>
             </form>
+        </x-modal>
+    @endif
+
+    @if ($historyAddress)
+        <x-modal id="address-history" wide :title="__('Historique · :address', ['address' => $historyAddress->address])" :description="$historyAddress->subnet->name.' · '.$historyAddress->subnet->cidr">
+            <div class="mt-5 grid gap-5">
+                <section>
+                    <h3 class="history-title">{{ __('Observations réseau') }}</h3>
+                    @if ($historyAddress->observations->isEmpty())
+                        <p class="muted text-sm">{{ __('Aucune observation. Lancez une découverte ou interrogez un équipement SNMP.') }}</p>
+                    @else
+                        <ol class="timeline">
+                            @foreach ($historyAddress->observations as $observation)
+                                <li @class(['timeline-current' => $loop->first])>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        @if ($observation->mac_address)<a class="table-link font-mono text-xs" href="{{ route('tools', ['mac' => $observation->mac_address]) }}" wire:navigate>{{ $observation->mac_address }}</a>@else<span class="muted text-xs">{{ __('MAC inconnue') }}</span>@endif
+                                        @if ($observation->hostname)<span class="font-semibold">{{ $observation->hostname }}</span>@endif
+                                        <span class="badge tone-blue">{{ __(\App\Models\AddressObservation::SOURCES[$observation->source] ?? $observation->source) }}</span>
+                                        @if ($observation->location)<span class="muted text-xs">{{ $observation->location }}</span>@endif
+                                    </div>
+                                    <small class="muted block mt-1 tabular-nums">{{ $observation->first_seen_at->format(__('d/m/Y H:i')) }} → {{ $observation->last_seen_at->format(__('d/m/Y H:i')) }} · {{ trans_choice(':count fois|:count fois', $observation->times_seen) }}</small>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+                </section>
+                <section>
+                    <h3 class="history-title">{{ __('Modifications') }}</h3>
+                    @if ($historyChanges->isEmpty())
+                        <p class="muted text-sm">{{ __('Aucune modification enregistrée.') }}</p>
+                    @else
+                        <ol class="timeline">
+                            @foreach ($historyChanges as $entry)
+                                <li>
+                                    <div class="flex flex-wrap items-center gap-2"><x-audit-action :action="$entry->action"/><span class="text-sm">{{ $entry->actor ?? __('Système') }}</span><small class="muted tabular-nums">{{ $entry->created_at->format(__('d/m/Y H:i')) }}</small></div>
+                                    <div class="mt-1.5"><x-audit-changes :changes="$entry->changes"/></div>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+                </section>
+            </div>
+            <div class="dialog-actions mt-6"><x-button variant="secondary" wire:click="close">{{ __('Fermer') }}</x-button></div>
         </x-modal>
     @endif
 

@@ -262,8 +262,17 @@
     .audit-changes ins { color: var(--success); text-decoration: none; font-weight: 550; }
     .audit-arrow { margin-inline: .35rem; color: var(--muted); }
 
+    /* Timeline */
+    .history-title { margin-bottom: .6rem; color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .timeline { position: relative; display: grid; gap: .85rem; padding-left: 1.2rem; }
+    .timeline::before { content: ''; position: absolute; left: .3rem; top: .35rem; bottom: .35rem; width: 1px; background: var(--line-strong); }
+    .timeline li { position: relative; }
+    .timeline li::before { content: ''; position: absolute; left: -1.2rem; top: .3rem; width: .65rem; height: .65rem; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-strong); }
+    .timeline li.timeline-current::before { border-color: var(--highlight); background: var(--highlight); box-shadow: 0 0 0 3px var(--highlight-bg); }
+
     /* Dialogs */
     .dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: var(--shadow-overlay), var(--inner-light); }
+    .dialog-wide { width: min(56rem, calc(100vw - 2rem)); }
     .dialog::before { content: ''; position: sticky; top: 0; display: block; height: 3px; background: var(--brand-gradient); }
     .dialog::backdrop { background: #02061799; backdrop-filter: blur(6px); }
     .dialog-content { padding: 1.4rem 1.5rem 1.5rem; }

@@ -1,5 +1,5 @@
-@props(['id', 'title', 'description' => null, 'automatic' => true])
-<dialog id="{{ $id }}" class="dialog" aria-labelledby="{{ $id }}-title"
+@props(['id', 'title', 'description' => null, 'automatic' => true, 'wide' => false])
+<dialog id="{{ $id }}" @class(["dialog", "dialog-wide" => $wide]) aria-labelledby="{{ $id }}-title"
     @if ($automatic) wire:ignore.self x-data x-init="$el.showModal()" @cancel.prevent="$wire.close()" @click.self="$wire.close()" @endif>
     <div class="dialog-content">
         <div class="flex items-start justify-between gap-4">

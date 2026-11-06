@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Subnet;
+use App\Support\AddressHistory;
 use App\Support\Audit;
 use App\Support\NetworkDiscovery;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,7 @@ class DiscoverSubnet implements ShouldQueue
 
     public function __construct(public int $subnetId, public string $token) {}
 
-    public function handle(NetworkDiscovery $discovery): void
+    public function handle(NetworkDiscovery $discovery, AddressHistory $history): void
     {
         $started = Subnet::whereKey($this->subnetId)->where('scan_token', $this->token)
             ->where('scan_status', 'queued')
@@ -38,7 +39,7 @@ class DiscoverSubnet implements ShouldQueue
 
         $results = $discovery->probe($discovery->targets($subnet));
 
-        DB::transaction(function () use ($results): void {
+        DB::transaction(function () use ($results, $history): void {
             $subnet = Subnet::lockForUpdate()->find($this->subnetId);
             if ($subnet?->scan_token !== $this->token) {
                 return;
@@ -59,6 +60,9 @@ class DiscoverSubnet implements ShouldQueue
                     $record->last_probe_at = $timestamp;
                     $record->last_probe_responded = $result['reachable'];
                     $record->save();
+                }
+                if ($result['reachable']) {
+                    $history->observe($record, $result['mac'] ?? null, $result['hostname'], 'icmp', $timestamp);
                 }
             }
 

@@ -415,5 +415,16 @@
     "Modifier l’étiquette": "Edit tag",
     "Ajouter une étiquette": "Add a tag",
     "Modifier le champ": "Edit field",
-    "Ajouter un champ": "Add a field"
+    "Ajouter un champ": "Add a field",
+    "Découverte ICMP": "ICMP discovery",
+    "Table ARP SNMP": "SNMP ARP table",
+    "Historique": "History",
+    "Historique de :address": "History of :address",
+    "Historique · :address": "History · :address",
+    "Observations réseau": "Network observations",
+    "Aucune observation. Lancez une découverte ou interrogez un équipement SNMP.": "No observations. Run a discovery or poll an SNMP device.",
+    "MAC inconnue": "Unknown MAC",
+    "Modifications": "Changes",
+    "Aucune modification enregistrée.": "No recorded changes.",
+    ":count fois|:count fois": ":count time|:count times"
 }

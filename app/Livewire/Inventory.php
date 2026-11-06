@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\AuditLog;
 use App\Models\CustomField;
 use App\Models\IpAddress;
 use App\Models\Location;
@@ -67,6 +68,9 @@ class Inventory extends Component
 
     #[Locked]
     public ?int $allocationParent = null;
+
+    #[Locked]
+    public ?int $historyId = null;
 
     public array $form = [];
 
@@ -135,6 +139,13 @@ class Inventory extends Component
         $this->openAddress($space, $subnetId, $address);
     }
 
+    public function showHistory(int $id): void
+    {
+        abort_unless($this->section === 'addresses', 404);
+        $this->close();
+        $this->historyId = IpAddress::findOrFail($id)->id;
+    }
+
     public function openAllocation(int $parentId, string $cidr, SubnetSpace $space): void
     {
         Gate::authorize('edit-inventory');
@@ -199,7 +210,7 @@ class Inventory extends Component
 
     public function close(): void
     {
-        $this->reset('editing', 'deleting', 'recordId', 'form', 'scanId', 'allocationParent');
+        $this->reset('editing', 'deleting', 'recordId', 'form', 'scanId', 'allocationParent', 'historyId');
         $this->resetValidation();
     }
 
@@ -557,6 +568,8 @@ class Inventory extends Component
             'allTags' => $this->hasMetadata() ? Tag::orderBy('name')->get() : collect(),
             'customFields' => $this->hasMetadata() ? CustomField::for($this->section) : collect(),
             'scanSubnet' => $this->scanId ? Subnet::find($this->scanId) : null,
+            'historyAddress' => $this->historyId ? IpAddress::with(['observations' => fn ($query) => $query->latest('last_seen_at')->latest('id')->limit(100)])->find($this->historyId) : null,
+            'historyChanges' => $this->historyId ? AuditLog::where('subject_type', 'ip_address')->where('subject_id', $this->historyId)->latest('id')->limit(100)->get() : collect(),
             'options' => $this->editing ? match ($this->section) {
                 'subnets' => Vlan::with('location.parent.parent')->orderBy('number')->get(),
 

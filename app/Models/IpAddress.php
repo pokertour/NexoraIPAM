@@ -7,6 +7,7 @@ use App\Models\Concerns\HasMetadata;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class IpAddress extends Model
 {
@@ -31,6 +32,11 @@ class IpAddress extends Model
     public function lastPingResponded(): ?bool
     {
         return $this->last_probe_responded ?? ($this->last_probe_at ? ($this->last_seen_at?->equalTo($this->last_probe_at) ?? false) : null);
+    }
+
+    public function observations(): HasMany
+    {
+        return $this->hasMany(AddressObservation::class);
     }
 
     public function subnet(): BelongsTo
