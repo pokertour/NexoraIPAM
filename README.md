@@ -106,13 +106,7 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
 
 On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `NEXORA_AUTO_MIGRATE` | `true` | Apply migrations and create the initial account on start. |
-| `NEXORA_WORKER` | `true` | Run the discovery and SNMP queue worker. |
-| `NEXORA_SCHEDULER` | `true` | Run scheduled discoveries and SNMP polls. |
-
-The worker probes networks from its own position, so it must be able to reach them. To probe from another site, run a second container with only the worker enabled. In that case both containers need a shared database such as MySQL, because a SQLite file cannot be shared between hosts. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
+The worker probes networks from the container, so the container must be able to reach them. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
 
 ## Local development
 

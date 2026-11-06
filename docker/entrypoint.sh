@@ -9,10 +9,8 @@ if [ "${1:-}" = "nexora-web" ]; then
         exit 1
     fi
 
-    if [ "${NEXORA_AUTO_MIGRATE:-true}" = "true" ]; then
-        php /app/artisan migrate --force --no-interaction
-        php /app/artisan nexora:install --no-interaction
-    fi
+    php /app/artisan migrate --force --no-interaction
+    php /app/artisan nexora:install --no-interaction
 
     exec supervisord -c /etc/supervisord.conf
 fi
