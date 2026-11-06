@@ -163,7 +163,7 @@ jobs:
           ```sh
           docker pull __IMAGE__:__VERSION__
           docker stop nexora && docker rm nexora
-          docker run -d --name nexora --env-file nexora.env \
+          docker run -d --name nexora --env-file .env \
             -v nexora-data:/var/lib/nexora -p 8080:8080 \
             __IMAGE__:__VERSION__
           ```

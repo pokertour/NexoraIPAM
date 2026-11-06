@@ -83,7 +83,7 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
    echo "base64:$(openssl rand -base64 32)"
    ```
 
-2. Create a `nexora.env` file with this key and the public URL of the application:
+2. Create a `.env` file with this key and the public URL of the application:
 
    ```ini
    APP_KEY=base64:...
@@ -93,14 +93,14 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
    Or generate the file in one go:
 
    ```sh
-   printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" https://ipam.example.com > nexora.env
+   printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" https://ipam.example.com > .env
    ```
 
 3. Start the container:
 
    ```sh
    docker volume create nexora-data
-   docker run -d --name nexora --env-file nexora.env \
+   docker run -d --name nexora --env-file .env \
      -v nexora-data:/var/lib/nexora -p 8080:8080 \
      ghcr.io/pokertour/nexoraipam:vX.X.X
    ```
@@ -113,7 +113,7 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
 
 ### With Docker Compose
 
-The repository ships a [`compose.yaml`](compose.yaml). Put it in a directory with your `nexora.env` file, created as in step 2 above, then:
+The repository ships a [`compose.yaml`](compose.yaml). Put it in its own directory with your `.env` file, created as in step 2 above, then:
 
 ```sh
 docker compose up -d
@@ -125,7 +125,9 @@ docker compose logs nexora   # temporary administrator password
 | `NEXORA_VERSION` | `latest` | Image tag to run, for example `v0.0.3`. |
 | `NEXORA_PORT` | `8080` | Port published on the host. |
 
-To upgrade, change `NEXORA_VERSION` or run `docker compose pull`, then `docker compose up -d`. To try local changes, build the image with `docker build -t ghcr.io/pokertour/nexoraipam:dev .`, then start it with `NEXORA_VERSION=dev docker compose up -d`.
+Compose also reads `NEXORA_VERSION` and `NEXORA_PORT` from this `.env` file. Keep it outside a clone of the repository, where `.env` is the Laravel development file.
+
+To upgrade, change `NEXORA_VERSION` or run `docker compose pull`, then `docker compose up -d`. To try local changes, build the image with `docker build -t ghcr.io/pokertour/nexoraipam:dev .`, then start it from your Compose directory with `NEXORA_VERSION=dev docker compose up -d`.
 
 On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
 
