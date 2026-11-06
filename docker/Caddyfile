@@ -1,0 +1,27 @@
+{
+	admin off
+	auto_https off
+	frankenphp
+}
+
+:8080 {
+	root * /app/public
+	encode zstd br gzip
+
+	# Hidden files are never served and public/index.php is the only script.
+	@hidden path_regexp /\.
+	respond @hidden 404
+
+	@script {
+		path *.php
+		not path /index.php
+	}
+	respond @script 404
+
+	log {
+		output stdout
+		format console
+	}
+
+	php_server
+}

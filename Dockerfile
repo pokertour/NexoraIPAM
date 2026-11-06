@@ -1,9 +1,6 @@
-FROM php:8.5-fpm-alpine AS php-base
+FROM dunglas/frankenphp:1.13-php8.5-alpine AS php-base
 
-RUN apk add --no-cache libldap \
-    && apk add --no-cache --virtual .php-build-deps $PHPIZE_DEPS openldap-dev \
-    && docker-php-ext-install -j "$(nproc)" ldap pdo_mysql pcntl \
-    && apk del .php-build-deps \
+RUN install-php-extensions ldap pdo_mysql pcntl \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 WORKDIR /app
@@ -57,17 +54,23 @@ ENV APP_ENV=production \
     APP_VERSION=${APP_VERSION} \
     APP_URL=http://localhost:8080 \
     DB_DATABASE=/var/lib/nexora/database.sqlite \
-    LOG_CHANNEL=stderr
+    DB_BUSY_TIMEOUT=5000 \
+    DB_JOURNAL_MODE=wal \
+    LOG_CHANNEL=stderr \
+    NEXORA_AUTO_MIGRATE=true \
+    NEXORA_WORKER=true \
+    NEXORA_SCHEDULER=true
 
 LABEL org.opencontainers.image.title="NexoraIPAM" \
       org.opencontainers.image.source="https://github.com/pokertour/NexoraIPAM" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.licenses="LicenseRef-NexoraIPAM-Source-Available-1.0"
 
-RUN apk add --no-cache nginx iproute2-minimal iputils-ping net-snmp-tools \
-    && mkdir -p /var/lib/nexora \
+RUN apk add --no-cache supervisor iproute2-minimal iputils-ping net-snmp-tools \
+    && setcap -r /usr/local/bin/frankenphp \
+    && mkdir -p /var/lib/nexora /config/caddy /data/caddy \
     && touch /var/lib/nexora/database.sqlite \
-    && chown -R www-data:www-data /var/lib/nexora
+    && chown -R www-data:www-data /var/lib/nexora /config/caddy /data/caddy
 
 COPY --from=dependencies /app/app/ app/
 COPY --from=dependencies /app/bootstrap/ bootstrap/
@@ -81,9 +84,9 @@ COPY --from=dependencies /app/vendor/ vendor/
 COPY --from=dependencies /app/artisan /app/composer.json /app/LICENSE ./
 COPY --from=assets /app/public/build/ public/build/
 COPY --from=ieee /registries/ /usr/share/ieee-data/
-COPY docker/nginx.conf /etc/nginx/nexora.conf
-COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-nexora.conf
-COPY --chmod=755 docker/start.sh /usr/local/bin/nexora-web
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/supervisord.conf /etc/supervisord.conf
+COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/nexora-entrypoint
 
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/private storage/app/public \
     && chown -R www-data:www-data bootstrap/cache storage
@@ -94,4 +97,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=4s --start-period=10s \
     CMD wget -q -T 3 -O /dev/null http://127.0.0.1:8080/up || exit 1
 
+ENTRYPOINT ["nexora-entrypoint"]
 CMD ["nexora-web"]

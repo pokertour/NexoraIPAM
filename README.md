@@ -69,17 +69,25 @@ Les découvertes et interrogations signalent les hôtes non inventoriés, les ad
 
 ## Docker
 
-La version publiée est disponible dans GHCR sous le nom `ghcr.io/pokertour/nexoraipam:vX.X.X`. Le conteneur écoute sur le port 8080. Fournissez `APP_KEY` et `APP_URL` avec un fichier d’environnement de déploiement. L’image contient déjà son `APP_VERSION`. Réutilisez le même fichier d’environnement et le même volume lors des mises à jour.
+La version publiée est disponible dans GHCR sous le nom `ghcr.io/pokertour/nexoraipam:vX.X.X`. L’image repose sur FrankenPHP avec PHP 8.5 et écoute sur le port 8080. Fournissez `APP_KEY` et `APP_URL` avec un fichier d’environnement de déploiement. L’image contient déjà son `APP_VERSION`. Réutilisez le même fichier d’environnement et le même volume lors des mises à jour.
 
 ```sh
 image=ghcr.io/pokertour/nexoraipam:vX.X.X
+docker run --rm "$image" php artisan key:generate --show
 docker volume create nexora-data
-docker run --rm --env-file nexora.env -v nexora-data:/var/lib/nexora "$image" php artisan migrate --force
-docker run --rm --env-file nexora.env -v nexora-data:/var/lib/nexora "$image" php artisan nexora:install
 docker run -d --name nexora --env-file nexora.env -v nexora-data:/var/lib/nexora -p 8080:8080 "$image"
+docker logs nexora
 ```
 
-Pour générer la valeur initiale de `APP_KEY`, utilisez `docker run --rm "$image" php artisan key:generate --show`. Pour la découverte réseau, lancez des conteneurs séparés avec le même volume et le même fichier d’environnement. Utilisez respectivement `php artisan queue:work database --queue=discovery` et `php artisan schedule:work` comme commande. Le worker doit pouvoir joindre les réseaux ciblés.
+Le conteneur applique les migrations et crée le compte initial à chaque démarrage : le mot de passe temporaire apparaît dans `docker logs` au premier lancement. Supervisor y fait tourner FrankenPHP, le worker de la file `discovery` et le planificateur. Le worker doit pouvoir joindre les réseaux ciblés. Les variables suivantes ajustent ce comportement :
+
+| Variable | Valeur par défaut | Effet |
+| --- | --- | --- |
+| `NEXORA_AUTO_MIGRATE` | `true` | Applique les migrations et crée le compte initial au démarrage. |
+| `NEXORA_WORKER` | `true` | Lance le worker de découverte et d’interrogation SNMP. |
+| `NEXORA_SCHEDULER` | `true` | Lance le planificateur des découvertes et interrogations automatiques. |
+
+Pour exécuter le worker sur un autre hôte, plus proche des réseaux à sonder, démarrez un second conteneur avec `NEXORA_WORKER=true` et désactivez-le sur le premier. Les deux doivent alors partager la même base : utilisez MySQL, car un fichier SQLite ne se partage pas entre hôtes. Les autres commandes, par exemple `docker run --rm "$image" php artisan …`, s’exécutent sans démarrer les services.
 
 Dans **Actions → Tests et publication → Run workflow**, saisissez la version `vX.X.X`. Le workflow lance les tests, construit et démarre l’image, pousse les tags de version et `latest` dans GHCR, puis publie la release GitHub. Les pushs et pull requests exécutent les vérifications.
 
