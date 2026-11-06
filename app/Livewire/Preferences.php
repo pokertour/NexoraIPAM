@@ -74,13 +74,13 @@ class Preferences extends Component
             ->mapWithKeys(fn (array $rule, string $key): array => [$section.'.'.$key => $rule])->all();
         $data = Validator::make([$section => $input], $rules)->validate()[$section];
         if ($section === 'ldap' && $data['enabled'] && ! extension_loaded('ldap')) {
-            $this->addError('ldap.enabled', 'Activez l’extension PHP LDAP sur le serveur.');
+            $this->addError('ldap.enabled', __('Activez l’extension PHP LDAP sur le serveur.'));
 
             return;
         }
 
         Setting::write($section, $data);
-        $this->dispatch('nexora-toast', tone: 'success', message: 'Paramètres enregistrés.');
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Paramètres enregistrés.'));
     }
 
     public function testMail(): void
@@ -88,24 +88,24 @@ class Preferences extends Component
         Gate::authorize('administer');
         $smtp = Setting::read('smtp');
         if (! ($smtp['enabled'] ?? false)) {
-            $this->addError('smtp.enabled', 'Activez et enregistrez le SMTP avant de le tester.');
+            $this->addError('smtp.enabled', __('Activez et enregistrez le SMTP avant de le tester.'));
 
             return;
         }
 
         try {
-            Mail::mailer('smtp')->raw('Le serveur SMTP de NexoraIPAM fonctionne.', function ($message) use ($smtp): void {
+            Mail::mailer('smtp')->raw(__('Le serveur SMTP de NexoraIPAM fonctionne.'), function ($message) use ($smtp): void {
                 $message->from($smtp['from'], config('app.name'))
-                    ->to(auth()->user()->email)->subject('Test SMTP NexoraIPAM');
+                    ->to(auth()->user()->email)->subject(__('Test SMTP NexoraIPAM'));
             });
         } catch (\Throwable $exception) {
             Log::warning('Échec du test SMTP', ['type' => $exception::class]);
-            $this->dispatch('nexora-toast', tone: 'error', message: 'Le serveur SMTP a refusé le test. Vérifiez les paramètres enregistrés.');
+            $this->dispatch('nexora-toast', tone: 'error', message: __('Le serveur SMTP a refusé le test. Vérifiez les paramètres enregistrés.'));
 
             return;
         }
 
-        $this->dispatch('nexora-toast', tone: 'success', message: 'Message de test envoyé à '.auth()->user()->email.'.');
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Message de test envoyé à :email.', ['email' => auth()->user()->email]));
     }
 
     private function display(string $key, array $defaults, string $secret): array
@@ -117,6 +117,6 @@ class Preferences extends Component
     {
         Gate::authorize('administer');
 
-        return view('livewire.preferences')->layout('components.layouts.app', ['title' => 'Paramètres']);
+        return view('livewire.preferences')->layout('components.layouts.app', ['title' => __('Paramètres')]);
     }
 }

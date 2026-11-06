@@ -117,4 +117,56 @@ class WorkspaceTest extends TestCase
         $this->get(route('about'))->assertOk()->assertSee('local-dev')->assertSee('v1.10.0')->assertDontSee('Mise à jour disponible');
         Http::assertSentCount(1);
     }
+
+    public function test_browser_preferences_select_english_and_fall_back_to_french(): void
+    {
+        $this->withoutVite();
+        $this->withHeader('Accept-Language', 'de-DE,en-GB;q=0.9,fr;q=0.5');
+        $this->get(route('login'))->assertOk()->assertSeeHtml('<html lang="en">')->assertSee('Sign in')
+            ->assertSeeHtml('<option value="en" lang="en" selected>');
+        $this->post(route('login.submit'), ['provider' => 'local', 'email' => 'unknown@example.com', 'password' => 'incorrect'])
+            ->assertSessionHasErrors(['login' => 'Invalid credentials or account not authorized.']);
+
+        $this->withHeader('Accept-Language', 'de-DE,es;q=0.9');
+        $this->get(route('login'))->assertOk()->assertSeeHtml('<html lang="fr">')->assertSee('Se connecter');
+        $this->post(route('login.submit'), ['provider' => 'local'])
+            ->assertSessionHasErrors(['email' => 'Le champ adresse e-mail est obligatoire.']);
+    }
+
+    public function test_navbar_language_choice_overrides_the_browser(): void
+    {
+        $this->withoutVite();
+        $this->withHeader('Accept-Language', 'fr-FR,en;q=0.5');
+
+        $this->post(route('locale.update'), ['locale' => 'en', 'return_to' => '/auth?source=navbar'])
+            ->assertStatus(303)->assertHeader('Location', '/auth?source=navbar')->assertCookie('nexora-locale', 'en');
+
+        $this->withCookie('nexora-locale', 'en')->get(route('login'))->assertOk()
+            ->assertSeeHtml('<html lang="en">')->assertSee('Language')
+            ->assertSeeHtml('<option value="en" lang="en" selected>')->assertDontSeeHtml('<option value="auto"');
+
+        $this->actingAs(User::factory()->create())->get(route('profile'))->assertOk()
+            ->assertSeeHtml('<html lang="en">')->assertSeeHtml('id="navbar-locale"');
+
+        $this->post(route('locale.update'), ['locale' => 'fr', 'return_to' => '//example.com'])
+            ->assertRedirect(route('dashboard'))->assertCookie('nexora-locale', 'fr');
+
+        $this->postJson(route('locale.update'), ['locale' => 'es'])->assertUnprocessable();
+    }
+
+    public function test_english_is_used_in_the_workspace_and_livewire_actions(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $headers = ['Accept-Language' => 'en-US,fr;q=0.5'];
+
+        $this->withHeaders($headers)->get(route('accounts'))->assertOk()
+            ->assertSeeHtml('<html lang="en">')->assertSee('My account')->assertSee('Add a local account');
+
+        Livewire::withHeaders($headers)->test(Accounts::class)->call('open')
+            ->assertSee('Add a local account')
+            ->set('form.name', 'Network Operator')->set('form.email', 'operator@example.test')
+            ->set('form.password', 'Temporary-password-42')
+            ->call('save')->assertDispatched('nexora-toast', tone: 'success', message: 'Account saved.');
+    }
 }

@@ -2,13 +2,13 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "nexora/nexora-ipam",
     "type": "project",
-    "description": "Gestion open source des adresses IP",
+    "description": "Gestion des adresses IP à code source accessible",
     "keywords": [
         "ipam",
         "laravel",
         "livewire"
     ],
-    "license": "AGPL-3.0-only",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.17",

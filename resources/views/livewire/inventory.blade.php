@@ -4,15 +4,15 @@
     @endif
     <div class="page-heading">
         <div>
-            <p class="eyebrow">INVENTAIRE RÉSEAU</p>
-            <h1 class="page-title mt-2">{{ \App\Livewire\Inventory::SECTIONS[$section][0] }}</h1>
-            <p class="muted mt-2">{{ \App\Livewire\Inventory::SECTIONS[$section][2] }}</p>
+            <p class="eyebrow">{{ __('INVENTAIRE RÉSEAU') }}</p>
+            <h1 class="page-title mt-2">{{ __(\App\Livewire\Inventory::SECTIONS[$section][0]) }}</h1>
+            <p class="muted mt-2">{{ __(\App\Livewire\Inventory::SECTIONS[$section][2]) }}</p>
         </div>
         @can('edit-inventory')
             @if ($selectedSubnet)
-                <x-button icon="plus" wire:click="openAddress({{ $selectedSubnet->id }})">Ajouter</x-button>
+                <x-button icon="plus" wire:click="openAddress({{ $selectedSubnet->id }})">{{ __('Ajouter') }}</x-button>
             @elseif (! $spaceSubnet)
-                <x-button icon="plus" wire:click="open">Ajouter</x-button>
+                <x-button icon="plus" wire:click="open">{{ __('Ajouter') }}</x-button>
             @endif
         @endcan
     </div>
@@ -27,36 +27,36 @@
         <div class="table-toolbar">
             <label class="search">
                 <x-icon name="search" class="size-4"/>
-                <input type="search" wire:model.live.debounce.300ms="search" placeholder="Rechercher…" maxlength="100" aria-label="Rechercher dans l’inventaire">
+                <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher…') }}" maxlength="100" aria-label="{{ __('Rechercher dans l’inventaire') }}">
             </label>
             @if ($section === 'addresses' && $addressSubnets->isNotEmpty())
-                <x-select class="location-filter" name="subnet" wire:model.live="subnet" aria-label="Voir les adresses d’un sous-réseau">
-                    <option value="">Tous les sous-réseaux</option>
+                <x-select class="location-filter" name="subnet" wire:model.live="subnet" aria-label="{{ __('Voir les adresses d’un sous-réseau') }}">
+                    <option value="">{{ __('Tous les sous-réseaux') }}</option>
                     @foreach ($addressSubnets as $option)
                         <option value="{{ $option->id }}">{{ $option->name }} · {{ $option->cidr }}{{ $option->location ? ' · '.$option->location->path() : '' }}</option>
                     @endforeach
                 </x-select>
             @endif
             @if (! $selectedSubnet && $section !== 'locations' && $locations->isNotEmpty())
-                <x-select class="location-filter" name="location" wire:model.live="location" aria-label="Filtrer par emplacement">
-                    <x-location-options :locations="$locations" placeholder="Tous les emplacements"/>
+                <x-select class="location-filter" name="location" wire:model.live="location" aria-label="{{ __('Filtrer par emplacement') }}">
+                    <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
                 </x-select>
             @endif
-            <span class="muted ml-auto text-sm">{{ $records->total() }} {{ $records->total() === 1 ? 'entrée' : 'entrées' }}</span>
+            <span class="muted ml-auto text-sm">{{ $records->total() }} {{ $records->total() === 1 ? __('entrée') : __('entrées') }}</span>
         </div>
         @if (count($displayRows) === 0)
-            <x-empty-state :icon="$section" title="Aucun résultat" :text="$search ? 'Essayez une autre recherche.' : 'Les entrées de cet inventaire s’afficheront ici.'"/>
+            <x-empty-state :icon="$section" :title="__('Aucun résultat')" :text="$search ? __('Essayez une autre recherche.') : __('Les entrées de cet inventaire s’afficheront ici.')"/>
         @else
             <div class="table-scroll">
                 <table>
                     <thead><tr>
                         @switch($section)
-                            @case('subnets') <th>Réseau</th><th>Plage CIDR</th><th>VLAN</th><th>Occupation</th><th>Découverte</th> @break
-                            @case('addresses') <th>Adresse IP</th><th>Nom d’hôte</th><th>Sous-réseau</th><th>Statut</th><th>Dernier ping</th> @break
-                            @case('vlans') <th>Identifiant</th><th>Nom</th><th>Emplacement</th> @break
-                            @case('locations') <th>Emplacement</th><th>Type</th><th>Inventaire direct</th><th>Découverte automatique</th> @break
+                            @case('subnets') <th>{{ __('Réseau') }}</th><th>{{ __('Plage CIDR') }}</th><th>VLAN</th><th>{{ __('Occupation') }}</th><th>{{ __('Découverte') }}</th> @break
+                            @case('addresses') <th>{{ __('Adresse IP') }}</th><th>{{ __('Nom d’hôte') }}</th><th>{{ __('Sous-réseau') }}</th><th>{{ __('Statut') }}</th><th>{{ __('Dernier ping') }}</th> @break
+                            @case('vlans') <th>{{ __('Identifiant') }}</th><th>{{ __('Nom') }}</th><th>{{ __('Emplacement') }}</th> @break
+                            @case('locations') <th>{{ __('Emplacement') }}</th><th>Type</th><th>{{ __('Inventaire direct') }}</th><th>{{ __('Découverte automatique') }}</th> @break
                         @endswitch
-                        @can('edit-inventory')<th class="text-right">Actions</th>@endcan
+                        @can('edit-inventory')<th class="text-right">{{ __('Actions') }}</th>@endcan
                     </tr></thead>
                     <tbody>
                         @foreach ($displayRows as $record)
@@ -64,11 +64,11 @@
                                 <tr class="free-address-row" wire:key="gap-{{ $record['first'] }}">
                                     <td colspan="5">
                                         <code>{{ $record['first'] }}{{ $record['first'] !== $record['last'] ? ' – '.$record['last'] : '' }}</code>
-                                        <small class="ml-2">{{ $record['count'] }} {{ $record['count'] === '1' ? 'adresse libre' : 'adresses libres' }}</small>
+                                        <small class="ml-2">{{ $record['count'] }} {{ $record['count'] === '1' ? __('adresse libre') : __('adresses libres') }}</small>
                                     </td>
                                     @can('edit-inventory')
                                         <td class="text-right">
-                                            <x-button variant="secondary" icon="plus" wire:click="openAddress({{ $selectedSubnet->id }}, '{{ $record['first'] }}')">Attribuer</x-button>
+                                            <x-button variant="secondary" icon="plus" wire:click="openAddress({{ $selectedSubnet->id }}, '{{ $record['first'] }}')">{{ __('Attribuer') }}</x-button>
                                         </td>
                                     @endcan
                                 </tr>
@@ -79,16 +79,16 @@
                                     @case('subnets')
                                         <td>
                                             <a class="table-link font-semibold" href="{{ route('addresses', ['subnet' => $record->id]) }}" wire:navigate>{{ $record->name }}</a>
-                                            <small class="muted block">{{ $record->location?->path() ?? 'Sans emplacement' }}</small>
-                                            <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>Découpage</a>
+                                            <small class="muted block">{{ $record->location?->path() ?? __('Sans emplacement') }}</small>
+                                            <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>{{ __('Découpage') }}</a>
                                         </td>
                                         <td><code>{{ $record->cidr }}</code></td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
                                             @if (str_contains($record->cidr, ':'))
-                                                <span>{{ $record->assigned }} {{ $record->assigned === 1 ? 'IP occupée' : 'IP occupées' }}</span>
+                                                <span>{{ $record->assigned }} {{ $record->assigned === 1 ? __('IP occupée') : __('IP occupées') }}</span>
                                             @else
                                                 @php($capacity = $record->ipv4Capacity())
                                                 <span class="tabular-nums">{{ $record->assigned }} / {{ number_format($capacity, 0, ',', ' ') }}</span>
-                                                <x-meter :value="$capacity ? min(100, 100 * $record->assigned / $capacity) : 0" :label="'Occupation de '.$record->name" class="block mt-1"/>
+                                                <x-meter :value="$capacity ? min(100, 100 * $record->assigned / $capacity) : 0" :label="__('Occupation de :name', ['name' => $record->name])" class="block mt-1"/>
                                             @endif
                                         </td><td><x-scan-status :subnet="$record"/></td>
                                         @break
@@ -101,26 +101,26 @@
                                             @if ($record->description)<small class="muted mt-1 block">{{ $record->description }}</small>@endif
                                         </td><td>{{ $record->hostname ?: ($record->resolved_hostname ?: '—') }}
                                             @if ($record->resolved_hostname && $record->hostname !== $record->resolved_hostname)
-                                                <small class="muted block">Résolution inverse @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
+                                                <small class="muted block">{{ __('Résolution inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
                                             @endif
-                                        </td><td>{{ $record->subnet->name }}<small class="muted block">{{ $record->subnet->location?->path() ?? 'Sans emplacement' }}</small></td>
-                                        <td><span @class(['badge', 'tone-violet' => $record->status === 'used', 'tone-amber' => $record->status === 'reserved', 'tone-cyan' => $record->status === 'available'])>{{ \App\Models\IpAddress::STATUSES[$record->status] }}</span></td>
+                                        </td><td>{{ $record->subnet->name }}<small class="muted block">{{ $record->subnet->location?->path() ?? __('Sans emplacement') }}</small></td>
+                                        <td><span @class(['badge', 'tone-violet' => $record->status === 'used', 'tone-amber' => $record->status === 'reserved', 'tone-cyan' => $record->status === 'available'])>{{ __(\App\Models\IpAddress::STATUSES[$record->status]) }}</span></td>
                                         <td><x-ping-status :address="$record"/></td>
                                         @break
                                     @case('vlans')
-                                        <td><code>{{ $record->number }}</code></td><td class="font-semibold">{{ $record->name }}@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif</td><td class="muted">{{ $record->location?->path() ?? 'Sans emplacement' }}</td>
+                                        <td><code>{{ $record->number }}</code></td><td class="font-semibold">{{ $record->name }}@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif</td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
                                         @break
                                     @case('locations')
                                         <td><span class="font-semibold">{{ $record->name }}</span>@if ($record->parent)<small class="muted block">{{ $record->parent->path() }}</small>@endif</td>
-                                        <td><span class="badge tone-blue">{{ \App\Models\Location::KINDS[$record->kind] }}</span></td>
-                                        <td><a class="table-link" href="{{ route('subnets', ['location' => $record->id]) }}" wire:navigate>{{ $record->subnets_count }} réseau(x)</a>
+                                        <td><span class="badge tone-blue">{{ __(\App\Models\Location::KINDS[$record->kind]) }}</span></td>
+                                        <td><a class="table-link" href="{{ route('subnets', ['location' => $record->id]) }}" wire:navigate>{{ trans_choice(':count réseau|:count réseaux', $record->subnets_count) }}</a>
                                             <span class="muted"> · </span><a class="table-link" href="{{ route('vlans', ['location' => $record->id]) }}" wire:navigate>{{ $record->vlans_count }} VLAN</a></td>
                                         <td>
                                             @if ($record->discovery_interval)
-                                                <span class="badge tone-blue">Toutes les {{ $record->discovery_interval }} min</span>
-                                                <small class="muted mt-1 block">Prochaine échéance · {{ $record->next_discovery_at?->format('d/m/Y H:i T') }}</small>
+                                                <span class="badge tone-blue">{{ __('Toutes les :minutes min', ['minutes' => $record->discovery_interval]) }}</span>
+                                                <small class="muted mt-1 block">{{ __('Prochaine échéance') }} · {{ $record->next_discovery_at?->format(__('d/m/Y H:i T')) }}</small>
                                             @else
-                                                <span class="muted">Désactivée</span>
+                                                <span class="muted">{{ __('Désactivée') }}</span>
                                             @endif
                                         </td>
                                         @break
@@ -129,11 +129,11 @@
                                     <td><div class="flex justify-end gap-1">
                                         @can('administer')
                                             @if ($section === 'subnets' && ! $record->scanPending())
-                                                <button class="icon-button" type="button" title="Découvrir les hôtes" aria-label="Découvrir les hôtes de {{ $record->name }}" wire:click="confirmScan({{ $record->id }})"><x-icon name="radar" class="size-4"/></button>
+                                                <button class="icon-button" type="button" title="{{ __('Découvrir les hôtes') }}" aria-label="{{ __('Découvrir les hôtes de :name', ['name' => $record->name]) }}" wire:click="confirmScan({{ $record->id }})"><x-icon name="radar" class="size-4"/></button>
                                             @endif
                                         @endcan
-                                        <button class="icon-button" type="button" title="Modifier" aria-label="Modifier cette entrée" wire:click="open({{ $record->id }})"><x-icon name="edit" class="size-4"/></button>
-                                        <button class="icon-button danger-text" type="button" title="Supprimer" aria-label="Supprimer cette entrée" wire:click="confirmDelete({{ $record->id }})"><x-icon name="trash" class="size-4"/></button>
+                                        <button class="icon-button" type="button" title="{{ __('Modifier') }}" aria-label="{{ __('Modifier cette entrée') }}" wire:click="open({{ $record->id }})"><x-icon name="edit" class="size-4"/></button>
+                                        <button class="icon-button danger-text" type="button" title="{{ __('Supprimer') }}" aria-label="{{ __('Supprimer cette entrée') }}" wire:click="confirmDelete({{ $record->id }})"><x-icon name="trash" class="size-4"/></button>
                                     </div></td>
                                 @endcan
                             </tr>
@@ -147,13 +147,13 @@
     @endif
 
     @if ($editing)
-        <x-modal id="inventory-edit" :title="($recordId ? 'Modifier · ' : 'Ajouter · ').\App\Livewire\Inventory::SECTIONS[$section][1]">
+        <x-modal id="inventory-edit" :title="__($recordId ? 'Modifier · :entry' : 'Ajouter · :entry', ['entry' => __(\App\Livewire\Inventory::SECTIONS[$section][1])])">
             <form wire:submit="save" class="mt-6 grid gap-4">
                 @if ($section !== 'addresses')
-                    <x-field name="form.name" label="Nom" wire:model="form.name" maxlength="100" required/>
+                    <x-field name="form.name" :label="__('Nom')" wire:model="form.name" maxlength="100" required/>
                 @endif
                 @if (in_array($section, ['subnets', 'vlans'], true))
-                    <x-field name="form.location_id" label="Emplacement" wire:model="form.location_id" :disabled="$allocationParent !== null">
+                    <x-field name="form.location_id" :label="__('Emplacement')" wire:model="form.location_id" :disabled="$allocationParent !== null">
                         <x-location-options :locations="$locations"/>
                     </x-field>
                 @endif
@@ -161,65 +161,65 @@
                     @case('locations')
                         @if (!$recordId)
                             <x-field name="form.kind" label="Type" wire:model.live="form.kind">
-                                @foreach (\App\Models\Location::KINDS as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                                @foreach (\App\Models\Location::KINDS as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
                             </x-field>
                             @php($parentKind = \App\Models\Location::PARENT_KINDS[$form['kind']] ?? null)
                             @if ($parentKind)
-                                <x-field name="form.parent_id" label="Emplacement parent" wire:model="form.parent_id" required>
-                                    <x-location-options :locations="$locations->where('kind', $parentKind)" placeholder="Sélectionner un parent"/>
+                                <x-field name="form.parent_id" :label="__('Emplacement parent')" wire:model="form.parent_id" required>
+                                    <x-location-options :locations="$locations->where('kind', $parentKind)" :placeholder="__('Sélectionner un parent')"/>
                                 </x-field>
                             @endif
                         @endif
                         @can('administer')
-                            <x-field name="form.discovery_interval" label="Intervalle de découverte (minutes)" type="number" min="1" max="10080" wire:model="form.discovery_interval" hint="Laissez vide pour désactiver. S’applique aux sous-réseaux directement rattachés à cet emplacement."/>
+                            <x-field name="form.discovery_interval" :label="__('Intervalle de découverte (minutes)')" type="number" min="1" max="10080" wire:model="form.discovery_interval" :hint="__('Laissez vide pour désactiver. S’applique aux sous-réseaux directement rattachés à cet emplacement.')"/>
                         @endcan
                         @break
                     @case('subnets')
-                        <x-field name="form.cidr" label="Plage CIDR" wire:model="form.cidr" placeholder="192.0.2.0/24 ou 2001:db8::/32" required/>
+                        <x-field name="form.cidr" :label="__('Plage CIDR')" wire:model="form.cidr" :placeholder="__('192.0.2.0/24 ou 2001:db8::/32')" required/>
                         <x-field name="form.vlan_id" label="VLAN" wire:model="form.vlan_id">
-                            <option value="">Aucun VLAN</option>
+                            <option value="">{{ __('Aucun VLAN') }}</option>
                             @foreach ($options as $vlan)<option value="{{ $vlan->id }}">{{ $vlan->number }} · {{ $vlan->name }}{{ $vlan->location ? " · ".$vlan->location->path() : "" }}</option>@endforeach
                         </x-field>
                         @break
                     @case('addresses')
-                        <x-field name="form.subnet_id" label="Sous-réseau" wire:model="form.subnet_id" required>
-                            <option value="">Choisir un sous-réseau</option>
+                        <x-field name="form.subnet_id" :label="__('Sous-réseau')" wire:model="form.subnet_id" required>
+                            <option value="">{{ __('Choisir un sous-réseau') }}</option>
                             @foreach ($addressSubnets as $subnet)<option value="{{ $subnet->id }}">{{ $subnet->name }} · {{ $subnet->cidr }}{{ $subnet->location ? " · ".$subnet->location->path() : "" }}</option>@endforeach
                         </x-field>
-                        <x-field name="form.address" label="Adresse IPv4 ou IPv6" wire:model="form.address" required/>
-                        <x-field name="form.hostname" label="Nom d’hôte" wire:model="form.hostname" maxlength="253"/>
-                        <x-field name="form.status" label="Statut" wire:model="form.status">
-                            @foreach (\App\Models\IpAddress::STATUSES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                        <x-field name="form.address" :label="__('Adresse IPv4 ou IPv6')" wire:model="form.address" required/>
+                        <x-field name="form.hostname" :label="__('Nom d’hôte')" wire:model="form.hostname" maxlength="253"/>
+                        <x-field name="form.status" :label="__('Statut')" wire:model="form.status">
+                            @foreach (\App\Models\IpAddress::STATUSES as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
                         </x-field>
                         @break
                     @case('vlans')
-                        <x-field name="form.number" label="Identifiant VLAN" type="number" wire:model="form.number" min="1" max="4094" required/>
+                        <x-field name="form.number" :label="__('Identifiant VLAN')" type="number" wire:model="form.number" min="1" max="4094" required/>
                         @break
                 @endswitch
                 <x-field name="form.description" label="Description" wire:model="form.description" maxlength="255"/>
                 <div class="dialog-actions">
-                    <x-button variant="secondary" wire:click="close">Annuler</x-button>
-                    <x-button type="submit" wire:loading.attr="disabled" wire:target="save">Enregistrer</x-button>
+                    <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
+                    <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
                 </div>
             </form>
         </x-modal>
     @endif
 
     @if ($scanSubnet)
-        <x-modal id="inventory-scan" title="Découvrir les hôtes" :description="$scanSubnet->name.' · '.$scanSubnet->cidr">
-            <p class="muted mt-4 text-sm">Le serveur sondera les adresses par ICMP depuis son propre réseau et cherchera le nom des hôtes qui répondent. Vérifiez qu’il accède à cet emplacement. Pour les grandes plages, seuls les premiers {{ \App\Support\NetworkDiscovery::LIMIT }} hôtes déjà saisis seront vérifiés.</p>
+        <x-modal id="inventory-scan" :title="__('Découvrir les hôtes')" :description="$scanSubnet->name.' · '.$scanSubnet->cidr">
+            <p class="muted mt-4 text-sm">{{ __('Le serveur sondera les adresses par ICMP depuis son propre réseau et cherchera le nom des hôtes qui répondent. Vérifiez qu’il accède à cet emplacement. Pour les grandes plages, seuls les premiers :limit hôtes déjà saisis seront vérifiés.', ['limit' => \App\Support\NetworkDiscovery::LIMIT]) }}</p>
             <div class="dialog-actions mt-6">
-                <x-button variant="secondary" wire:click="close">Annuler</x-button>
-                <x-button icon="radar" wire:click="scan" wire:loading.attr="disabled" wire:target="scan">Lancer la découverte</x-button>
+                <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
+                <x-button icon="radar" wire:click="scan" wire:loading.attr="disabled" wire:target="scan">{{ __('Lancer la découverte') }}</x-button>
             </div>
         </x-modal>
     @endif
 
     @if ($deleting)
-        <x-modal id="inventory-delete" title="Supprimer cette entrée ?" description="Cette action est définitive.">
+        <x-modal id="inventory-delete" :title="__('Supprimer cette entrée ?')" :description="__('Cette action est définitive.')">
             <div class="dialog-actions mt-6">
-                <x-button variant="secondary" wire:click="close">Annuler</x-button>
-                <x-button variant="danger" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">Supprimer</x-button>
+                <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
+                <x-button variant="danger" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">{{ __('Supprimer') }}</x-button>
             </div>
         </x-modal>
     @endif

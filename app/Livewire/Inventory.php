@@ -94,7 +94,7 @@ class Inventory extends Component
         if ($address !== null) {
             $address = IpNetwork::address($address);
             if (! $address || ! IpNetwork::assignable($subnet->cidr, $address) || $space->delegated($subnet, $address)) {
-                $this->dispatch('nexora-toast', message: 'Cette adresse ne peut pas être attribuée dans ce réseau.', tone: 'error');
+                $this->dispatch('nexora-toast', message: __('Cette adresse ne peut pas être attribuée dans ce réseau.'), tone: 'error');
 
                 return;
             }
@@ -118,7 +118,7 @@ class Inventory extends Component
         $parent = Subnet::findOrFail($parentId);
         $cidr = IpNetwork::normalize(trim($cidr));
         if ($cidr === null || ! $space->canAllocate($parent, $cidr)) {
-            $this->dispatch('nexora-toast', message: 'Ce bloc n’est plus disponible.', tone: 'error');
+            $this->dispatch('nexora-toast', message: __('Ce bloc n’est plus disponible.'), tone: 'error');
 
             return;
         }
@@ -146,7 +146,7 @@ class Inventory extends Component
         $message = $queue->enqueue($this->scanId);
 
         $this->close();
-        $this->dispatch('nexora-toast', message: $message ?? 'Découverte mise en file d’attente.', tone: $message ? 'info' : 'success');
+        $this->dispatch('nexora-toast', message: $message ?? __('Découverte mise en file d’attente.'), tone: $message ? 'info' : 'success');
     }
 
     public function updatedFormKind(): void
@@ -189,10 +189,10 @@ class Inventory extends Component
         $error = DB::transaction(function (): ?string {
             $record = $this->query()->lockForUpdate()->findOrFail($this->recordId);
             if ($record instanceof Subnet && ($record->scanPending() || $record->addresses()->exists() || $record->childSubnets()->exists())) {
-                return 'Ce réseau a des adresses, des sous-réseaux ou une découverte en cours. Traitez-les avant de le supprimer.';
+                return __('Ce réseau a des adresses, des sous-réseaux ou une découverte en cours. Traitez-les avant de le supprimer.');
             }
             if ($record instanceof Location && ($record->children()->exists() || $record->subnets()->exists() || $record->vlans()->exists())) {
-                return 'Déplacez l’inventaire et supprimez les emplacements enfants avant de supprimer cet emplacement.';
+                return __('Déplacez l’inventaire et supprimez les emplacements enfants avant de supprimer cet emplacement.');
             }
             $record->delete();
 
@@ -204,7 +204,7 @@ class Inventory extends Component
         if ($error) {
             $this->addError('delete', $error);
         }
-        $this->dispatch('nexora-toast', message: $error ?? 'Entrée supprimée.', tone: $error ? 'error' : 'success');
+        $this->dispatch('nexora-toast', message: $error ?? __('Entrée supprimée.'), tone: $error ? 'error' : 'success');
     }
 
     public function save(SubnetSpace $space): void
@@ -268,15 +268,15 @@ class Inventory extends Component
             }
 
             $data = $this->validate(collect($rules)->mapWithKeys(fn (array $rule, string $field): array => ['form.'.$field => $rule])->all(), [
-                'form.cidr.required' => 'Saisissez un réseau valide au format CIDR (IPv4 ou IPv6).',
-                'form.address.required' => 'Saisissez une adresse IPv4 ou IPv6 valide.',
+                'form.cidr.required' => __('Saisissez un réseau valide au format CIDR (IPv4 ou IPv6).'),
+                'form.address.required' => __('Saisissez une adresse IPv4 ou IPv6 valide.'),
             ])['form'];
             $data = array_intersect_key($data, $rules);
 
             if ($record instanceof IpAddress) {
                 $subnet = Subnet::lockForUpdate()->findOrFail($data['subnet_id']);
                 if (! IpNetwork::assignable($subnet->cidr, $data['address']) || $space->delegated($subnet, $data['address'])) {
-                    throw ValidationException::withMessages(['form.address' => 'Cette adresse n’est pas attribuable dans ce sous-réseau.']);
+                    throw ValidationException::withMessages(['form.address' => __('Cette adresse n’est pas attribuable dans ce sous-réseau.')]);
                 }
 
                 $this->validate(['form.address' => [
@@ -285,13 +285,13 @@ class Inventory extends Component
             }
 
             if ($record instanceof Subnet && $record->exists && $record->cidr !== $data['cidr'] && $record->addresses()->exists()) {
-                throw ValidationException::withMessages(['form.cidr' => 'Déplacez les adresses existantes avant de modifier la plage CIDR.']);
+                throw ValidationException::withMessages(['form.cidr' => __('Déplacez les adresses existantes avant de modifier la plage CIDR.')]);
             }
 
             if ($record instanceof Location) {
                 $parent = isset($data['parent_id']) ? Location::lockForUpdate()->findOrFail($data['parent_id']) : null;
                 if ($parent?->kind !== Location::PARENT_KINDS[$data['kind']]) {
-                    throw ValidationException::withMessages(['form.parent_id' => 'Sélectionnez un parent correspondant à ce type d’emplacement.']);
+                    throw ValidationException::withMessages(['form.parent_id' => __('Sélectionnez un parent correspondant à ce type d’emplacement.')]);
                 }
             }
 
@@ -300,7 +300,7 @@ class Inventory extends Component
                 if ($this->allocationParent !== null) {
                     $parent = Subnet::lockForUpdate()->findOrFail($this->allocationParent);
                     if ($parent->scanPending() || $parent->location_id !== $this->locationId($data) || ! $space->canAllocate($parent, $data['cidr'])) {
-                        throw ValidationException::withMessages(['form.cidr' => 'Ce bloc est occupé, hors de l’emplacement du parent ou le parent est en cours de découverte.']);
+                        throw ValidationException::withMessages(['form.cidr' => __('Ce bloc est occupé, hors de l’emplacement du parent ou le parent est en cours de découverte.')]);
                     }
                     $record->parent_subnet_id = $parent->id;
                 }
@@ -326,7 +326,7 @@ class Inventory extends Component
         }, attempts: 3);
 
         $this->close();
-        $this->dispatch('nexora-toast', message: 'Entrée enregistrée.', tone: 'success');
+        $this->dispatch('nexora-toast', message: __('Entrée enregistrée.'), tone: 'success');
     }
 
     private function scopeId(): int
@@ -347,16 +347,16 @@ class Inventory extends Component
         if (isset($data['vlan_id'])) {
             $vlan = Vlan::lockForUpdate()->findOrFail($data['vlan_id']);
             if ($vlan->location_id && ! ($locationId && Location::findOrFail($locationId)->belongsToLocation($vlan->location_id))) {
-                throw ValidationException::withMessages(['form.vlan_id' => 'Sélectionnez un VLAN disponible à cet emplacement.']);
+                throw ValidationException::withMessages(['form.vlan_id' => __('Sélectionnez un VLAN disponible à cet emplacement.')]);
             }
         }
 
         if ($subnet->exists && ($subnet->location_id !== $locationId || $subnet->cidr !== $data['cidr'])) {
             if ($subnet->parent_subnet_id || $subnet->childSubnets()->exists()) {
-                throw ValidationException::withMessages(['form.cidr' => 'Ce réseau fait partie d’un découpage. Sa plage et son emplacement sont fixes.']);
+                throw ValidationException::withMessages(['form.cidr' => __('Ce réseau fait partie d’un découpage. Sa plage et son emplacement sont fixes.')]);
             }
             if ($subnet->scanPending()) {
-                throw ValidationException::withMessages(['form.cidr' => 'Attendez la fin de la découverte avant de déplacer ou modifier cette plage.']);
+                throw ValidationException::withMessages(['form.cidr' => __('Attendez la fin de la découverte avant de déplacer ou modifier cette plage.')]);
             }
             $subnet->forceFill([
                 'scan_token' => null, 'scan_status' => null, 'scan_requested_at' => null, 'scanned_at' => null,
@@ -371,7 +371,7 @@ class Inventory extends Component
         if ($locationId !== null && $vlan->subnets()->where(function (Builder $query) use ($locationId): void {
             $query->whereNull('location_id')->orWhereNotIn('location_id', Location::findOrFail($locationId)->descendantsAndSelf());
         })->exists()) {
-            throw ValidationException::withMessages(['form.location_id' => 'Des sous-réseaux liés se trouvent en dehors de cet emplacement.']);
+            throw ValidationException::withMessages(['form.location_id' => __('Des sous-réseaux liés se trouvent en dehors de cet emplacement.')]);
         }
     }
 
@@ -443,6 +443,6 @@ class Inventory extends Component
 
                 default => collect(),
             } : collect(),
-        ])->layout('components.layouts.app', ['title' => self::SECTIONS[$this->section][0]]);
+        ])->layout('components.layouts.app', ['title' => __(self::SECTIONS[$this->section][0])]);
     }
 }

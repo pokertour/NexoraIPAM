@@ -48,6 +48,9 @@ function registerRequestRecovery() {
         onError(({ response, body, preventDefault }) => {
             if (response.aborted) return;
 
+            const copy = document.querySelector('[data-recovery-copy]')?.dataset;
+            if (!copy) return;
+
             preventDefault();
             const expired = response.status === 419;
             if (expired || (response.ok && body?.trim() === '')) {
@@ -55,13 +58,12 @@ function registerRequestRecovery() {
                 if (!dialog || dialog.open) return;
 
                 dialog.querySelector('[data-recovery-message]').textContent = expired
-                    ? 'Votre session a expiré. Actualisez la page pour reprendre.'
-                    : 'Le serveur a renvoyé une réponse vide. Actualisez la page pour reprendre.';
+                    ? copy.expired : copy.empty;
                 dialog.showModal();
                 return;
             }
 
-            showToast({ tone: 'error', message: 'L’action a échoué. Réessayez dans un instant.' });
+            showToast({ tone: 'error', message: copy.failed });
         });
     });
 }
@@ -79,5 +81,11 @@ function clearProfileSecrets() {
 
 document.addEventListener('livewire:navigating', clearProfileSecrets);
 window.addEventListener('pagehide', clearProfileSecrets);
+// Livewire replaces the root attributes before swapping the page body.
+new MutationObserver(() => window.NexoraTheme.apply()).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+});
+
 document.addEventListener('livewire:navigated', hydratePage);
 hydratePage();

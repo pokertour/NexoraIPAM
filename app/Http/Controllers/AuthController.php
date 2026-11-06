@@ -39,7 +39,7 @@ class AuthController extends Controller
         $key = 'nexora-login:'.hash('sha256', $email.'|'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
-            return back()->withErrors(['login' => 'Trop de tentatives. Réessayez dans une minute.'])->withInput($request->only('email', 'provider'));
+            return back()->withErrors(['login' => __('Trop de tentatives. Réessayez dans une minute.')])->withInput($request->only('email', 'provider'));
         }
 
         RateLimiter::hit($key, 60);
@@ -57,7 +57,7 @@ class AuthController extends Controller
         }
 
         if (! $valid) {
-            return back()->withErrors(['login' => 'Identifiants invalides ou compte non autorisé.'])->withInput($request->only('email', 'provider'));
+            return back()->withErrors(['login' => __('Identifiants invalides ou compte non autorisé.')])->withInput($request->only('email', 'provider'));
         }
 
         RateLimiter::clear($key);
@@ -99,7 +99,7 @@ class AuthController extends Controller
 
         $key = 'nexora-two-factor:'.$pending['id'];
         if (RateLimiter::tooManyAttempts($key, 5)) {
-            return back()->withErrors(['code' => 'Trop de tentatives. Réessayez dans une minute.']);
+            return back()->withErrors(['code' => __('Trop de tentatives. Réessayez dans une minute.')]);
         }
 
         $input = $request->validate(['code' => ['required', 'string', 'max:20']]);
@@ -117,7 +117,7 @@ class AuthController extends Controller
         }, attempts: 3);
 
         if ($user === null) {
-            return back()->withErrors(['code' => 'Ce code est invalide ou a déjà été utilisé.']);
+            return back()->withErrors(['code' => __('Ce code est invalide ou a déjà été utilisé.')]);
         }
 
         RateLimiter::clear($key);
@@ -169,7 +169,7 @@ class AuthController extends Controller
         $request->user()->update(['password' => Hash::make($input['password']), 'must_change_password' => false]);
         $request->session()->regenerate();
 
-        return to_route($firstChange ? 'dashboard' : 'profile')->with('notice', 'Mot de passe mis à jour.');
+        return to_route($firstChange ? 'dashboard' : 'profile')->with('notice', __('Mot de passe mis à jour.'));
     }
 
     public function logout(Request $request): RedirectResponse

@@ -8,10 +8,10 @@
                 @if ($description)<p class="muted mt-1 text-sm">{{ $description }}</p>@endif
             </div>
             @if ($automatic)
-                <button type="button" class="icon-button" aria-label="Fermer" wire:click="close"><x-icon name="close"/></button>
+                <button type="button" class="icon-button" aria-label="{{ __('Fermer') }}" wire:click="close"><x-icon name="close"/></button>
             @else
                 <form method="dialog">
-                    <button type="submit" class="icon-button" aria-label="Fermer"><x-icon name="close"/></button>
+                    <button type="submit" class="icon-button" aria-label="{{ __('Fermer') }}"><x-icon name="close"/></button>
                 </form>
             @endif
         </div>

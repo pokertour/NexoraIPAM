@@ -126,3 +126,5 @@ Before relying on a package's API, confirm its installed version:
 - Ne jamais utiliser les boîtes de dialogue natives JavaScript `alert()`, `confirm()` et `prompt()`. Utiliser le composant de fenêtre modale de l’application pour les confirmations et les saisies.
 - Réutiliser les composants Blade et Livewire existants. Extraire un composant partagé lorsqu’un motif d’interface se répète.
 - Utiliser Tom Select pour toutes les listes déroulantes via `<x-select>` ou `<x-field>` avec des options.
+- Fournir l’interface en français et en anglais. Détecter la langue via les préférences du navigateur et utiliser le français par défaut. Passer les nouveaux textes visibles, messages d’erreur et libellés accessibles par le système de traduction Laravel, avec une clé en français et sa traduction dans lang/en.json.
+- Stocker les traductions de l’application uniquement dans les fichiers JSON de `lang/`, y compris les surcharges des messages Laravel de validation et de pagination.

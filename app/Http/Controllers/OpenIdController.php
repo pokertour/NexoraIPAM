@@ -87,6 +87,6 @@ class OpenIdController extends Controller
 
     private function failed(): RedirectResponse
     {
-        return redirect()->route('login')->withErrors(['login' => 'Connexion OpenID Connect refusée ou compte non autorisé.']);
+        return redirect()->route('login')->withErrors(['login' => __('Connexion OpenID Connect refusée ou compte non autorisé.')]);
     }
 }

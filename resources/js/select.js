@@ -8,7 +8,7 @@ document.addEventListener('alpine:init', () => {
         return {
             init() {
                 const select = this.$el.querySelector('select');
-                const { model, live } = this.$el.dataset;
+                const { model, live, noResults } = this.$el.dataset;
 
                 if (model) {
                     select.value = String(this.$wire.$get(model) ?? '');
@@ -19,7 +19,12 @@ document.addEventListener('alpine:init', () => {
                     allowEmptyOption: true,
                     create: false,
                     render: {
-                        no_results: () => '<div class="no-results">Aucun résultat</div>',
+                        no_results: () => {
+                            const message = document.createElement('div');
+                            message.className = 'no-results';
+                            message.textContent = noResults;
+                            return message;
+                        },
                     },
                 });
 

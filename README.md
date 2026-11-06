@@ -1,6 +1,6 @@
 # NexoraIPAM
 
-NexoraIPAM est une application open source de gestion d’adresses IP, construite avec Laravel 13, Livewire 4 et Tailwind CSS 4. Cette première version gère les sous-réseaux IPv4 et IPv6, leurs adresses et les VLAN associés.
+NexoraIPAM est une application de gestion d’adresses IP à code source accessible, construite avec Laravel 13, Livewire 4 et Tailwind CSS 4. Cette première version gère les sous-réseaux IPv4 et IPv6, leurs adresses et les VLAN associés.
 
 ## Installation locale
 
@@ -30,7 +30,7 @@ Connectez-vous sur [localhost:8000](http://localhost:8000) avec `admin@example.c
 
 - **Interne** — créez le compte dans **Utilisateurs** et transmettez le mot de passe temporaire à la personne concernée. Le compte d’installation garde un accès local de secours si cette méthode est désactivée.
 - **LDAP** — renseignez l’URL LDAPS, la base DN, le groupe AD autorisé (DN) et le compte de recherche dans **Paramètres**. Installez l’autorité de certification de l’annuaire dans le magasin de confiance du serveur si nécessaire. Les membres directs ou imbriqués de ce groupe se connectent avec leur adresse `mail`. Leur compte Lecteur est créé au premier accès autorisé.
-- **OpenID Connect** — configurez un client confidentiel avec découverte HTTPS, flux Authorization Code, PKCE S256 et signature RSA. Enregistrez l’URL de retour affichée dans **Paramètres** chez le fournisseur, puis attribuez l’accès à l’application dans le fournisseur SSO. NexoraIPAM crée un compte Lecteur au premier accès autorisé et l’associe au couple émetteur et sujet.
+- **OpenID Connect** — configurez un client confidentiel avec découverte HTTPS, flux Authorization Code, PKCE S256 et signature RSA. Enregistrez l’URL de retour `/auth/openid/callback` affichée dans **Paramètres** chez le fournisseur, puis attribuez l’accès à l’application dans le fournisseur SSO. NexoraIPAM crée un compte Lecteur au premier accès autorisé et l’associe au couple émetteur et sujet.
 - **SMTP** — configurez l’expéditeur, le serveur et ses identifiants dans **Paramètres**, puis utilisez **Envoyer un test**. TLS implicite et STARTTLS sont disponibles.
 
 Les réglages d’authentification et SMTP sont chiffrés dans la base. SQLite est utilisé par défaut. Les paramètres nécessaires à une connexion vers une autre base relèvent de la configuration de démarrage de Laravel.
@@ -84,4 +84,6 @@ npm run build
 
 ## Licence
 
-[GNU AGPL v3 uniquement](LICENSE). La licence autorise la redistribution sous ses conditions de copyleft. Une version modifiée proposée aux utilisateurs sur un réseau doit leur donner accès à son code source correspondant.
+License: NexoraIPAM Source Available License v1.0
+
+Consultez le [texte de la licence](LICENSE) et les [conditions de contribution](CONTRIBUTING.md).

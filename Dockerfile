@@ -51,7 +51,7 @@ ENV APP_ENV=production \
 LABEL org.opencontainers.image.title="NexoraIPAM" \
       org.opencontainers.image.source="https://github.com/pokertour/NexoraIPAM" \
       org.opencontainers.image.version="${APP_VERSION}" \
-      org.opencontainers.image.licenses="AGPL-3.0-only"
+      org.opencontainers.image.licenses="LicenseRef-NexoraIPAM-Source-Available-1.0"
 
 RUN apk add --no-cache nginx iproute2-minimal iputils-ping \
     && mkdir -p /var/lib/nexora \
@@ -62,6 +62,7 @@ COPY --from=dependencies /app/app/ app/
 COPY --from=dependencies /app/bootstrap/ bootstrap/
 COPY --from=dependencies /app/config/ config/
 COPY --from=dependencies /app/database/ database/
+COPY --from=dependencies /app/lang/ lang/
 COPY --from=dependencies /app/public/ public/
 COPY --from=dependencies /app/resources/views/ resources/views/
 COPY --from=dependencies /app/routes/ routes/

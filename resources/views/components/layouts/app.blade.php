@@ -1,7 +1,7 @@
-@props(['title' => 'Vue d’ensemble', 'standalone' => false])
+@props(['title' => __('Vue d’ensemble'), 'standalone' => false])
 @php($workspace = auth()->check() && ! $standalone)
 <!doctype html>
-<html lang="fr">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,13 +15,17 @@
                 try { preference = localStorage.getItem('nexora-theme'); } catch {}
                 const cookie = document.cookie.match(/(?:^|; )nexora-theme=(dark|light)(?:;|$)/)?.[1];
                 const system = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                document.documentElement.dataset.theme = ['dark', 'light'].includes(preference)
+                const theme = ['dark', 'light'].includes(preference)
                     ? preference : (cookie ?? system);
+                if (document.documentElement.dataset.theme !== theme) {
+                    document.documentElement.dataset.theme = theme;
+                }
             },
             toggle() {
                 const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
                 document.documentElement.dataset.theme = theme;
                 try { localStorage.setItem('nexora-theme', theme); } catch {}
+
                 document.cookie = 'nexora-theme=' + theme + '; Path=/; Max-Age=31536000; SameSite=Lax';
             },
         };
@@ -34,66 +38,74 @@
     <div @class(['workspace' => $workspace, 'guest-workspace' => ! $workspace]) x-data="{ menu: false }" @keydown.escape.window="menu = false">
         @if ($workspace)
             <aside class="sidebar" :class="{ 'sidebar-open': menu }">
-                <a href="{{ route('dashboard') }}" wire:navigate class="sidebar-brand" aria-label="NexoraIPAM, accueil"><x-logo/></a>
-                <nav aria-label="Navigation principale">
-                    <p class="nav-label">Espace réseau</p>
-                    <x-nav-link name="dashboard" icon="dashboard">Vue d’ensemble</x-nav-link>
-                    <x-nav-link name="locations" icon="locations">Emplacements</x-nav-link>
-                    <x-nav-link name="subnets" icon="subnets">Sous-réseaux</x-nav-link>
-                    <x-nav-link name="addresses" icon="addresses">Adresses IP</x-nav-link>
+                <a href="{{ route('dashboard') }}" wire:navigate class="sidebar-brand" aria-label="{{ __('NexoraIPAM, accueil') }}"><x-logo/></a>
+                <nav aria-label="{{ __('Navigation principale') }}">
+                    <p class="nav-label">{{ __('Espace réseau') }}</p>
+                    <x-nav-link name="dashboard" icon="dashboard">{{ __('Vue d’ensemble') }}</x-nav-link>
+                    <x-nav-link name="locations" icon="locations">{{ __('Emplacements') }}</x-nav-link>
+                    <x-nav-link name="subnets" icon="subnets">{{ __('Sous-réseaux') }}</x-nav-link>
+                    <x-nav-link name="addresses" icon="addresses">{{ __('Adresses IP') }}</x-nav-link>
                     <x-nav-link name="vlans" icon="vlans">VLAN</x-nav-link>
-                    <x-nav-link name="tools" icon="preferences">Outils</x-nav-link>
-                    <x-nav-link name="about" icon="info">À propos</x-nav-link>
+                    <x-nav-link name="tools" icon="preferences">{{ __('Outils') }}</x-nav-link>
+                    <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>
                     @can('administer')
-                        <p class="nav-label mt-7">Administration</p>
-                        <x-nav-link name="accounts" icon="accounts">Utilisateurs</x-nav-link>
-                        <x-nav-link name="preferences" icon="preferences">Paramètres</x-nav-link>
+                        <p class="nav-label mt-7">{{ __('Administration') }}</p>
+                        <x-nav-link name="accounts" icon="accounts">{{ __('Utilisateurs') }}</x-nav-link>
+                        <x-nav-link name="preferences" icon="preferences">{{ __('Paramètres') }}</x-nav-link>
                     @endcan
                 </nav>
                 <div class="sidebar-footer">
-                    <a href="{{ route('profile') }}" class="sidebar-account" aria-label="Ouvrir mon profil">
+                    <a href="{{ route('profile') }}" class="sidebar-account" aria-label="{{ __('Ouvrir mon profil') }}">
                         <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
                         <div class="min-w-0">
                             <p class="truncate text-sm font-semibold">{{ auth()->user()->name }}</p>
-                            <p class="muted text-xs">{{ \App\Livewire\Accounts::ROLES[auth()->user()->role] ?? auth()->user()->role }}</p>
+                            <p class="muted text-xs">{{ __(\App\Livewire\Accounts::ROLES[auth()->user()->role] ?? auth()->user()->role) }}</p>
                         </div>
                     </a>
                     <form method="post" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="icon-button" title="Se déconnecter" aria-label="Se déconnecter"><x-icon name="logout" class="size-4"/></button>
+                        <button type="submit" class="icon-button" title="{{ __('Se déconnecter') }}" aria-label="{{ __('Se déconnecter') }}"><x-icon name="logout" class="size-4"/></button>
                     </form>
                 </div>
             </aside>
-            <button type="button" x-cloak x-show="menu" @click="menu = false" class="mobile-backdrop" aria-label="Fermer le menu"></button>
-            <header class="topbar">
-                <div class="flex items-center gap-3">
+            <button type="button" x-cloak x-show="menu" @click="menu = false" class="mobile-backdrop" aria-label="{{ __('Fermer le menu') }}"></button>
+            <header class="topbar gap-2">
+                <div class="flex min-w-0 items-center gap-3">
                     <button type="button" class="icon-button mobile-menu" @click="menu = !menu" :aria-expanded="menu" aria-label="Menu"><x-icon name="menu"/></button>
-                    <span class="muted hidden sm:inline">Espace de travail</span>
+                    <span class="muted hidden sm:inline">{{ __('Espace de travail') }}</span>
                     <span class="muted hidden sm:inline" aria-hidden="true">/</span>
-                    <span class="font-semibold">{{ $title }}</span>
+                    <span class="truncate font-semibold">{{ $title }}</span>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex shrink-0 items-center gap-2">
+                    <x-language-select/>
                     <x-account-menu/>
                     <x-theme-switch/>
                 </div>
             </header>
         @else
-            <div class="guest-theme"><x-theme-switch/></div>
+            <div class="guest-theme flex items-center gap-2">
+                <x-language-select/>
+                <x-theme-switch/>
+            </div>
         @endif
         <main id="main" @class(['main-content' => $workspace])>
             {{ $slot }}
             <footer class="app-footer">
                 Copyright {{ now()->year }} · pokertour ·
-                <a href="https://github.com/{{ config('app.repository') }}/blob/HEAD/LICENSE">GNU AGPL v3</a>
+                <a href="https://github.com/{{ config('app.repository') }}/blob/HEAD/LICENSE">NexoraIPAM Source Available License v1.0</a>
             </footer>
         </main>
     </div>
     <x-toasts/>
-    <x-modal id="request-recovery" title="Actualiser la page" :automatic="false">
+    <x-modal id="request-recovery" :title="__('Actualiser la page')" :automatic="false">
+        <span hidden data-recovery-copy
+            data-expired="{{ __('Votre session a expiré. Actualisez la page pour reprendre.') }}"
+            data-empty="{{ __('Le serveur a renvoyé une réponse vide. Actualisez la page pour reprendre.') }}"
+            data-failed="{{ __('L’action a échoué. Réessayez dans un instant.') }}"></span>
         <p class="muted mt-3 text-sm" data-recovery-message></p>
         <div class="dialog-actions mt-6">
-            <form method="dialog"><x-button type="submit" variant="secondary">Annuler</x-button></form>
-            <x-button data-reload-page>Actualiser</x-button>
+            <form method="dialog"><x-button type="submit" variant="secondary">{{ __('Annuler') }}</x-button></form>
+            <x-button data-reload-page>{{ __('Actualiser') }}</x-button>
         </div>
     </x-modal>
     @livewireScripts

@@ -17,13 +17,13 @@ class DiscoveryQueue
         return DB::transaction(function () use ($subnetId, $locationId): ?string {
             $subnet = Subnet::lockForUpdate()->find($subnetId);
             if (! $subnet || ($locationId !== null && $subnet->location_id !== $locationId)) {
-                return 'Ce sous-réseau n’est plus disponible à cet emplacement.';
+                return __('Ce sous-réseau n’est plus disponible à cet emplacement.');
             }
             if ($subnet->scanPending()) {
-                return 'Une découverte est déjà en cours pour ce réseau.';
+                return __('Une découverte est déjà en cours pour ce réseau.');
             }
             if ($this->discovery->targets($subnet) === []) {
-                return 'Aucune adresse à sonder. Pour une grande plage, ajoutez d’abord les adresses à vérifier.';
+                return __('Aucune adresse à sonder. Pour une grande plage, ajoutez d’abord les adresses à vérifier.');
             }
 
             $token = (string) Str::uuid();

@@ -87,7 +87,7 @@ class Accounts extends Component
         unset($data['provider'], $data['subject'], $data['external_id']);
         $user->fill($data)->save();
         $this->close();
-        $this->dispatch('nexora-toast', tone: 'success', message: 'Compte enregistré.');
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Compte enregistré.'));
     }
 
     private function authorizeAccount(User $user): void
@@ -100,6 +100,6 @@ class Accounts extends Component
         Gate::authorize('administer');
 
         return view('livewire.accounts', ['accounts' => User::orderBy('name')->orderBy('id')->paginate(15)])
-            ->layout('components.layouts.app', ['title' => 'Utilisateurs']);
+            ->layout('components.layouts.app', ['title' => __('Utilisateurs')]);
     }
 }

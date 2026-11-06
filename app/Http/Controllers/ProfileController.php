@@ -32,7 +32,7 @@ class ProfileController extends Controller
         abort_unless($request->user()->provider === 'local', 403);
         $request->user()->update($request->validate(['name' => ['required', 'string', 'max:100']]));
 
-        return to_route('profile')->with('notice', 'Nom mis à jour.');
+        return to_route('profile')->with('notice', __('Nom mis à jour.'));
     }
 
     public function setup(Request $request, TwoFactor $twoFactor): RedirectResponse
@@ -58,13 +58,13 @@ class ProfileController extends Controller
 
         $pending = $request->session()->get('two_factor_setup');
         if (($pending['expires'] ?? 0) <= now()->timestamp) {
-            return to_route('profile')->withErrors(['setup_code' => 'La configuration a expiré. Générez une nouvelle clé.']);
+            return to_route('profile')->withErrors(['setup_code' => __('La configuration a expiré. Générez une nouvelle clé.')]);
         }
 
         $secret = Crypt::decryptString($pending['key']);
         $step = $twoFactor->matchingStep($secret, $input['setup_code']);
         if ($step === null) {
-            throw ValidationException::withMessages(['setup_code' => 'Ce code est invalide.']);
+            throw ValidationException::withMessages(['setup_code' => __('Ce code est invalide.')]);
         }
 
         $codes = $twoFactor->recoveryCodes();
@@ -85,7 +85,7 @@ class ProfileController extends Controller
         $request->session()->put('two_factor_verified', TwoFactor::fingerprint($user));
         $request->session()->regenerate(true);
 
-        return to_route('profile')->with('recovery_codes', Crypt::encrypt($codes))->with('notice', 'Authentification à deux facteurs activée.');
+        return to_route('profile')->with('recovery_codes', Crypt::encrypt($codes))->with('notice', __('Authentification à deux facteurs activée.'));
     }
 
     public function disable(Request $request, TwoFactor $twoFactor): RedirectResponse
@@ -102,13 +102,13 @@ class ProfileController extends Controller
             abort_unless(hash_equals($request->user()->password, $user->password)
                 && hash_equals(TwoFactor::fingerprint($user), (string) $request->session()->get('two_factor_verified')), 409);
             if (! $twoFactor->consume($user, $input['disable_code'])) {
-                throw ValidationException::withMessages(['disable_code' => 'Ce code est invalide ou a déjà été utilisé.']);
+                throw ValidationException::withMessages(['disable_code' => __('Ce code est invalide ou a déjà été utilisé.')]);
             }
             $user->forceFill(['two_factor' => null])->save();
         }, attempts: 3);
 
         $request->session()->forget('two_factor_verified');
 
-        return to_route('profile')->with('notice', 'Authentification à deux facteurs désactivée.');
+        return to_route('profile')->with('notice', __('Authentification à deux facteurs désactivée.'));
     }
 }

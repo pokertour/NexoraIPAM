@@ -95,7 +95,7 @@ jobs:
           docker exec nexora-ci php artisan config:show app.version --no-interaction | grep -F "$APP_VERSION"
           url="http://$(docker port nexora-ci 8080/tcp)"
           curl --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 1 "$url/up" >/dev/null
-          html=$(curl --fail --silent --show-error "$url/connexion")
+          html=$(curl --fail --silent --show-error "$url/auth")
           grep -Fq 'NexoraIPAM' <<< "$html"
           if [[ "$html" =~ (/build/assets/[^\"]+\.css) ]]; then
             curl --fail --silent --show-error "$url${BASH_REMATCH[1]}" >/dev/null
