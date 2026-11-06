@@ -81,6 +81,7 @@
                     <span class="truncate font-semibold">{{ $title }}</span>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
+                    <livewire:global-search/>
                     @php($activeAlerts = \App\Models\Alert::active()->count())
                     <a href="{{ route('alerts') }}" wire:navigate class="icon-button bell-button" aria-label="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}" title="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}">
                         <x-icon name="bell" class="size-[18px]"/>

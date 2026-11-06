@@ -546,5 +546,12 @@
     "Les ports et adresses MAC relevés sur cet équipement seront supprimés. L’inventaire IP est conservé.": "Ports and MAC addresses read from this device will be deleted. The IP inventory is kept.",
     "Branchement actuel": "Current connection",
     "Modifier l’équipement": "Edit device",
-    "Ajouter un équipement": "Add a device"
+    "Ajouter un équipement": "Add a device",
+    "Recherche globale": "Global search",
+    "IP, sous-réseau, nom d’hôte, MAC, VLAN, équipement…": "IP, subnet, host name, MAC, VLAN, device…",
+    "Rechercher dans NexoraIPAM": "Search NexoraIPAM",
+    "Résultats": "Results",
+    "Saisissez au moins deux caractères. Une adresse IP affiche aussi les sous-réseaux qui la contiennent, une MAC le port de switch où elle est branchée.": "Type at least two characters. An IP address also shows the subnets containing it, a MAC address the switch port it is plugged into.",
+    "Aucun résultat pour « :query ».": "No results for “:query”.",
+    "Ports de switch": "Switch ports"
 }

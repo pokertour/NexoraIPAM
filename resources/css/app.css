@@ -194,7 +194,7 @@
     .section-heading { border-bottom: 1px solid var(--line); }
     .section-heading h2, .settings-card h2 { font-size: .95rem; font-weight: 650; letter-spacing: -.015em; }
     .section-heading p, .settings-card p:not(.field-error) { color: var(--muted); font-size: .82rem; margin-top: .2rem; }
-    .table-toolbar { border-bottom: 1px solid var(--line); background: linear-gradient(to bottom, var(--surface), var(--surface-hover)); border-radius: var(--radius) var(--radius) 0 0; }
+    .table-toolbar { justify-content: flex-start; border-bottom: 1px solid var(--line); background: linear-gradient(to bottom, var(--surface), var(--surface-hover)); border-radius: var(--radius) var(--radius) 0 0; }
     .empty-state { padding: 2.5rem 1rem; display: grid; justify-items: center; gap: .55rem; text-align: center; }
     .empty-state .stat-icon { width: 3rem; height: 3rem; border-radius: 1rem; margin-bottom: .35rem; box-shadow: 0 0 0 6px var(--highlight-bg), inset 0 0 0 1px var(--highlight-line); }
     .empty-state p { max-width: 26rem; }
@@ -344,6 +344,25 @@
     .port-dot[data-state=disabled] { background: var(--danger); }
     tr.row-selected { background: var(--highlight-bg) !important; }
     @media (max-width: 800px) { .port-grid { grid-template-columns: 1fr; } .port-facts { grid-template-columns: 1fr; } .device-facts { grid-template-columns: 1fr 1fr; } }
+
+    /* Global search */
+    .search-trigger { display: inline-flex; align-items: center; gap: .55rem; min-height: 2.25rem; padding: 0 .55rem 0 .7rem; border: 1px solid var(--input-line); border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); font-size: .82rem; min-width: 2.25rem; transition: border-color .15s, box-shadow .15s; }
+    .search-trigger:hover { border-color: var(--highlight); box-shadow: var(--focus-ring); }
+    kbd { display: inline-flex; align-items: center; padding: .05rem .4rem; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: .35rem; background: var(--surface-soft); color: var(--muted); font-family: var(--font-mono); font-size: .66rem; }
+    .dialog-search { width: min(40rem, calc(100vw - 2rem)); margin-top: 12vh; margin-bottom: auto; overflow: hidden; display: none; flex-direction: column; max-height: 72dvh; }
+    .dialog-search[open] { display: flex; animation: dialog-enter .18s ease-out both; }
+    .search-box { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.15rem; border-bottom: 1px solid var(--line); color: var(--muted); }
+    .search-box input { flex: 1; min-width: 0; background: transparent; color: var(--text); font-size: 1rem; outline: none; }
+    .search-box input::-webkit-search-cancel-button { display: none; }
+    .search-results { overflow-y: auto; padding: .5rem; }
+    .search-results section + section { margin-top: .35rem; }
+    .search-results h3 { padding: .55rem .65rem .3rem; color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .search-results a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .5rem .65rem; border-radius: var(--radius-sm); }
+    .search-results a .stat-icon { width: 2rem; height: 2rem; border-radius: .55rem; }
+    .search-results a:hover, .search-results a.active { background: var(--brand-gradient-soft); box-shadow: inset 0 0 0 1px var(--highlight-line); }
+    .search-arrow { color: var(--muted); opacity: 0; transition: opacity .12s, transform .12s; }
+    .search-results a:hover .search-arrow, .search-results a.active .search-arrow { opacity: 1; transform: translateX(2px); color: var(--highlight); }
+    .search-hint { padding: 1.5rem 1rem; color: var(--muted); text-align: center; font-size: .85rem; }
 
     /* Dialogs */
     .dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: var(--shadow-overlay), var(--inner-light); }
