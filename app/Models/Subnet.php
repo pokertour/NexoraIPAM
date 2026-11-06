@@ -13,7 +13,7 @@ class Subnet extends Model
 {
     use Auditable, HasFactory;
 
-    protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id'];
+    protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id', 'gateway', 'dns_servers', 'domain', 'dhcp_start', 'dhcp_end'];
 
     protected static function booted(): void
     {
@@ -68,6 +68,24 @@ class Subnet extends Model
     public function childSubnets(): HasMany
     {
         return $this->hasMany(self::class, 'parent_subnet_id');
+    }
+
+    /** @return list<string> */
+    public function dnsServers(): array
+    {
+        return array_values(array_filter(preg_split('/[\s,;]+/', (string) $this->dns_servers)));
+    }
+
+    public function inDhcpRange(string $address): bool
+    {
+        if (! $this->dhcp_start || ! $this->dhcp_end) {
+            return false;
+        }
+
+        $packed = inet_pton($address);
+        $start = inet_pton($this->dhcp_start);
+
+        return strlen($packed) === strlen($start) && strcmp($packed, $start) >= 0 && strcmp($packed, inet_pton($this->dhcp_end)) <= 0;
     }
 
     public function addresses(): HasMany

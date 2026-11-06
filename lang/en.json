@@ -361,5 +361,18 @@
     "Date": "Date",
     "Action": "Action",
     "Objet": "Object",
-    "Détails": "Details"
+    "Détails": "Details",
+    "Aucune adresse libre hors passerelle et plage DHCP dans ce réseau.": "No free address outside the gateway and DHCP pool in this network.",
+    "Saisissez des adresses IP séparées par des virgules.": "Enter IP addresses separated by commas.",
+    "Cette adresse doit appartenir à la plage du sous-réseau.": "This address must belong to the subnet range.",
+    "La fin de la plage DHCP doit suivre son début.": "The DHCP pool end must come after its start.",
+    "Prochaine IP libre": "Next free IP",
+    "Passerelle": "Gateway",
+    "Serveurs DNS": "DNS servers",
+    "Domaine DNS": "DNS domain",
+    "Plage DHCP": "DHCP pool",
+    "Paramètres réseau": "Network settings",
+    "Séparez les adresses par des virgules.": "Separate addresses with commas.",
+    "Début de la plage DHCP": "DHCP pool start",
+    "Fin de la plage DHCP": "DHCP pool end"
 }

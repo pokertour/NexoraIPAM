@@ -111,6 +111,20 @@ class Inventory extends Component
         $this->form['address'] = $address ?? '';
     }
 
+    public function openNextFree(int $subnetId, AddressAvailability $availability, SubnetSpace $space): void
+    {
+        Gate::authorize('edit-inventory');
+        abort_unless($this->section === 'addresses', 404);
+        $address = $availability->nextFree(Subnet::findOrFail($subnetId));
+        if ($address === null) {
+            $this->dispatch('nexora-toast', message: __('Aucune adresse libre hors passerelle et plage DHCP dans ce réseau.'), tone: 'error');
+
+            return;
+        }
+
+        $this->openAddress($space, $subnetId, $address);
+    }
+
     public function openAllocation(int $parentId, string $cidr, SubnetSpace $space): void
     {
         Gate::authorize('edit-inventory');
@@ -162,7 +176,7 @@ class Inventory extends Component
         $this->recordId = $id;
         $this->form = $id === null ? [
             'name' => '', 'cidr' => '', 'vlan_id' => null, 'description' => '', 'number' => '',
-            'discovery_interval' => null, 'location_id' => null, 'kind' => 'agency', 'parent_id' => null, 'subnet_id' => null, 'address' => '', 'hostname' => '', 'status' => 'used',
+            'discovery_interval' => null, 'location_id' => null, 'gateway' => '', 'dns_servers' => '', 'domain' => '', 'dhcp_start' => '', 'dhcp_end' => '', 'kind' => 'agency', 'parent_id' => null, 'subnet_id' => null, 'address' => '', 'hostname' => '', 'status' => 'used',
         ] : $this->query()->findOrFail($id)->getAttributes();
         $this->editing = true;
     }
@@ -230,10 +244,30 @@ class Inventory extends Component
 
                 $cidr = $this->form['cidr'] ?? null;
                 $this->form['cidr'] = is_string($cidr) ? IpNetwork::normalize(trim($cidr)) : null;
+                foreach (['gateway', 'dhcp_start', 'dhcp_end'] as $field) {
+                    $value = trim((string) ($this->form[$field] ?? ''));
+                    $this->form[$field] = $value === '' ? null : (IpNetwork::address($value) ?? $value);
+                }
+                $servers = preg_split('/[\s,;]+/', trim((string) ($this->form['dns_servers'] ?? '')), -1, PREG_SPLIT_NO_EMPTY);
+                $this->form['dns_servers'] = $servers === [] ? null : implode(', ', array_map(fn (string $server): string => IpNetwork::address($server) ?? $server, $servers));
+                $this->form['domain'] = filled($this->form['domain'] ?? null) ? strtolower(rtrim(trim($this->form['domain']), '.')) : null;
                 $rules += [
                     'cidr' => ['required', Rule::unique('subnets', 'cidr')->where('scope_id', $this->scopeId())->ignore($record)],
                     'name' => ['required', 'string', 'max:100'],
                     'vlan_id' => ['nullable', 'integer', 'exists:vlans,id'],
+                    'gateway' => ['nullable', 'ip'],
+                    'dns_servers' => ['nullable', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void {
+                        foreach (explode(', ', (string) $value) as $server) {
+                            if (! IpNetwork::address($server)) {
+                                $fail(__('Saisissez des adresses IP séparées par des virgules.'));
+
+                                return;
+                            }
+                        }
+                    }],
+                    'domain' => ['nullable', 'string', 'max:253', 'regex:/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/'],
+                    'dhcp_start' => ['nullable', 'required_with:form.dhcp_end', 'ip'],
+                    'dhcp_end' => ['nullable', 'required_with:form.dhcp_start', 'ip'],
                 ];
             } elseif ($record instanceof IpAddress) {
                 $address = $this->form['address'] ?? null;
@@ -296,6 +330,7 @@ class Inventory extends Component
             }
 
             if ($record instanceof Subnet) {
+                $this->validateNetworkSettings($data);
                 $this->validateSubnetLocation($record, $data);
                 if ($this->allocationParent !== null) {
                     $parent = Subnet::lockForUpdate()->findOrFail($this->allocationParent);
@@ -363,6 +398,23 @@ class Inventory extends Component
                 'scan_targets' => null, 'scan_responded' => null,
             ]);
             $subnet->addresses()->update(['last_seen_at' => null, 'last_probe_at' => null, 'resolved_hostname' => null, 'mac_address' => null, 'last_probe_responded' => null]);
+        }
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validateNetworkSettings(array $data): void
+    {
+        $errors = [];
+        foreach (['gateway', 'dhcp_start', 'dhcp_end'] as $field) {
+            if (filled($data[$field] ?? null) && ! IpNetwork::assignable($data['cidr'], $data[$field])) {
+                $errors['form.'.$field] = __('Cette adresse doit appartenir à la plage du sous-réseau.');
+            }
+        }
+        if (! $errors && filled($data['dhcp_start'] ?? null) && strcmp(inet_pton($data['dhcp_start']), inet_pton($data['dhcp_end'])) > 0) {
+            $errors['form.dhcp_end'] = __('La fin de la plage DHCP doit suivre son début.');
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
         }
     }
 

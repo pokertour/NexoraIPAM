@@ -82,7 +82,7 @@
                                             <small class="muted block">{{ $record->location?->path() ?? __('Sans emplacement') }}</small>
                                             <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>{{ __('Découpage') }}</a>
                                         </td>
-                                        <td><code>{{ $record->cidr }}</code></td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
+                                        <td><code>{{ $record->cidr }}</code>@if ($record->gateway)<small class="muted block">{{ __('Passerelle') }} <code>{{ $record->gateway }}</code></small>@endif</td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
                                             @if (str_contains($record->cidr, ':'))
                                                 <span>{{ $record->assigned }} {{ $record->assigned === 1 ? __('IP occupée') : __('IP occupées') }}</span>
                                             @else
@@ -180,6 +180,18 @@
                             <option value="">{{ __('Aucun VLAN') }}</option>
                             @foreach ($options as $vlan)<option value="{{ $vlan->id }}">{{ $vlan->number }} · {{ $vlan->name }}{{ $vlan->location ? " · ".$vlan->location->path() : "" }}</option>@endforeach
                         </x-field>
+                        <fieldset class="form-section">
+                            <legend>{{ __('Paramètres réseau') }}</legend>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <x-field name="form.gateway" :label="__('Passerelle')" wire:model="form.gateway" placeholder="192.0.2.1" maxlength="45"/>
+                                <x-field name="form.domain" :label="__('Domaine DNS')" wire:model="form.domain" placeholder="lan.exemple.fr" maxlength="253"/>
+                            </div>
+                            <x-field name="form.dns_servers" :label="__('Serveurs DNS')" wire:model="form.dns_servers" placeholder="192.0.2.53, 2001:db8::53" maxlength="255" :hint="__('Séparez les adresses par des virgules.')"/>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <x-field name="form.dhcp_start" :label="__('Début de la plage DHCP')" wire:model="form.dhcp_start" placeholder="192.0.2.100" maxlength="45"/>
+                                <x-field name="form.dhcp_end" :label="__('Fin de la plage DHCP')" wire:model="form.dhcp_end" placeholder="192.0.2.199" maxlength="45"/>
+                            </div>
+                        </fieldset>
                         @break
                     @case('addresses')
                         <x-field name="form.subnet_id" :label="__('Sous-réseau')" wire:model="form.subnet_id" required>

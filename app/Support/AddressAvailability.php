@@ -68,6 +68,52 @@ class AddressAvailability
         return $rows;
     }
 
+    /**
+     * Finds the first address that is assignable, not inventoried, not delegated,
+     * not the gateway and outside the DHCP pool.
+     */
+    public function nextFree(Subnet $subnet): ?string
+    {
+        $bounds = IpNetwork::details($subnet->cidr);
+        $cursor = $this->number($bounds['first']);
+        $last = $this->number($bounds['last']);
+        $width = strlen(bin2hex(inet_pton($bounds['first'])));
+
+        $blocked = $subnet->childSubnets()->pluck('cidr')->map(function (string $cidr): array {
+            $range = IpNetwork::details($cidr);
+
+            return [$this->number(explode('/', $cidr)[0]), $this->number($range['broadcast'] ?? $range['last'])];
+        })->all();
+        if ($subnet->dhcp_start && $subnet->dhcp_end) {
+            $blocked[] = [$this->number($subnet->dhcp_start), $this->number($subnet->dhcp_end)];
+        }
+        if ($subnet->gateway) {
+            $blocked[] = [$this->number($subnet->gateway), $this->number($subnet->gateway)];
+        }
+
+        $records = $subnet->addresses()->orderBy('address_key')->lazy(500)
+            ->map(fn (IpAddress $record): BigInteger => $this->number($record->address))->getIterator();
+
+        do {
+            $moved = false;
+            foreach ($blocked as [$start, $end]) {
+                if ($cursor->isGreaterThanOrEqualTo($start) && $cursor->isLessThanOrEqualTo($end)) {
+                    $cursor = $end->plus(1);
+                    $moved = true;
+                }
+            }
+            while ($records->valid() && $records->current()->isLessThan($cursor)) {
+                $records->next();
+            }
+            if ($records->valid() && $records->current()->isEqualTo($cursor)) {
+                $cursor = $cursor->plus(1);
+                $moved = true;
+            }
+        } while ($moved && $cursor->isLessThanOrEqualTo($last));
+
+        return $cursor->isGreaterThan($last) ? null : $this->gap($cursor, $cursor, $width)['first'];
+    }
+
     private function appendGaps(array &$rows, BigInteger $first, BigInteger $last, Collection $delegated, int $width): void
     {
         if ($first->isGreaterThan($last)) {
