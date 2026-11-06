@@ -28,6 +28,7 @@ class DiscoveryQueue
 
             $token = (string) Str::uuid();
             $subnet->forceFill(['scan_token' => $token, 'scan_status' => 'queued', 'scan_requested_at' => now()])->save();
+            Audit::record('discovery.queued', $subnet);
             Bus::dispatch((new DiscoverSubnet($subnet->id, $token))->onConnection('database')->onQueue('discovery')->beforeCommit());
 
             return null;

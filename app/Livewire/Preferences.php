@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Setting;
+use App\Support\Audit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -79,7 +80,16 @@ class Preferences extends Component
             return;
         }
 
+        $previous = Setting::read($section);
         Setting::write($section, $data);
+        $changes = [];
+        foreach ($data as $key => $value) {
+            if (($previous[$key] ?? null) !== $value) {
+                $secret = in_array($key, ['password', 'secret'], true);
+                $changes[$key] = $secret ? [isset($previous[$key]) ? Audit::MASK : null, Audit::MASK] : [$previous[$key] ?? null, $value];
+            }
+        }
+        Audit::record('settings.updated', changes: $changes, subjectType: 'settings', subjectLabel: $section);
         $this->dispatch('nexora-toast', tone: 'success', message: __('Paramètres enregistrés.'));
     }
 
@@ -99,12 +109,14 @@ class Preferences extends Component
                     ->to(auth()->user()->email)->subject(__('Test SMTP NexoraIPAM'));
             });
         } catch (\Throwable $exception) {
+            Audit::record('mail.tested', changes: ['result' => [null, 'failed']], subjectType: 'settings', subjectLabel: 'smtp');
             Log::warning('Échec du test SMTP', ['type' => $exception::class]);
             $this->dispatch('nexora-toast', tone: 'error', message: __('Le serveur SMTP a refusé le test. Vérifiez les paramètres enregistrés.'));
 
             return;
         }
 
+        Audit::record('mail.tested', changes: ['result' => [null, 'sent']], subjectType: 'settings', subjectLabel: 'smtp');
         $this->dispatch('nexora-toast', tone: 'success', message: __('Message de test envoyé à :email.', ['email' => auth()->user()->email]));
     }
 

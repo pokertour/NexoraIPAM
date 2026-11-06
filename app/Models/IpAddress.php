@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class IpAddress extends Model
 {
-    use HasFactory;
+    use Auditable, HasFactory;
 
     public const STATUSES = ['used' => 'Attribuée', 'reserved' => 'Réservée', 'available' => 'Disponible'];
 
@@ -34,5 +35,16 @@ class IpAddress extends Model
     public function subnet(): BelongsTo
     {
         return $this->belongsTo(Subnet::class);
+    }
+
+    /** @return list<string> */
+    public function auditIgnored(): array
+    {
+        return ['address_key', 'last_probe_at', 'last_seen_at', 'last_probe_responded'];
+    }
+
+    public function auditLabel(): string
+    {
+        return $this->address;
     }
 }

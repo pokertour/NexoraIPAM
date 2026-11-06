@@ -119,3 +119,20 @@ Before relying on a package's API, confirm its installed version:
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Règles d’interface NexoraIPAM
+
+- Utiliser le composant Toast pour les notifications globales de succès, d’information et d’erreur. Garder les erreurs de validation près des champs concernés.
+- Ne jamais utiliser les boîtes de dialogue natives JavaScript `alert()`, `confirm()` et `prompt()`. Utiliser le composant de fenêtre modale de l’application pour les confirmations et les saisies.
+- Réutiliser les composants Blade et Livewire existants. Extraire un composant partagé lorsqu’un motif d’interface se répète.
+- Utiliser Tom Select pour toutes les listes déroulantes via `<x-select>` ou `<x-field>` avec des options.
+- Fournir l’interface en français et en anglais. Détecter la langue via les préférences du navigateur et utiliser le français par défaut. Passer les nouveaux textes visibles, messages d’erreur et libellés accessibles par le système de traduction Laravel, avec une clé en français et sa traduction dans lang/en.json.
+- Stocker les traductions de l’application uniquement dans les fichiers JSON de `lang/`, y compris les surcharges des messages Laravel de validation et de pagination.
+
+
+## Règles fonctionnelles NexoraIPAM
+
+- Toute fonctionnalité qui crée, modifie ou supprime des données, ou qui change l’état de sécurité (connexion, mot de passe, 2FA, paramètres, découverte, interrogation SNMP, alerte), doit être tracée dans le journal d’audit.
+- Pour un nouveau modèle, utiliser le trait `App\Models\Concerns\Auditable`, déclarer dans `auditIgnored()` les colonnes mises à jour automatiquement et fournir un `auditLabel()` lisible. Les attributs `$hidden` sont masqués automatiquement : y placer tous les secrets.
+- Pour une action qui ne passe pas par un modèle, appeler `App\Support\Audit::record()`. Ajouter toute nouvelle action dans `AuditLog::ACTIONS` et tout nouveau type d’objet dans `AuditLog::SUBJECTS`, avec leurs traductions.
+- Couvrir l’entrée du journal d’audit dans les tests de la fonctionnalité.

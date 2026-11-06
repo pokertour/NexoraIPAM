@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Console\Commands\InstallAdmin;
 use App\Models\User;
+use App\Support\Audit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -86,6 +87,9 @@ class Accounts extends Component
 
         unset($data['provider'], $data['subject'], $data['external_id']);
         $user->fill($data)->save();
+        if (isset($data['password'])) {
+            Audit::record('password.changed', $user);
+        }
         $this->close();
         $this->dispatch('nexora-toast', tone: 'success', message: __('Compte enregistré.'));
     }

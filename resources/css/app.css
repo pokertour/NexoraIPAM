@@ -236,6 +236,15 @@
     .result-list > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; padding: .4rem .6rem; border-radius: .45rem; }
     .result-list > div:nth-child(odd) { background: var(--surface-hover); }
 
+    /* Audit trail */
+    .audit-changes { display: grid; gap: .2rem; font-size: .78rem; }
+    .audit-changes > div { display: grid; grid-template-columns: minmax(6rem, auto) 1fr; gap: .6rem; align-items: baseline; }
+    .audit-changes dt code { color: var(--muted); font-size: .72rem; }
+    .audit-changes dd { overflow-wrap: anywhere; }
+    .audit-changes del { color: var(--danger); text-decoration-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+    .audit-changes ins { color: var(--success); text-decoration: none; font-weight: 550; }
+    .audit-arrow { margin-inline: .35rem; color: var(--muted); }
+
     /* Dialogs */
     .dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: var(--shadow-overlay), var(--inner-light); }
     .dialog::before { content: ''; position: sticky; top: 0; display: block; height: 3px; background: var(--brand-gradient); }

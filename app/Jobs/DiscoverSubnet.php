@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Subnet;
+use App\Support\Audit;
 use App\Support\NetworkDiscovery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -61,6 +62,7 @@ class DiscoverSubnet implements ShouldQueue
                 }
             }
 
+            Audit::record('discovery.completed', $subnet, ['targets' => [null, count($results)], 'responded' => [null, $responded]]);
             $subnet->forceFill([
                 'scan_status' => 'completed', 'scanned_at' => $timestamp,
                 'scan_targets' => count($results), 'scan_responded' => $responded,

@@ -8,6 +8,7 @@ use App\Http\Controllers\OpenIdController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\WorkspaceAccess;
 use App\Livewire\Accounts;
+use App\Livewire\AuditTrail;
 use App\Livewire\Inventory;
 use App\Livewire\NetworkTools;
 use App\Livewire\Preferences;
@@ -49,5 +50,6 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::middleware('can:administer')->group(function (): void {
         Route::livewire('/settings', Preferences::class)->name('preferences');
         Route::livewire('/users', Accounts::class)->name('accounts');
+        Route::livewire('/audit', AuditTrail::class)->name('audit');
     });
 });

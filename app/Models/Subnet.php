@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Support\IpNetwork;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Subnet extends Model
 {
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected $fillable = ['cidr', 'name', 'vlan_id', 'description', 'location_id'];
 
@@ -72,5 +73,16 @@ class Subnet extends Model
     public function addresses(): HasMany
     {
         return $this->hasMany(IpAddress::class);
+    }
+
+    /** @return list<string> */
+    public function auditIgnored(): array
+    {
+        return ['scope_id', 'scan_token', 'scan_status', 'scan_requested_at', 'scanned_at', 'scan_targets', 'scan_responded'];
+    }
+
+    public function auditLabel(): string
+    {
+        return $this->name.' · '.$this->cidr;
     }
 }
