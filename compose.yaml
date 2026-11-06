@@ -1,0 +1,26 @@
+# NexoraIPAM with Docker Compose.
+#
+# 1. Create .env next to this file:
+#      printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" http://localhost:8080 > .env
+# 2. Start:            docker compose up -d
+# 3. First password:   docker compose logs nexora
+#
+# Pin a release with NEXORA_VERSION=vX.X.X and change the host port with
+# NEXORA_PORT.
+
+name: nexoraipam
+
+services:
+  nexora:
+    image: ghcr.io/pokertour/nexoraipam:${NEXORA_VERSION:-latest}
+    container_name: nexora
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${NEXORA_PORT:-8080}:8080"
+    volumes:
+      - nexora-data:/var/lib/nexora
+
+volumes:
+  nexora-data:
+    name: nexora-data
