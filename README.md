@@ -21,6 +21,7 @@
 <p align="center">
   <a href="#features">Features</a> ·
   <a href="#quick-start-with-docker">Quick start</a> ·
+  <a href="#with-docker-compose">Compose</a> ·
   <a href="#local-development">Development</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#license">License</a>
@@ -109,6 +110,22 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
    ```sh
    docker logs nexora
    ```
+
+### With Docker Compose
+
+The repository ships a [`compose.yaml`](compose.yaml). Put it in a directory with your `nexora.env` file, created as in step 2 above, then:
+
+```sh
+docker compose up -d
+docker compose logs nexora   # temporary administrator password
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXORA_VERSION` | `latest` | Image tag to run, for example `v0.0.3`. |
+| `NEXORA_PORT` | `8080` | Port published on the host. |
+
+To upgrade, change `NEXORA_VERSION` or run `docker compose pull`, then `docker compose up -d`. To try local changes, build the image with `docker build -t ghcr.io/pokertour/nexoraipam:dev .`, then start it with `NEXORA_VERSION=dev docker compose up -d`.
 
 On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
 
