@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AuditLog;
 use App\Models\CustomField;
+use App\Models\DevicePortMac;
 use App\Models\IpAddress;
 use App\Models\Location;
 use App\Models\Subnet;
@@ -583,6 +584,8 @@ class Inventory extends Component
             'customFields' => $this->hasMetadata() ? CustomField::for($this->section) : collect(),
             'scanSubnet' => $this->scanId ? Subnet::find($this->scanId) : null,
             'historyAddress' => $this->historyId ? IpAddress::with(['observations' => fn ($query) => $query->latest('last_seen_at')->latest('id')->limit(100)])->find($this->historyId) : null,
+            'historyPorts' => $this->historyId && ($mac = IpAddress::whereKey($this->historyId)->value('mac_address'))
+                ? DevicePortMac::with(['port', 'device'])->where('mac_address', $mac)->get() : collect(),
             'historyChanges' => $this->historyId ? AuditLog::where('subject_type', 'ip_address')->where('subject_id', $this->historyId)->latest('id')->limit(100)->get() : collect(),
             'options' => $this->editing ? match ($this->section) {
                 'subnets' => Vlan::with('location.parent.parent')->orderBy('number')->get(),

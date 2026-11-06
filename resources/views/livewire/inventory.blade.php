@@ -271,6 +271,21 @@
                         </ol>
                     @endif
                 </section>
+                @if ($historyPorts->isNotEmpty())
+                    <section>
+                        <h3 class="history-title">{{ __('Branchement actuel') }}</h3>
+                        <ul class="grid gap-2">
+                            @foreach ($historyPorts as $location)
+                                <li class="flex flex-wrap items-center gap-2 text-sm">
+                                    <x-icon name="switch" class="muted size-4"/>
+                                    <a class="table-link font-semibold" href="{{ route('devices.show', ['device' => $location->network_device_id, 'port' => $location->port->if_index]) }}" wire:navigate>{{ $location->device->name }} · {{ $location->port->name }}</a>
+                                    @if ($location->vlan)<span class="badge tone-violet">VLAN {{ $location->vlan }}</span>@endif
+                                    <small class="muted">{{ __('vu le :date', ['date' => $location->seen_at->format(__('d/m/Y H:i'))]) }}</small>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
                 <section>
                     <h3 class="history-title">{{ __('Modifications') }}</h3>
                     @if ($historyChanges->isEmpty())

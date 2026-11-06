@@ -46,6 +46,7 @@
                     <x-nav-link name="subnets" icon="subnets">{{ __('Sous-réseaux') }}</x-nav-link>
                     <x-nav-link name="addresses" icon="addresses">{{ __('Adresses IP') }}</x-nav-link>
                     <x-nav-link name="vlans" icon="vlans">VLAN</x-nav-link>
+                    <x-nav-link name="devices" icon="switch">{{ __('Équipements') }}</x-nav-link>
                     <x-nav-link name="alerts" icon="bell">{{ __('Alertes') }}</x-nav-link>
                     <x-nav-link name="tools" icon="tools">{{ __('Outils') }}</x-nav-link>
                     <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>

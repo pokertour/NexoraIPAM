@@ -53,7 +53,7 @@ LABEL org.opencontainers.image.title="NexoraIPAM" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.licenses="LicenseRef-NexoraIPAM-Source-Available-1.0"
 
-RUN apk add --no-cache nginx iproute2-minimal iputils-ping \
+RUN apk add --no-cache nginx iproute2-minimal iputils-ping net-snmp-tools \
     && mkdir -p /var/lib/nexora \
     && touch /var/lib/nexora/database.sqlite \
     && chown -R www-data:www-data /var/lib/nexora

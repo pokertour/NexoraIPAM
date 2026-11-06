@@ -24,6 +24,7 @@ class AuditLog extends Model
         'mail.tested' => 'Test SMTP',
         'discovery.queued' => 'Découverte demandée',
         'discovery.completed' => 'Découverte terminée',
+        'device.queued' => 'Interrogation SNMP demandée',
         'device.polled' => 'Interrogation SNMP',
         'alert.opened' => 'Alerte ouverte',
         'alert.acknowledged' => 'Alerte acquittée',

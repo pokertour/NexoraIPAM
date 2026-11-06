@@ -26,6 +26,7 @@
         @case('tag') <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.5"/> @break
         @case('history') <path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2"/> @break
         @case('bell') <path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Zm4 11a2 2 0 0 0 4 0"/> @break
+        @case('switch') <rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11h1m3 0h1m3 0h1m3 0h1M6 14h12"/> @break
         @case('key') <circle cx="8" cy="9" r="4"/><path d="m11 12 8 8m-3-3 3-3m-5 1 2-2"/> @break
     @endswitch
 </svg>

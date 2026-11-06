@@ -30,8 +30,7 @@ document.addEventListener('alpine:init', () => {
                 control = new TomSelect(select, {
                     allowEmptyOption: !multiple,
                     create: false,
-                    plugins: multiple ? ['remove_button'] : [],
-                    hidePlaceholder: multiple,
+                    ...(multiple ? { plugins: ['remove_button'], hidePlaceholder: true } : {}),
                     render: {
                         no_results: () => {
                             const message = document.createElement('div');
