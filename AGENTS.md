@@ -128,6 +128,7 @@ Before relying on a package's API, confirm its installed version:
 - Utiliser Tom Select pour toutes les listes déroulantes via `<x-select>` ou `<x-field>` avec des options.
 - Fournir l’interface en français et en anglais. Détecter la langue via les préférences du navigateur et utiliser le français par défaut. Passer les nouveaux textes visibles, messages d’erreur et libellés accessibles par le système de traduction Laravel, avec une clé en français et sa traduction dans lang/en.json.
 - Stocker les traductions de l’application uniquement dans les fichiers JSON de `lang/`, y compris les surcharges des messages Laravel de validation et de pagination.
+- Pour `trans_choice()`, ajouter aussi la clé française dans `lang/fr.json` avec la même valeur : sinon Laravel retombe sur la traduction anglaise.
 
 ## Règles fonctionnelles NexoraIPAM
 
