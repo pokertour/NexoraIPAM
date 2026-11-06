@@ -56,10 +56,7 @@ ENV APP_ENV=production \
     DB_DATABASE=/var/lib/nexora/database.sqlite \
     DB_BUSY_TIMEOUT=5000 \
     DB_JOURNAL_MODE=wal \
-    LOG_CHANNEL=stderr \
-    NEXORA_AUTO_MIGRATE=true \
-    NEXORA_WORKER=true \
-    NEXORA_SCHEDULER=true
+    LOG_CHANNEL=stderr
 
 LABEL org.opencontainers.image.title="NexoraIPAM" \
       org.opencontainers.image.source="https://github.com/pokertour/NexoraIPAM" \

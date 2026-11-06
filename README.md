@@ -76,17 +76,23 @@ Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>/</kbd>) anywhere to open the sear
 
 The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs FrankenPHP on PHP 8.5 and listens on port 8080.
 
-1. Generate an application key:
+1. Generate an application key. It is 32 random bytes, base64-encoded with the `base64:` prefix:
 
    ```sh
-   docker run --rm ghcr.io/pokertour/nexoraipam:vX.X.X php artisan key:generate --show
+   echo "base64:$(openssl rand -base64 32)"
    ```
 
-2. Create a `nexora.env` file:
+2. Create a `nexora.env` file with this key and the public URL of the application:
 
    ```ini
    APP_KEY=base64:...
    APP_URL=https://ipam.example.com
+   ```
+
+   Or generate the file in one go:
+
+   ```sh
+   printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" https://ipam.example.com > nexora.env
    ```
 
 3. Start the container:
@@ -106,13 +112,7 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
 
 On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `NEXORA_AUTO_MIGRATE` | `true` | Apply migrations and create the initial account on start. |
-| `NEXORA_WORKER` | `true` | Run the discovery and SNMP queue worker. |
-| `NEXORA_SCHEDULER` | `true` | Run scheduled discoveries and SNMP polls. |
-
-The worker probes networks from its own position, so it must be able to reach them. To probe from another site, run a second container with only the worker enabled. In that case both containers need a shared database such as MySQL, because a SQLite file cannot be shared between hosts. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
+The worker probes networks from the container, so the container must be able to reach them. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
 
 ## Local development
 
