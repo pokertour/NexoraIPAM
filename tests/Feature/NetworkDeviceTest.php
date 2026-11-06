@@ -17,6 +17,7 @@ use App\Support\Audit;
 use App\Support\SnmpClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\Support\FakeSnmpAgent;
 use Tests\TestCase;
@@ -173,8 +174,9 @@ class NetworkDeviceTest extends TestCase
 
     private function poll(NetworkDevice $device): NetworkDevice
     {
-        $device->refresh()->forceFill(['poll_token' => 'token', 'poll_status' => 'queued'])->save();
-        app()->call([new PollNetworkDevice($device->id, 'token'), 'handle']);
+        $token = (string) Str::uuid();
+        $device->refresh()->forceFill(['poll_token' => $token, 'poll_status' => 'queued'])->save();
+        app()->call([new PollNetworkDevice($device->id, $token), 'handle']);
 
         return $device->refresh();
     }

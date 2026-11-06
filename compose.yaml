@@ -1,12 +1,13 @@
-# NexoraIPAM with Docker Compose.
+# NexoraIPAM with Docker Compose and MariaDB.
 #
 # 1. Create .env next to this file:
-#      printf 'APP_KEY=base64:%s\nAPP_URL=%s\n' "$(openssl rand -base64 32)" http://localhost:8080 > .env
+#      printf 'APP_KEY=base64:%s\nAPP_URL=%s\nDB_PASSWORD=%s\n' \
+#        "$(openssl rand -base64 32)" http://localhost:8080 "$(openssl rand -hex 24)" > .env
 # 2. Start:            docker compose up -d
 # 3. First password:   docker compose logs nexora
 #
 # Pin a release with NEXORA_VERSION=vX.X.X and change the host port with
-# NEXORA_PORT.
+# NEXORA_PORT, both in .env.
 
 name: nexoraipam
 
@@ -16,11 +17,37 @@ services:
     container_name: nexora
     restart: unless-stopped
     env_file: .env
+    environment:
+      DB_CONNECTION: mariadb
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-nexora}
+      DB_USERNAME: ${DB_USERNAME:-nexora}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     ports:
       - "${NEXORA_PORT:-8080}:8080"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  mariadb:
+    image: mariadb:12.3
+    container_name: nexora-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-nexora}
+      MARIADB_USER: ${DB_USERNAME:-nexora}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
     volumes:
-      - nexora-data:/var/lib/nexora
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
 volumes:
-  nexora-data:
-    name: nexora-data
+  mariadb-data:
+    name: nexora-mariadb-data

@@ -113,19 +113,26 @@ The image is published on GHCR as `ghcr.io/pokertour/nexoraipam:vX.X.X`. It runs
 
 ### With Docker Compose
 
-The repository ships a [`compose.yaml`](compose.yaml). Put it in its own directory with your `.env` file, created as in step 2 above, then:
+The repository ships a [`compose.yaml`](compose.yaml) that runs NexoraIPAM with a MariaDB 12.3 LTS database. Put it in its own directory and create the `.env` file next to it, with the application key, the public URL and a database password:
 
 ```sh
+printf 'APP_KEY=base64:%s\nAPP_URL=%s\nDB_PASSWORD=%s\n' \
+  "$(openssl rand -base64 32)" https://ipam.example.com "$(openssl rand -hex 24)" > .env
 docker compose up -d
 docker compose logs nexora   # temporary administrator password
 ```
 
-| Variable | Default | Purpose |
+NexoraIPAM waits for MariaDB to be healthy, then applies the migrations. The data lives in the `nexora-mariadb-data` volume. The application container keeps no data of its own: sessions, cache and the job queue are stored in the database.
+
+| Variable in `.env` | Default | Purpose |
 | --- | --- | --- |
+| `DB_PASSWORD` | required | Password of the MariaDB user, also used to create it on first start. |
+| `DB_DATABASE` | `nexora` | Database name. |
+| `DB_USERNAME` | `nexora` | Database user. |
 | `NEXORA_VERSION` | `latest` | Image tag to run, for example `v0.0.3`. |
 | `NEXORA_PORT` | `8080` | Port published on the host. |
 
-Compose also reads `NEXORA_VERSION` and `NEXORA_PORT` from this `.env` file. Keep it outside a clone of the repository, where `.env` is the Laravel development file.
+Keep the Compose directory outside a clone of the repository, where `.env` is the Laravel development file. MariaDB only creates the database and its user on the first start: changing `DB_PASSWORD` afterwards does not change it in MariaDB.
 
 To upgrade, change `NEXORA_VERSION` or run `docker compose pull`, then `docker compose up -d`. To try local changes, build the image with `docker build -t ghcr.io/pokertour/nexoraipam:dev .`, then start it from your Compose directory with `NEXORA_VERSION=dev docker compose up -d`.
 
@@ -184,7 +191,7 @@ Administrators configure everything from **Settings** in the application. Authen
 - **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
-SQLite is the default database. Other databases are configured through the standard Laravel `DB_*` variables.
+SQLite is the default database. MariaDB is supported and tested in CI, and the Compose file uses it. Configure the connection through the standard Laravel `DB_*` variables.
 
 ## Releases
 

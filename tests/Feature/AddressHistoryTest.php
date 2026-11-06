@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\AddressHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -68,7 +69,8 @@ class AddressHistoryTest extends TestCase
             $process->command[0] === 'getent' => Process::result(output: "192.0.2.1 {$this->hostname}\n"),
             default => Process::result(output: '[{"dst":"192.0.2.1","lladdr":"'.$this->mac.'","state":["REACHABLE"]}]'),
         });
-        $subnet->refresh()->forceFill(['scan_token' => 'token', 'scan_status' => 'queued'])->save();
-        app()->call([new DiscoverSubnet($subnet->id, 'token'), 'handle']);
+        $token = (string) Str::uuid();
+        $subnet->refresh()->forceFill(['scan_token' => $token, 'scan_status' => 'queued'])->save();
+        app()->call([new DiscoverSubnet($subnet->id, $token), 'handle']);
     }
 }
