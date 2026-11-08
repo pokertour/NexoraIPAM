@@ -19,6 +19,7 @@ use App\Livewire\NetworkTools;
 use App\Livewire\NetworkTopology;
 use App\Livewire\Preferences;
 use App\Livewire\Racks;
+use App\Livewire\ScanHistory;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/locale', LocaleController::class)->name('locale.update');
@@ -50,6 +51,7 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
 
     Route::livewire('/tools', NetworkTools::class)->name('tools');
     Route::livewire('/alerts', Alerts::class)->name('alerts');
+    Route::livewire('/scans', ScanHistory::class)->name('scans');
     Route::livewire('/devices', NetworkDevices::class)->name('devices');
     Route::livewire('/devices/{device}', DeviceDetail::class)->name('devices.show');
     Route::livewire('/racks', Racks::class)->name('racks');

@@ -516,6 +516,15 @@
     .toast p { margin: 0; overflow-wrap: anywhere; }
     .dialog[open] .dialog-content { animation: dialog-enter .2s ease-out both; }
 
+    /* Scan history */
+    .scan-target { font-weight: 600; color: var(--highlight); }
+    .scan-target:hover { text-decoration: underline; }
+    .scan-summary { display: flex; flex-wrap: wrap; gap: .25rem .9rem; margin: 0; font-size: .8rem; }
+    .scan-summary div { display: flex; gap: .3rem; }
+    .scan-summary dt { color: var(--muted); }
+    .scan-summary dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .scan-error { display: block; max-width: 28rem; color: var(--warning); font-size: .8rem; overflow-wrap: anywhere; }
+
     /* Dashboard */
     .location-filter { width: min(100%, 19rem); }
     .dashboard-filter { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; }

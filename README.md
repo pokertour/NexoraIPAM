@@ -62,6 +62,7 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 - **Address history**: every MAC address and host name seen on an IP, plus the switch port it is plugged into.
 - **Host names without DNS**: when reverse DNS has nothing, names come from DHCP leases (Kea API or ISC `dhcpd.leases`), NetBIOS, mDNS, LLDP and SNMP. A less reliable source never overwrites a better one.
 - **Interactive dashboard**: every figure opens the matching filtered list. It also shows hosts first seen this week with their MAC vendor and switch port, device health, the busiest ports, recent MAC changes and the latest changes.
+- **Scan history**: every ICMP discovery, SNMP poll and DHCP import with its trigger (manual, with its author, or scheduled), status, duration and result, kept for 90 days.
 - **Alerts** for subnets over a usage threshold, unknown hosts, available addresses that respond, MAC changes, hosts that go silent and unreachable devices. Alerts can be acknowledged and sent by e-mail.
 
 ### 🔍 Global search
@@ -192,6 +193,7 @@ Administrators configure everything from **Settings** in the application. Authen
 | Operator | Read and edit the inventory, acknowledge alerts |
 | Viewer | Read the inventory, devices and alerts |
 
+- **Users**: the list shows every account with a Local, LDAP or OpenID Connect badge and its last sign-in, and filters by source. Directory and SSO accounts appear after their first sign-in.
 - **Local accounts**: create them in **Users** and share the temporary password. The installation account keeps local access as a fallback when local sign-in is disabled.
 - **LDAP**: enter the LDAPS URL, base DN, allowed AD group DN and service account. Direct and nested members of the group sign in with their `mail` attribute and get a viewer account on first sign-in. Install the directory CA in the server trust store if needed.
 - **OpenID Connect**: register a confidential client using HTTPS discovery, the authorization code flow, PKCE S256 and RSA signatures. Declare the callback URL shown in **Settings** (`/auth/openid/callback`) at your provider. Authorized users get a viewer account on first sign-in.

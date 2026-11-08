@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\ImportDhcpLeases;
+use App\Models\ScanRun;
 use App\Models\Setting;
 use App\Support\DhcpLeases;
 use Illuminate\Console\Command;
@@ -27,7 +28,8 @@ class QueueDhcpImport extends Command
         }
 
         Setting::write('dhcp_state', ['last_run' => now()->toIso8601String()] + Setting::read('dhcp_state'));
-        ImportDhcpLeases::dispatch()->onConnection('database')->onQueue('discovery');
+        $run = ScanRun::queue('dhcp', label: 'DHCP');
+        ImportDhcpLeases::dispatch($run->id)->onConnection('database')->onQueue('discovery');
 
         return self::SUCCESS;
     }

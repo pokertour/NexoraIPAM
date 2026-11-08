@@ -3,6 +3,7 @@
 use App\Console\Commands\QueueDhcpImport;
 use App\Console\Commands\QueueScheduledDevicePolls;
 use App\Console\Commands\QueueScheduledDiscoveries;
+use App\Models\ScanRun;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -19,3 +20,6 @@ Schedule::command(QueueScheduledDevicePolls::class)
 
 Schedule::command(QueueDhcpImport::class)
     ->everyMinute()->withoutOverlapping(10);
+
+Schedule::command('model:prune', ['--model' => [ScanRun::class]])
+    ->daily()->withoutOverlapping();

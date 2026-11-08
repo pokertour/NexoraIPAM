@@ -50,6 +50,7 @@
                     <x-nav-link name="racks" icon="rack">{{ __('Baies') }}</x-nav-link>
                     <x-nav-link name="topology" icon="topology">{{ __('Topologie') }}</x-nav-link>
                     <x-nav-link name="alerts" icon="bell">{{ __('Alertes') }}</x-nav-link>
+                    <x-nav-link name="scans" icon="history">{{ __('Historique des scans') }}</x-nav-link>
                     <x-nav-link name="tools" icon="tools">{{ __('Outils') }}</x-nav-link>
                     <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>
                     @can('administer')
