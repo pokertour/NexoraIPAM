@@ -3,13 +3,16 @@
 namespace App\Livewire;
 
 use App\Console\Commands\InstallAdmin;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\Audit;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -27,6 +30,25 @@ class Accounts extends Component
 
     #[Locked]
     public string $provider = 'local';
+
+    /** @var array<string, string> */
+    public const PROVIDERS = ['local' => 'Interne', 'ldap' => 'LDAP', 'oidc' => 'OpenID Connect'];
+
+    #[Url(except: '')]
+    public string $source = '';
+
+    #[Url(except: '')]
+    public string $search = '';
+
+    public function updatedSource(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
 
     public array $form = [];
 
@@ -103,7 +125,16 @@ class Accounts extends Component
     {
         Gate::authorize('administer');
 
-        return view('livewire.accounts', ['accounts' => User::orderBy('name')->orderBy('id')->paginate(15)])
+        $search = mb_substr(trim($this->search), 0, 100);
+        $lastLogin = AuditLog::selectRaw('MAX(created_at)')->whereColumn('audit_logs.user_id', 'users.id')->where('action', 'auth.login');
+
+        return view('livewire.accounts', [
+            'accounts' => User::query()->select('users.*')->selectSub($lastLogin, 'last_login_at')
+                ->when(isset(self::PROVIDERS[$this->source]), fn (Builder $query) => $query->where('provider', $this->source))
+                ->when($search !== '', fn (Builder $query) => $query->where(fn (Builder $query) => $query->whereLike('name', '%'.$search.'%')->orWhereLike('email', '%'.$search.'%')))
+                ->orderBy('name')->orderBy('id')->paginate(15),
+            'counts' => User::selectRaw('provider, count(*) as total')->groupBy('provider')->pluck('total', 'provider'),
+        ])
             ->layout('components.layouts.app', ['title' => __('Utilisateurs')]);
     }
 }
