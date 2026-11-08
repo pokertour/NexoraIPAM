@@ -205,7 +205,7 @@ SQLite is the default database. MariaDB is supported and tested in CI, and the C
 
 ## REST API
 
-The API lives under `/api/v1` and returns JSON. Create a token in **My profile → API tokens**. A token is shown once, acts with the permissions of your account, and is either read-only or read-write (writes also require the operator or administrator role). Send it as a bearer token:
+The API lives under `/api/v1` and returns JSON. Only administrators create tokens, in **Administration → API tokens**, for the account the token will act as; a dedicated account per automation tool is recommended. A token is shown once, is either read-only or read-write (writes also require the operator or administrator role of its account), and can expire. The same page revokes tokens and shows their history: token creation and revocation, and every change made with each token, which the audit log also labels with the token name. Send the token as a bearer token:
 
 ```sh
 curl -H "Authorization: Bearer $NEXORA_TOKEN" https://ipam.example.com/api/v1/me

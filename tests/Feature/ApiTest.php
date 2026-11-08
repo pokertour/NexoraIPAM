@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\ApiTokens;
 use App\Models\AuditLog;
 use App\Models\CustomField;
 use App\Models\DevicePort;
@@ -13,6 +14,7 @@ use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ApiTest extends TestCase
@@ -125,27 +127,45 @@ class ApiTest extends TestCase
         $this->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.role', 'viewer')->assertJsonPath('data.token.abilities', ['read']);
     }
 
-    public function test_users_create_and_revoke_tokens_from_their_profile(): void
+    public function test_only_administrators_manage_tokens_and_follow_their_history(): void
     {
         $this->withoutVite();
-        $user = User::factory()->create(['role' => 'operator']);
-        $this->actingAs($user);
+        $operator = User::factory()->create(['role' => 'operator', 'name' => 'Compte Ansible']);
+        $this->actingAs($operator)->get(route('api-tokens'))->assertForbidden();
+        $this->post('/profile/tokens', ['token_name' => 'Moi'])->assertNotFound();
+        $this->get(route('profile'))->assertOk()->assertDontSee('Jetons d’API');
 
-        $this->post(route('profile.tokens.store'), ['token_name' => 'Ansible', 'token_write' => '1', 'token_days' => 30])->assertRedirect(route('profile'));
-        $token = $user->tokens()->sole();
-        $page = $this->get(route('profile'))->assertOk()->assertSee('Ansible')->assertSee('Lecture et écriture');
-        preg_match('/\b(\d+\|[A-Za-z0-9]{40,})\b/', $page->getContent(), $plain);
-        $this->assertNotEmpty($plain);
-        $this->get(route('profile'))->assertDontSee($plain[1]);
+        $admin = User::factory()->create(['role' => 'admin', 'name' => 'Alice Admin']);
+        $component = Livewire::actingAs($admin)->test(ApiTokens::class)
+            ->call('open')->set('form.name', 'Ansible')->call('create')->assertHasErrors('form.user_id')
+            ->set('form.user_id', $operator->id)->set('form.write', true)->set('form.days', 30)->call('create')->assertHasNoErrors();
+        $plain = $component->get('plainToken');
+        $token = $operator->tokens()->sole();
+        $this->assertStringStartsWith($token->id.'|', $plain);
         $this->assertSame(['read', 'write'], $token->abilities);
         $this->assertTrue($token->expires_at->isFuture());
+        $component->call('close')->assertSet('plainToken', null)->assertDontSee($plain);
 
         auth()->forgetGuards();
-        $this->withToken($plain[1])->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.token.name', 'Ansible');
+        $id = $this->withToken($plain)->postJson('/api/v1/vlans', ['number' => 30, 'name' => 'VoIP'])->assertCreated()->json('data.id');
+        $entry = AuditLog::where('subject_type', 'vlan')->where('subject_id', $id)->sole();
+        $this->assertSame([$operator->id, $token->id, 'Ansible'], [$entry->user_id, $entry->api_token_id, $entry->api_token_name]);
 
-        $this->actingAs($user)->delete(route('profile.tokens.destroy', $token->id))->assertRedirect(route('profile'));
-        $this->assertDatabaseCount('personal_access_tokens', 0);
-        $this->assertSame(['api_token.created', 'api_token.revoked'], AuditLog::where('action', 'like', 'api_token.%')->orderBy('id')->pluck('action')->all());
-        $this->assertStringNotContainsString($plain[1], AuditLog::pluck('changes')->toJson());
+        $other = $operator->createToken('Script lecture', ['read']);
+        Livewire::actingAs($admin)->test(ApiTokens::class)
+            ->assertSee('Ansible')->assertSee('Compte Ansible')->assertSee('Script lecture')->assertSee('VoIP')
+            ->set('token', (string) $other->accessToken->id)->assertDontSee('VoIP')
+            ->set('token', (string) $token->id)->assertSee('VoIP')
+            ->call('confirmRevoke', $token->id)->call('revoke');
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->id]);
+        $created = AuditLog::where('action', 'api_token.created')->sole();
+        $this->assertSame(['Alice Admin', 'user', $operator->id], [$created->actor, $created->subject_type, $created->subject_id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'api_token.revoked', 'user_id' => $admin->id]);
+        $this->assertStringNotContainsString(explode('|', $plain)[1], AuditLog::pluck('changes')->toJson());
+
+        auth()->forgetGuards();
+        $this->withToken($plain)->getJson('/api/v1/me')->assertUnauthorized();
+        $this->actingAs($admin)->get(route('audit'))->assertOk()->assertSee('Ansible');
     }
 }

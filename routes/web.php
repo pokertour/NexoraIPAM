@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\WorkspaceAccess;
 use App\Livewire\Accounts;
 use App\Livewire\Alerts;
+use App\Livewire\ApiTokens;
 use App\Livewire\AuditTrail;
 use App\Livewire\DeviceDetail;
 use App\Livewire\Inventory;
@@ -41,8 +42,6 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::get('/about', AboutController::class)->name('about');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile', [ProfileController::class, 'rename'])->name('profile.rename');
-    Route::post('/profile/tokens', [ProfileController::class, 'createToken'])->middleware('throttle:10,1')->name('profile.tokens.store');
-    Route::delete('/profile/tokens/{token}', [ProfileController::class, 'revokeToken'])->name('profile.tokens.destroy');
     Route::post('/profile/two-factor/setup', [ProfileController::class, 'setup'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.setup');
     Route::post('/profile/two-factor/enable', [ProfileController::class, 'enable'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.enable');
     Route::post('/profile/two-factor/disable', [ProfileController::class, 'disable'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.disable');
@@ -64,6 +63,7 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
         Route::livewire('/settings', Preferences::class)->name('preferences');
         Route::livewire('/users', Accounts::class)->name('accounts');
         Route::livewire('/audit', AuditTrail::class)->name('audit');
+        Route::livewire('/api-tokens', ApiTokens::class)->name('api-tokens');
         Route::livewire('/metadata', Metadata::class)->name('metadata');
     });
 });

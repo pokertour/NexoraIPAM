@@ -49,7 +49,7 @@ class AuditLog extends Model
         'settings' => 'Paramètres',
     ];
 
-    protected $fillable = ['user_id', 'actor', 'action', 'subject_type', 'subject_id', 'subject_label', 'changes', 'ip_address'];
+    protected $fillable = ['user_id', 'actor', 'action', 'subject_type', 'subject_id', 'subject_label', 'changes', 'ip_address', 'api_token_id', 'api_token_name'];
 
     protected function casts(): array
     {

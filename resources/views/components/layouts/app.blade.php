@@ -56,6 +56,7 @@
                         <p class="nav-label mt-6">{{ __('Administration') }}</p>
                         <x-nav-link name="accounts" icon="accounts">{{ __('Utilisateurs') }}</x-nav-link>
                         <x-nav-link name="metadata" icon="tag">{{ __('Étiquettes et champs') }}</x-nav-link>
+                        <x-nav-link name="api-tokens" icon="key">{{ __('Jetons d’API') }}</x-nav-link>
                         <x-nav-link name="audit" icon="audit">{{ __('Journal d’audit') }}</x-nav-link>
                         <x-nav-link name="preferences" icon="preferences">{{ __('Paramètres') }}</x-nav-link>
                     @endcan
