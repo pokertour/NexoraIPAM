@@ -123,7 +123,7 @@ class WorkspaceTest extends TestCase
         $this->withoutVite();
         $this->withHeader('Accept-Language', 'de-DE,en-GB;q=0.9,fr;q=0.5');
         $this->get(route('login'))->assertOk()->assertSeeHtml('<html lang="en">')->assertSee('Sign in')
-            ->assertSeeHtml('<option value="en" lang="en" selected>');
+            ->assertSeeHtml('value="en" lang="en" class="locale-option" aria-current="true"');
         $this->post(route('login.submit'), ['provider' => 'local', 'email' => 'unknown@example.com', 'password' => 'incorrect'])
             ->assertSessionHasErrors(['login' => 'Invalid credentials or account not authorized.']);
 
@@ -143,7 +143,7 @@ class WorkspaceTest extends TestCase
 
         $this->withCookie('nexora-locale', 'en')->get(route('login'))->assertOk()
             ->assertSeeHtml('<html lang="en">')->assertSee('Language')
-            ->assertSeeHtml('<option value="en" lang="en" selected>')->assertDontSeeHtml('<option value="auto"');
+            ->assertSeeHtml('value="en" lang="en" class="locale-option" aria-current="true"')->assertDontSeeHtml('value="auto"');
 
         $this->actingAs(User::factory()->create())->get(route('profile'))->assertOk()
             ->assertSeeHtml('<html lang="en">')->assertSeeHtml('id="navbar-locale"');

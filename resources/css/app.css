@@ -476,6 +476,24 @@
     .account-menu summary::-webkit-details-marker { display: none; }
     .account-panel { position: absolute; z-index: 8; right: 0; top: calc(100% + .5rem); width: 16rem; padding: .7rem .45rem .4rem; box-shadow: var(--shadow-raised); }
 
+    /* Language menu */
+    .locale-menu { position: relative; }
+    .locale-menu summary { list-style: none; }
+    .locale-menu summary::-webkit-details-marker { display: none; }
+    .locale-trigger { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.25rem; padding: 0 .55rem 0 .65rem; border: 1px solid var(--input-line); border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); cursor: pointer; transition: border-color .15s, box-shadow .15s, color .15s; }
+    .locale-trigger:hover, .locale-menu[open] .locale-trigger { border-color: var(--highlight); box-shadow: var(--focus-ring); color: var(--text); }
+    .locale-code { font-family: var(--font-mono); font-size: .74rem; font-weight: 700; letter-spacing: .06em; color: var(--text); }
+    .locale-chevron { transition: transform .15s; }
+    .locale-menu[open] .locale-chevron { transform: rotate(180deg); }
+    .locale-panel { position: absolute; z-index: 9; right: 0; top: calc(100% + .45rem); width: 13.5rem; padding: .45rem; box-shadow: var(--shadow-raised); animation: dialog-enter .14s ease-out both; }
+    .locale-title { padding: .3rem .55rem .45rem; color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .locale-option { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .65rem; width: 100%; padding: .45rem .55rem; border-radius: .5rem; text-align: left; font-size: .84rem; }
+    .locale-option:hover { background: var(--surface-soft); }
+    .locale-option[aria-current=true] { background: var(--brand-gradient-soft); box-shadow: inset 0 0 0 1px var(--highlight-line); }
+    .locale-badge { display: grid; place-items: center; width: 2rem; height: 1.6rem; border-radius: .4rem; background: var(--surface-soft); box-shadow: inset 0 0 0 1px var(--line-strong); font-family: var(--font-mono); font-size: .7rem; font-weight: 700; color: var(--text-soft); }
+    .locale-option[aria-current=true] .locale-badge { background: var(--brand-gradient); color: #fff; box-shadow: 0 3px 10px -3px #6d4affaa; }
+    .locale-check { color: var(--highlight); }
+
     /* Toasts */
     .toast-stack { position: fixed; inset: auto 1rem 1rem auto; margin: 0; padding: 0; border: 0; background: transparent; color: var(--text); overflow: visible; width: min(26rem, calc(100vw - 2rem)); z-index: 20; pointer-events: none; }
     .toast-stack [data-toast-list] { display: grid; gap: .65rem; }

@@ -29,6 +29,9 @@
         @case('switch') <rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11h1m3 0h1m3 0h1m3 0h1M6 14h12"/> @break
         @case('rack') <rect x="5" y="2" width="14" height="20" rx="1.5"/><path d="M8 6h8M8 10h8M8 14h8M8 18h3"/> @break
         @case('topology') <rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v3M12 10 5 17m7-7 7 7M8 19.5h8"/> @break
+        @case('globe') <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/> @break
+        @case('chevron') <path d="m6 9 6 6 6-6"/> @break
+        @case('check') <path d="m5 12.5 4.5 4.5L19 7.5"/> @break
         @case('key') <circle cx="8" cy="9" r="4"/><path d="m11 12 8 8m-3-3 3-3m-5 1 2-2"/> @break
     @endswitch
 </svg>
