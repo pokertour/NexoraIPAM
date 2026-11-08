@@ -18,6 +18,7 @@ class ProfileController extends Controller
     {
         $pending = $request->session()->get('two_factor_setup');
         $codes = $request->session()->pull('recovery_codes');
+        $plainToken = $request->session()->pull('api_token');
         $user = $request->user();
 
         return response()->view('profile', [
@@ -25,7 +26,37 @@ class ProfileController extends Controller
             'setupKey' => $user->provider === 'local' && ! $user->two_factor && ($pending['expires'] ?? 0) > now()->timestamp
                 ? Crypt::decryptString($pending['key']) : null,
             'recoveryCodes' => $user->provider === 'local' && $codes ? Crypt::decrypt($codes) : [],
+            'plainToken' => $plainToken ? Crypt::decryptString($plainToken) : null,
+            'tokens' => $user->tokens()->latest('id')->get(),
         ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function createToken(Request $request): RedirectResponse
+    {
+        $input = $request->validate([
+            'token_name' => ['required', 'string', 'max:100'],
+            'token_write' => ['nullable', 'boolean'],
+            'token_days' => ['nullable', 'integer', 'between:1,3650'],
+        ]);
+        $abilities = $request->boolean('token_write') ? ['read', 'write'] : ['read'];
+        $expires = isset($input['token_days']) ? now()->addDays((int) $input['token_days']) : null;
+        $token = $request->user()->createToken($input['token_name'], $abilities, $expires);
+        Audit::record('api_token.created', $request->user(), [
+            'name' => [null, $input['token_name']], 'abilities' => [null, implode(', ', $abilities)],
+            'expires_at' => [null, $expires?->format('Y-m-d')],
+        ]);
+
+        return to_route('profile')->with('api_token', Crypt::encryptString($token->plainTextToken))
+            ->with('notice', __('Jeton créé. Copiez-le maintenant : il ne sera plus affiché.'));
+    }
+
+    public function revokeToken(Request $request, int $token): RedirectResponse
+    {
+        $record = $request->user()->tokens()->findOrFail($token);
+        $record->delete();
+        Audit::record('api_token.revoked', $request->user(), ['name' => [$record->name, null]]);
+
+        return to_route('profile')->with('notice', __('Jeton révoqué.'));
     }
 
     public function rename(Request $request): RedirectResponse

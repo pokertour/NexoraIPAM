@@ -27,6 +27,8 @@ class AuditLog extends Model
         'device.queued' => 'Interrogation SNMP demandée',
         'device.polled' => 'Interrogation SNMP',
         'dhcp.imported' => 'Import DHCP',
+        'api_token.created' => 'Jeton d’API créé',
+        'api_token.revoked' => 'Jeton d’API révoqué',
         'alert.opened' => 'Alerte ouverte',
         'alert.acknowledged' => 'Alerte acquittée',
     ];

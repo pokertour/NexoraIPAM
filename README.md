@@ -24,6 +24,7 @@
   <a href="#with-docker-compose">Compose</a> ·
   <a href="#local-development">Development</a> ·
   <a href="#configuration">Configuration</a> ·
+  <a href="#rest-api">API</a> ·
   <a href="#license">License</a>
 </p>
 
@@ -69,6 +70,9 @@ Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>/</kbd>) anywhere to open the sear
 - A MAC address, in any format, shows the switch port where it was learned.
 
 <p align="center"><img src=".github/assets/search-dark.png" alt="Global search" width="100%"></p>
+
+### 🔗 REST API
+Automate the inventory with a versioned JSON API and personal tokens: reserve the next free IP from a deployment, sync subnets from Terraform, query a MAC address from a script. See [REST API](#rest-api).
 
 ### 🛡️ Security and accountability
 - **Roles**: administrator, operator and viewer.
@@ -198,6 +202,47 @@ Administrators configure everything from **Settings** in the application. Authen
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
 SQLite is the default database. MariaDB is supported and tested in CI, and the Compose file uses it. Configure the connection through the standard Laravel `DB_*` variables.
+
+## REST API
+
+The API lives under `/api/v1` and returns JSON. Create a token in **My profile → API tokens**. A token is shown once, acts with the permissions of your account, and is either read-only or read-write (writes also require the operator or administrator role). Send it as a bearer token:
+
+```sh
+curl -H "Authorization: Bearer $NEXORA_TOKEN" https://ipam.example.com/api/v1/me
+```
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /me` | Current account and token abilities. |
+| `GET /search?q=` | Global search, as with <kbd>Ctrl</kbd> + <kbd>K</kbd>: subnets containing an IP, switch port of a MAC, and so on. |
+| `GET /subnets` | Subnets. Filters: `search`, `location`, `tag`, `per_page`. |
+| `POST /subnets`, `GET/PATCH/DELETE /subnets/{id}` | Manage a subnet: `name`, `cidr`, `location_id`, `vlan_id`, `gateway`, `dns_servers`, `domain`, `dhcp_start`, `dhcp_end`, `tags`, `custom_fields`. |
+| `GET /subnets/{id}/addresses` | Addresses of a subnet. |
+| `POST /subnets/{id}/next-free` | Reserve the next free address, with optional `hostname`, `description`, `status`, `tags` and `custom_fields`. |
+| `GET /addresses` | Addresses. Filters: `subnet`, `status`, `address`, `mac`, `search`. |
+| `POST /addresses`, `GET/PATCH/DELETE /addresses/{id}` | Manage an address: `subnet_id`, `address`, `hostname`, `status`, `description`, `tags`, `custom_fields`. |
+| `GET /vlans`, `POST /vlans`, `GET/PATCH/DELETE /vlans/{id}` | Manage VLANs: `number`, `name`, `location_id`, `color`, `description`. |
+| `GET /locations`, `GET /locations/{id}` | Locations, read-only. |
+| `GET /devices`, `GET /devices/{id}` | SNMP devices, read-only. A single device includes its ports, VLANs, throughput, MAC addresses and LLDP neighbours. |
+
+Reserve an address for a new virtual machine:
+
+```sh
+curl -X POST -H "Authorization: Bearer $NEXORA_TOKEN" -H "Content-Type: application/json" \
+  -d '{"hostname": "vm-web-01", "tags": ["production"]}' \
+  https://ipam.example.com/api/v1/subnets/12/next-free
+```
+
+The API applies the same rules as the interface: CIDR and addresses are normalised, the gateway and DHCP range must belong to the subnet, a subnet with addresses cannot be deleted, and every change is written to the audit log with the token owner as author.
+
+| Status | Meaning |
+| --- | --- |
+| `401` | Missing or invalid token. |
+| `403` | Token without the needed ability, role not allowed to write, or account disabled. |
+| `409` | Conflict: no free address left, or a subnet that still holds addresses. |
+| `422` | Validation error, with the details in `errors`. |
+
+Lists are paginated with `data`, `links` and `meta`. Error messages follow the `Accept-Language` header (English or French). Each token is limited to 120 requests per minute.
 
 ## Releases
 

@@ -71,5 +71,52 @@
                 @endif
             </section>
         @endif
+
+        <section class="card settings-card api-tokens">
+            <div>
+                <h2>{{ __('Jetons d’API') }}</h2>
+                <p>{{ __('Accès à l’API REST pour vos scripts et outils d’automatisation. Un jeton agit avec les droits de votre compte.') }}</p>
+            </div>
+            @if ($plainToken)
+                <div data-profile-secret class="token-reveal" x-data="{ copied: false }">
+                    <p class="text-sm font-semibold">{{ __('Copiez ce jeton maintenant : il ne sera plus affiché.') }}</p>
+                    <div class="token-value">
+                        <code class="select-all" x-ref="token">{{ $plainToken }}</code>
+                        <button type="button" class="icon-button" x-on:click="navigator.clipboard?.writeText($refs.token.textContent); copied = true" :aria-label="copied ? @js(__('Copié')) : @js(__('Copier le jeton'))"><x-icon name="copy" class="size-4" x-show="! copied"/><x-icon name="check" class="size-4" x-show="copied" x-cloak/></button>
+                    </div>
+                    <pre class="token-example"><code>curl -H "Authorization: Bearer {{ $plainToken }}" {{ url('/api/v1/me') }}</code></pre>
+                </div>
+            @endif
+            @if ($tokens->isNotEmpty())
+                <ul class="token-list">
+                    @foreach ($tokens as $token)
+                        <li>
+                            <span class="min-w-0">
+                                <span class="block truncate font-semibold">{{ $token->name }}</span>
+                                <small class="muted block">
+                                    {{ in_array('write', $token->abilities, true) ? __('Lecture et écriture') : __('Lecture seule') }}
+                                    · {{ $token->last_used_at ? __('utilisé :date', ['date' => $token->last_used_at->diffForHumans()]) : __('jamais utilisé') }}
+                                    @if ($token->expires_at) · {{ $token->expires_at->isPast() ? __('expiré') : __('expire le :date', ['date' => $token->expires_at->format(__('d/m/Y'))]) }}@endif
+                                </small>
+                            </span>
+                            <form method="post" action="{{ route('profile.tokens.destroy', $token->id) }}">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="icon-button danger-text" aria-label="{{ __('Révoquer :name', ['name' => $token->name]) }}" title="{{ __('Révoquer') }}"><x-icon name="trash" class="size-4"/></button>
+                            </form>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            <form method="post" action="{{ route('profile.tokens.store') }}" class="grid gap-3">
+                @csrf
+                <div class="grid gap-3 sm:grid-cols-[1fr_9rem]">
+                    <x-field name="token_name" :label="__('Nom du jeton')" :value="old('token_name')" :placeholder="__('Ansible production')" maxlength="100" required/>
+                    <x-field name="token_days" :label="__('Expire dans (jours)')" type="number" min="1" max="3650" :value="old('token_days')" :placeholder="__('Jamais')"/>
+                </div>
+                <label class="checkbox"><input type="checkbox" name="token_write" value="1" @checked(old('token_write'))> {{ __('Autoriser l’écriture (selon les droits de votre rôle)') }}</label>
+                <x-button type="submit" icon="key" class="justify-self-start">{{ __('Créer un jeton') }}</x-button>
+            </form>
+            <p class="muted text-xs">{{ __('Documentation et exemples dans le README, section REST API.') }}</p>
+        </section>
     </div>
 </x-layouts.app>
