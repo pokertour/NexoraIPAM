@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Accounts;
 use App\Livewire\Inventory;
 use App\Livewire\Preferences;
+use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,7 +124,7 @@ class WorkspaceTest extends TestCase
         $this->withoutVite();
         $this->withHeader('Accept-Language', 'de-DE,en-GB;q=0.9,fr;q=0.5');
         $this->get(route('login'))->assertOk()->assertSeeHtml('<html lang="en">')->assertSee('Sign in')
-            ->assertSeeHtml('<option value="en" lang="en" selected>');
+            ->assertSeeHtml('value="en" lang="en" class="locale-option" aria-current="true"');
         $this->post(route('login.submit'), ['provider' => 'local', 'email' => 'unknown@example.com', 'password' => 'incorrect'])
             ->assertSessionHasErrors(['login' => 'Invalid credentials or account not authorized.']);
 
@@ -143,7 +144,7 @@ class WorkspaceTest extends TestCase
 
         $this->withCookie('nexora-locale', 'en')->get(route('login'))->assertOk()
             ->assertSeeHtml('<html lang="en">')->assertSee('Language')
-            ->assertSeeHtml('<option value="en" lang="en" selected>')->assertDontSeeHtml('<option value="auto"');
+            ->assertSeeHtml('value="en" lang="en" class="locale-option" aria-current="true"')->assertDontSeeHtml('value="auto"');
 
         $this->actingAs(User::factory()->create())->get(route('profile'))->assertOk()
             ->assertSeeHtml('<html lang="en">')->assertSeeHtml('id="navbar-locale"');
@@ -168,5 +169,23 @@ class WorkspaceTest extends TestCase
             ->set('form.name', 'Network Operator')->set('form.email', 'operator@example.test')
             ->set('form.password', 'Temporary-password-42')
             ->call('save')->assertDispatched('nexora-toast', tone: 'success', message: 'Account saved.');
+    }
+
+    public function test_accounts_list_shows_the_source_badge_filters_and_last_login(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->create(['role' => 'admin', 'name' => 'Admin local']);
+        $ldap = User::factory()->create(['name' => 'Alice Annuaire', 'provider' => 'ldap', 'external_id' => 'cn=alice']);
+        User::factory()->create(['name' => 'Bob Sso', 'provider' => 'oidc', 'external_id' => 'bob-sub']);
+        AuditLog::forceCreate(['user_id' => $ldap->id, 'action' => 'auth.login', 'subject_type' => 'user', 'subject_id' => $ldap->id, 'subject_label' => $ldap->name, 'created_at' => now()->subHour()]);
+        $this->actingAs($admin);
+
+        Livewire::test(Accounts::class)
+            ->assertSee('Alice Annuaire')->assertSee('Bob Sso')
+            ->assertSeeHtml('<span class="badge tone-blue">LDAP</span>')
+            ->assertSeeHtml('<span class="badge tone-violet">OpenID Connect</span>')
+            ->assertSee('Jamais')
+            ->set('source', 'ldap')->assertSee('Alice Annuaire')->assertDontSee('Bob Sso')->assertDontSee('Admin local')
+            ->set('source', '')->set('search', 'bob')->assertSee('Bob Sso')->assertDontSee('Alice Annuaire');
     }
 }

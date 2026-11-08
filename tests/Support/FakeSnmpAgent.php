@@ -41,6 +41,7 @@ class FakeSnmpAgent
             $this->set('1.3.6.1.2.1.2.2.1.8.'.$index, 'INTEGER', $up ? 1 : 2);
             $this->set('1.3.6.1.2.1.2.2.1.14.'.$index, 'Counter32', $number === 7 ? 42 : 0);
             $this->set('1.3.6.1.2.1.2.2.1.20.'.$index, 'Counter32', 0);
+            $this->set('1.3.6.1.2.1.2.2.1.6.'.$index, 'Hex', sprintf('00 1B 54 00 %02X %02X ', intdiv($index, 256), $index % 256));
             $this->set('1.3.6.1.2.1.31.1.1.1.1.'.$index, 'STRING', $name);
             $this->set('1.3.6.1.2.1.31.1.1.1.6.'.$index, 'Counter64', $up ? 1_000_000_000 * $number + $trafficStep * 375_000_000 * max(1, $number) : 0);
             $this->set('1.3.6.1.2.1.31.1.1.1.10.'.$index, 'Counter64', $up ? 2_000_000_000 * $number + $trafficStep * 75_000_000 * max(1, $number) : 0);
@@ -72,12 +73,51 @@ class FakeSnmpAgent
             $this->set('1.3.6.1.2.1.4.22.1.2.10.'.$ip, 'Hex', strtoupper(str_replace(':', ' ', $mac)).' ');
         }
 
+        // ENTITY-MIB: Gi1/0/24 is an SFP cage holding a fibre transceiver.
+        $this->set('1.3.6.1.2.1.47.1.1.1.1.2.2024', 'STRING', 'Gigabit Ethernet Port Container');
+        $this->set('1.3.6.1.2.1.47.1.1.1.1.7.2024', 'STRING', 'GigabitEthernet1/0/24 Container');
+        $this->set('1.3.6.1.2.1.47.1.1.1.1.2.3024', 'STRING', '1000BaseSX SFP');
+        $this->set('1.3.6.1.2.1.47.1.1.1.1.4.3024', 'INTEGER', 2024);
+        $this->set('1.3.6.1.2.1.47.1.3.2.1.2.2024.0', 'OID', '.1.3.6.1.2.1.2.2.1.1.1024');
+
         $this->set('1.0.8802.1.1.2.1.3.7.1.4.25', 'STRING', 'TenGigabitEthernet1/1/1');
         $this->set('1.0.8802.1.1.2.1.4.1.1.7.0.25.1', 'STRING', 'Te1/0/48');
         $this->set('1.0.8802.1.1.2.1.4.1.1.8.0.25.1', 'STRING', 'TenGigabitEthernet1/0/48');
         $this->set('1.0.8802.1.1.2.1.4.1.1.9.0.25.1', 'STRING', 'core-sw01.example.test');
+        $this->set('1.0.8802.1.1.2.1.4.2.1.3.0.25.1.1.4.192.0.2.254', 'INTEGER', 2);
 
         uksort($this->values, fn (string $left, string $right): int => version_compare($left, $right));
+    }
+
+    /**
+     * Turns the agent into a MikroTik-like switch: ether, sfp-sfpplus and
+     * qsfp28 port names, VLANs only in the current VLAN table and no
+     * bridge port mapping.
+     */
+    public function asMikrotik(): self
+    {
+        $this->values = array_filter($this->values, fn (string $oid): bool => ! preg_match('/^1\.3\.6\.1\.2\.1\.(2\.2\.1|31\.1\.1\.1|17|47)\./', $oid), ARRAY_FILTER_USE_KEY);
+        $this->set('1.3.6.1.2.1.1.1.0', 'STRING', 'RouterOS CRS326-24S+2Q+');
+        $this->set('1.3.6.1.2.1.1.5.0', 'STRING', 'crs-core');
+        $ports = [1 => 'ether1', 2 => 'sfp-sfpplus1', 3 => 'sfp-sfpplus2', 4 => 'qsfpplus1-1', 5 => 'bridge'];
+        foreach ($ports as $index => $name) {
+            $this->set('1.3.6.1.2.1.2.2.1.2.'.$index, 'STRING', $name);
+            $this->set('1.3.6.1.2.1.31.1.1.1.1.'.$index, 'STRING', $name);
+            $this->set('1.3.6.1.2.1.2.2.1.3.'.$index, 'INTEGER', $name === 'bridge' ? 209 : 6);
+            $this->set('1.3.6.1.2.1.2.2.1.7.'.$index, 'INTEGER', 1);
+            $this->set('1.3.6.1.2.1.2.2.1.8.'.$index, 'INTEGER', 1);
+            $this->set('1.3.6.1.2.1.31.1.1.1.15.'.$index, 'Gauge32', [1 => 1000, 2 => 10000, 3 => 10000, 4 => 40000, 5 => 0][$index]);
+        }
+        // Current VLAN table, indexed by time mark then VLAN: ether1 untagged in 10, uplinks tagged.
+        foreach ([10 => [[1], [1, 2, 4]], 20 => [[3], [2, 3, 4]]] as $vlan => [$untagged, $egress]) {
+            $this->set('1.3.6.1.2.1.17.7.1.4.2.1.4.0.'.$vlan, 'Hex', self::portList($egress));
+            $this->set('1.3.6.1.2.1.17.7.1.4.2.1.5.0.'.$vlan, 'Hex', self::portList($untagged));
+        }
+        $this->set('1.3.6.1.2.1.17.7.1.4.5.1.1.1', 'Gauge32', 10);
+        $this->set('1.3.6.1.2.1.17.7.1.4.5.1.1.3', 'Gauge32', 20);
+        uksort($this->values, fn (string $left, string $right): int => version_compare($left, $right));
+
+        return $this;
     }
 
     /** @param list<string> $command */

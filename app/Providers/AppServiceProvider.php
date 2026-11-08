@@ -9,9 +9,12 @@ use App\Models\Setting;
 use App\Models\Subnet;
 use App\Models\User;
 use App\Models\Vlan;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Http\Request;
 use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -28,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
             'vlan' => Vlan::class,
             'network_device' => NetworkDevice::class,
         ]);
+
+        RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(120)->by($request->user()?->currentAccessToken()?->id ?? $request->ip()));
 
         Livewire::addPersistentMiddleware([WorkspaceAccess::class]);
 

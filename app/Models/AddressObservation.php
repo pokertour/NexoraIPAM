@@ -15,7 +15,7 @@ class AddressObservation extends Model
     public $timestamps = false;
 
     /** @var array<string, string> */
-    public const SOURCES = ['icmp' => 'Découverte ICMP', 'snmp' => 'Table ARP SNMP'];
+    public const SOURCES = ['icmp' => 'Découverte ICMP', 'snmp' => 'Table ARP SNMP', 'dhcp' => 'Bail DHCP'];
 
     protected $fillable = ['mac_address', 'hostname', 'source', 'location', 'first_seen_at', 'last_seen_at', 'times_seen'];
 

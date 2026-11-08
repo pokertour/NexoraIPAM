@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class NetworkDevice extends Model
@@ -70,6 +71,11 @@ class NetworkDevice extends Model
     public function macs(): HasMany
     {
         return $this->hasMany(DevicePortMac::class);
+    }
+
+    public function rackItem(): HasOne
+    {
+        return $this->hasOne(RackItem::class);
     }
 
     public function tags(): MorphToMany

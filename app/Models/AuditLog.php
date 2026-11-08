@@ -26,6 +26,9 @@ class AuditLog extends Model
         'discovery.completed' => 'Découverte terminée',
         'device.queued' => 'Interrogation SNMP demandée',
         'device.polled' => 'Interrogation SNMP',
+        'dhcp.imported' => 'Import DHCP',
+        'api_token.created' => 'Jeton d’API créé',
+        'api_token.revoked' => 'Jeton d’API révoqué',
         'alert.opened' => 'Alerte ouverte',
         'alert.acknowledged' => 'Alerte acquittée',
     ];
@@ -40,11 +43,13 @@ class AuditLog extends Model
         'tag' => 'Étiquette',
         'custom_field' => 'Champ personnalisé',
         'network_device' => 'Équipement',
+        'rack' => 'Baie',
+        'rack_item' => 'Élément de baie',
         'alert' => 'Alerte',
         'settings' => 'Paramètres',
     ];
 
-    protected $fillable = ['user_id', 'actor', 'action', 'subject_type', 'subject_id', 'subject_label', 'changes', 'ip_address'];
+    protected $fillable = ['user_id', 'actor', 'action', 'subject_type', 'subject_id', 'subject_label', 'changes', 'ip_address', 'api_token_id', 'api_token_name'];
 
     protected function casts(): array
     {

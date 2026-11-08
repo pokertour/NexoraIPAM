@@ -37,6 +37,15 @@
                     @endforeach
                 </x-select>
             @endif
+            @if ($section === 'addresses')
+                <x-select class="location-filter" name="status" wire:model.live="status" aria-label="{{ __('Filtrer par statut') }}">
+                    <option value="">{{ __('Tous les statuts') }}</option>
+                    @foreach (\App\Models\IpAddress::STATUSES as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                </x-select>
+                @if (isset(\App\Livewire\Inventory::PING_FILTERS[$ping]))
+                    <button type="button" class="filter-chip" wire:click="$set('ping', '')" aria-label="{{ __('Retirer le filtre') }}">{{ __('Dernier ping') }} · {{ __(\App\Livewire\Inventory::PING_FILTERS[$ping]) }} <x-icon name="close" class="size-3"/></button>
+                @endif
+            @endif
             @if ($allTags->isNotEmpty())
                 <x-select class="location-filter" name="tag" wire:model.live="tag" aria-label="{{ __('Filtrer par étiquette') }}">
                     <option value="">{{ __('Toutes les étiquettes') }}</option>
@@ -89,7 +98,7 @@
                                             <a class="table-link text-xs" href="{{ route('subnets', ['space' => $record->id]) }}" wire:navigate>{{ __('Découpage') }}</a>
                                             <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td>
-                                        <td><code>{{ $record->cidr }}</code>@if ($record->gateway)<small class="muted block">{{ __('Passerelle') }} <code>{{ $record->gateway }}</code></small>@endif</td><td>{{ $record->vlan ? $record->vlan->number.' · '.$record->vlan->name : '—' }}</td><td>
+                                        <td><code>{{ $record->cidr }}</code>@if ($record->gateway)<small class="muted block">{{ __('Passerelle') }} <code>{{ $record->gateway }}</code></small>@endif</td><td>@if ($record->vlan)<x-vlan-chip :number="$record->vlan->number" :color="$record->vlan->displayColor()" :name="$record->vlan->name"/>@else — @endif</td><td>
                                             @if (str_contains($record->cidr, ':'))
                                                 <span>{{ $record->assigned }} {{ $record->assigned === 1 ? __('IP occupée') : __('IP occupées') }}</span>
                                             @else
@@ -110,14 +119,14 @@
                                             <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td><td>{{ $record->hostname ?: ($record->resolved_hostname ?: '—') }}
                                             @if ($record->resolved_hostname && $record->hostname !== $record->resolved_hostname)
-                                                <small class="muted block">{{ __('Résolution inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
+                                                <small class="muted block">{{ __(\App\Support\HostnameResolver::SOURCES[$record->hostname_source ?? 'dns'] ?? 'DNS inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
                                             @endif
                                         </td><td>{{ $record->subnet->name }}<small class="muted block">{{ $record->subnet->location?->path() ?? __('Sans emplacement') }}</small></td>
                                         <td><span @class(['badge', 'tone-violet' => $record->status === 'used', 'tone-amber' => $record->status === 'reserved', 'tone-cyan' => $record->status === 'available'])>{{ __(\App\Models\IpAddress::STATUSES[$record->status]) }}</span></td>
                                         <td><x-ping-status :address="$record"/></td>
                                         @break
                                     @case('vlans')
-                                        <td><code>{{ $record->number }}</code></td><td><span class="font-semibold">{{ $record->name }}</span>@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif<x-record-metadata :record="$record" :fields="$customFields"/></td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
+                                        <td><x-vlan-chip :number="$record->number" :color="$record->displayColor()"/></td><td><span class="font-semibold">{{ $record->name }}</span>@if ($record->description)<small class="muted block">{{ $record->description }}</small>@endif<x-record-metadata :record="$record" :fields="$customFields"/></td><td class="muted">{{ $record->location?->path() ?? __('Sans emplacement') }}</td>
                                         @break
                                     @case('locations')
                                         <td><span class="font-semibold">{{ $record->name }}</span>@if ($record->parent)<small class="muted block">{{ $record->parent->path() }}</small>@endif</td>
@@ -214,7 +223,25 @@
                         </x-field>
                         @break
                     @case('vlans')
-                        <x-field name="form.number" :label="__('Identifiant VLAN')" type="number" wire:model="form.number" min="1" max="4094" required/>
+                        <x-field name="form.number" :label="__('Identifiant VLAN')" type="number" wire:model.live.debounce.300ms="form.number" min="1" max="4094" required/>
+                        @php($automaticColor = \App\Support\VlanColor::automatic((int) ($form['number'] ?? 1)))
+                        <div class="field">
+                            <span>{{ __('Couleur') }}</span>
+                            <div class="color-picker" role="radiogroup" aria-label="{{ __('Couleur') }}">
+                                <label class="color-swatch color-swatch-auto" style="--tag: {{ $automaticColor }}" title="{{ __('Automatique') }}">
+                                    <input type="radio" wire:model="form.color" value="" class="sr-only">
+                                    <span aria-hidden="true">A</span><span class="sr-only">{{ __('Automatique') }}</span>
+                                </label>
+                                @foreach (\App\Support\VlanColor::PALETTE as $color)
+                                    <label class="color-swatch" style="--tag: {{ $color }}" title="{{ $color }}">
+                                        <input type="radio" wire:model="form.color" value="{{ $color }}" class="sr-only">
+                                        <span aria-hidden="true"></span><span class="sr-only">{{ $color }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <small>{{ __('La couleur automatique dépend du numéro du VLAN. Elle s’affiche sur la façade des switchs.') }}</small>
+                            @error('form.color')<small class="field-error" role="alert">{{ $message }}</small>@enderror
+                        </div>
                         @break
                 @endswitch
                 <x-field name="form.description" label="Description" wire:model="form.description" maxlength="255"/>

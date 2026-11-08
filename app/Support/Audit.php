@@ -8,6 +8,7 @@ use BackedEnum;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Writes entries to the audit trail. Every feature that changes data or
@@ -26,8 +27,12 @@ class Audit
     public static function record(string $action, ?Model $subject = null, array $changes = [], ?string $subjectType = null, ?string $subjectLabel = null, ?User $actor = null): AuditLog
     {
         $actor ??= auth()->user();
+        $token = $actor?->is(auth()->user()) && method_exists($actor, 'currentAccessToken') ? $actor->currentAccessToken() : null;
+        $token = $token instanceof PersonalAccessToken ? $token : null;
 
         return AuditLog::create([
+            'api_token_id' => $token?->id,
+            'api_token_name' => $token?->name,
             'user_id' => $actor?->getKey(),
             'actor' => $actor?->name,
             'action' => $action,

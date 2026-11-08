@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+
 class MacAddress
 {
     public static function normalize(string $input): ?string
@@ -12,6 +14,15 @@ class MacAddress
         }
 
         return implode(':', str_split(strtolower(str_replace([':', '-', '.'], '', $input)), 2));
+    }
+
+    /** Organisation that owns the MAC prefix, cached by prefix because the registries are large. */
+    public function vendor(string $mac): ?string
+    {
+        $hex = strtoupper(str_replace(':', '', $mac));
+        $name = Cache::rememberForever('mac-vendor:'.substr($hex, 0, 9), fn (): string => $this->lookup($mac)['organization'] ?? '');
+
+        return $name === '' ? null : $name;
     }
 
     /** @return array{kind: string, organization?: string, prefix?: string, registry?: string} */

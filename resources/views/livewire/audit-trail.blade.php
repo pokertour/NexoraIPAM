@@ -32,7 +32,7 @@
                     @foreach ($entries as $entry)
                         <tr wire:key="audit-{{ $entry->id }}">
                             <td class="whitespace-nowrap tabular-nums">{{ $entry->created_at->format(__('d/m/Y H:i')) }}<small class="muted block">{{ $entry->created_at->format('s') }}s</small></td>
-                            <td class="whitespace-nowrap">{{ $entry->actor ?? __('Système') }}@if ($entry->ip_address)<small class="muted block font-mono">{{ $entry->ip_address }}</small>@endif</td>
+                            <td class="whitespace-nowrap">{{ $entry->actor ?? __('Système') }}@if ($entry->api_token_name)<small class="token-chip"><x-icon name="key" class="size-3"/>{{ $entry->api_token_name }}</small>@endif @if ($entry->ip_address)<small class="muted block font-mono">{{ $entry->ip_address }}</small>@endif</td>
                             <td><x-audit-action :action="$entry->action"/></td>
                             <td>
                                 @if ($entry->subject_type)<small class="muted block">{{ __(\App\Models\AuditLog::SUBJECTS[$entry->subject_type] ?? $entry->subject_type) }}</small>@endif

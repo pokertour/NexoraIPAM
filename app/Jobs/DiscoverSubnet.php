@@ -3,10 +3,12 @@
 namespace App\Jobs;
 
 use App\Models\IpAddress;
+use App\Models\ScanRun;
 use App\Models\Subnet;
 use App\Support\AddressHistory;
 use App\Support\AlertMonitor;
 use App\Support\Audit;
+use App\Support\HostnameResolver;
 use App\Support\NetworkDiscovery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -23,21 +25,20 @@ class DiscoverSubnet implements ShouldQueue
 
     public bool $failOnTimeout = true;
 
-    public function __construct(public int $subnetId, public string $token) {}
+    public function __construct(public int $subnetId, public string $token, public ?int $runId = null) {}
 
     public function handle(NetworkDiscovery $discovery, AddressHistory $history, AlertMonitor $monitor): void
     {
         $started = Subnet::whereKey($this->subnetId)->where('scan_token', $this->token)
             ->where('scan_status', 'queued')
             ->update(['scan_status' => 'running']);
-        if (! $started) {
-            return;
-        }
-
-        $subnet = Subnet::find($this->subnetId);
+        $subnet = $started ? Subnet::find($this->subnetId) : null;
         if (! $subnet) {
+            ScanRun::finish($this->runId, 'cancelled', error: __('La découverte a été remplacée ou le réseau supprimé.'));
+
             return;
         }
+        ScanRun::markRunning($this->runId);
 
         $results = $discovery->probe($discovery->targets($subnet));
 
@@ -60,7 +61,7 @@ class DiscoverSubnet implements ShouldQueue
                     $responded++;
                     $record ??= $subnet->addresses()->make(['address' => $address, 'status' => 'used']);
                     $record->last_seen_at = $timestamp;
-                    $record->resolved_hostname = $result['hostname'];
+                    HostnameResolver::assign($record, $result['hostname'], $result['source'] ?? 'dns');
                     $record->mac_address = $result['mac'] ?? $record->mac_address;
                 }
                 if ($record) {
@@ -94,8 +95,11 @@ class DiscoverSubnet implements ShouldQueue
         }, attempts: 3);
 
         if (! $completed) {
+            ScanRun::finish($this->runId, 'cancelled', error: __('La découverte a été remplacée ou le réseau supprimé.'));
+
             return;
         }
+        ScanRun::finish($this->runId, 'completed', ['targets' => count($results), 'responded' => count(array_filter($results, fn (array $result): bool => (bool) $result['reachable']))]);
 
         $settings = AlertMonitor::settings();
         foreach ($events as [$action, $record, $details, $type]) {
@@ -112,5 +116,6 @@ class DiscoverSubnet implements ShouldQueue
     {
         Subnet::whereKey($this->subnetId)->where('scan_token', $this->token)
             ->whereIn('scan_status', ['queued', 'running'])->update(['scan_status' => 'failed']);
+        ScanRun::finish($this->runId, 'failed', error: $exception?->getMessage() ?: __('La découverte a échoué ou dépassé le délai.'));
     }
 }

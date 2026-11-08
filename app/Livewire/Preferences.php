@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\Setting;
 use App\Support\AlertMonitor;
 use App\Support\Audit;
+use App\Support\DhcpLeases;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -25,6 +27,8 @@ class Preferences extends Component
 
     public array $alerts = [];
 
+    public array $dhcp = [];
+
     public function mount(): void
     {
         Gate::authorize('administer');
@@ -32,12 +36,14 @@ class Preferences extends Component
         $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''], 'password');
         $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => ''], 'secret');
         $this->alerts = AlertMonitor::settings();
+        $this->dhcp = $this->display('dhcp', ['kea_url' => '', 'kea_username' => '', 'kea_password' => '', 'leases_file' => '', 'interval' => 15], 'kea_password');
         $this->smtp = $this->display('smtp', ['scheme' => 'smtps', 'host' => '', 'port' => 465, 'username' => '', 'password' => '', 'from' => ''], 'password');
     }
 
     public function save(string $section): void
     {
         Gate::authorize('administer');
+        $this->resetValidation();
 
         $required = Rule::requiredIf(fn (): bool => (bool) ($this->{$section}['enabled'] ?? false));
         $rules = match ($section) {
@@ -76,12 +82,19 @@ class Preferences extends Component
                 'conflicts' => ['required', 'boolean'],
                 'host_down' => ['required', 'boolean'],
             ],
+            'dhcp' => [
+                'kea_url' => ['nullable', 'url:http,https', 'max:255', Rule::requiredIf(fn (): bool => (bool) ($this->dhcp['enabled'] ?? false) && blank($this->dhcp['leases_file'] ?? null))],
+                'kea_username' => ['nullable', 'string', 'max:255'],
+                'kea_password' => ['nullable', 'string', 'max:1024'],
+                'leases_file' => ['nullable', 'string', 'max:255', 'regex:~^/[^\0]*$~'],
+                'interval' => ['required', 'integer', 'between:1,1440'],
+            ],
             default => abort(404),
         };
 
         $input = $this->{$section};
         $stored = Setting::read($section);
-        $secret = $section === 'oidc' ? 'secret' : 'password';
+        $secret = ['oidc' => 'secret', 'dhcp' => 'kea_password'][$section] ?? 'password';
         if (array_key_exists($secret, $rules)) {
             if (blank($input[$secret] ?? null)) {
                 $input[$secret] = $stored[$secret] ?? null;
@@ -103,7 +116,7 @@ class Preferences extends Component
         $changes = [];
         foreach ($data as $key => $value) {
             if (($previous[$key] ?? null) !== $value) {
-                $secret = in_array($key, ['password', 'secret'], true);
+                $secret = in_array($key, ['password', 'secret', 'kea_password'], true);
                 $changes[$key] = $secret ? [isset($previous[$key]) ? Audit::MASK : null, Audit::MASK] : [$previous[$key] ?? null, $value];
             }
         }
@@ -138,6 +151,19 @@ class Preferences extends Component
         $this->dispatch('nexora-toast', tone: 'success', message: __('Message de test envoyé à :email.', ['email' => auth()->user()->email]));
     }
 
+    public function importDhcp(): void
+    {
+        Gate::authorize('administer');
+        if (! DhcpLeases::settings()['enabled']) {
+            $this->addError('dhcp.enabled', __('Activez et enregistrez l’import DHCP avant de le lancer.'));
+
+            return;
+        }
+
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Import DHCP mis en file d’attente.'));
+        Artisan::call('nexora:import-dhcp', ['--now' => true]);
+    }
+
     private function display(string $key, array $defaults, string $secret): array
     {
         return [$secret => ''] + Setting::read($key) + ['enabled' => false] + $defaults;
@@ -147,6 +173,6 @@ class Preferences extends Component
     {
         Gate::authorize('administer');
 
-        return view('livewire.preferences')->layout('components.layouts.app', ['title' => __('Paramètres')]);
+        return view('livewire.preferences', ['dhcpState' => Setting::read('dhcp_state')])->layout('components.layouts.app', ['title' => __('Paramètres')]);
     }
 }

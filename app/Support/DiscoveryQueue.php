@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Jobs\DiscoverSubnet;
+use App\Models\ScanRun;
 use App\Models\Subnet;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,8 @@ class DiscoveryQueue
             $token = (string) Str::uuid();
             $subnet->forceFill(['scan_token' => $token, 'scan_status' => 'queued', 'scan_requested_at' => now()])->save();
             Audit::record('discovery.queued', $subnet);
-            Bus::dispatch((new DiscoverSubnet($subnet->id, $token))->onConnection('database')->onQueue('discovery')->beforeCommit());
+            $run = ScanRun::queue('discovery', $subnet);
+            Bus::dispatch((new DiscoverSubnet($subnet->id, $token, $run->id))->onConnection('database')->onQueue('discovery')->beforeCommit());
 
             return null;
         }, attempts: 3);

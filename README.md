@@ -24,6 +24,7 @@
   <a href="#with-docker-compose">Compose</a> ·
   <a href="#local-development">Development</a> ·
   <a href="#configuration">Configuration</a> ·
+  <a href="#rest-api">API</a> ·
   <a href="#license">License</a>
 </p>
 
@@ -48,7 +49,9 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 
 ### 🔌 Switches and routers over SNMP
 - SNMP v2c and v3, with credentials encrypted at rest.
-- A **live front panel** of each switch. For every port: link state, speed, native and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- **VLAN colours**: every VLAN gets a stable colour, or one you choose, shown on ports and lists. Click a VLAN to highlight its ports.
+- **Racks and topology**: place devices and passive items in racks unit by unit. Links between switches are drawn automatically from LLDP, or from the MAC addresses each switch learns from the other.
 - The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.
 - Uses standard MIBs (IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB, IP-MIB), so it works across vendors.
 
@@ -57,6 +60,9 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 ### 📡 Discovery, history and alerts
 - **ICMP discovery** with reverse DNS and ARP/NDP MAC collection, on demand or on a schedule.
 - **Address history**: every MAC address and host name seen on an IP, plus the switch port it is plugged into.
+- **Host names without DNS**: when reverse DNS has nothing, names come from DHCP leases (Kea API or ISC `dhcpd.leases`), NetBIOS, mDNS, LLDP and SNMP. A less reliable source never overwrites a better one.
+- **Interactive dashboard**: every figure opens the matching filtered list. It also shows hosts first seen this week with their MAC vendor and switch port, device health, the busiest ports, recent MAC changes and the latest changes.
+- **Scan history**: every ICMP discovery, SNMP poll and DHCP import with its trigger (manual, with its author, or scheduled), status, duration and result, kept for 90 days.
 - **Alerts** for subnets over a usage threshold, unknown hosts, available addresses that respond, MAC changes, hosts that go silent and unreachable devices. Alerts can be acknowledged and sent by e-mail.
 
 ### 🔍 Global search
@@ -65,6 +71,9 @@ Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or <kbd>/</kbd>) anywhere to open the sear
 - A MAC address, in any format, shows the switch port where it was learned.
 
 <p align="center"><img src=".github/assets/search-dark.png" alt="Global search" width="100%"></p>
+
+### 🔗 REST API
+Automate the inventory with a versioned JSON API and personal tokens: reserve the next free IP from a deployment, sync subnets from Terraform, query a MAC address from a script. See [REST API](#rest-api).
 
 ### 🛡️ Security and accountability
 - **Roles**: administrator, operator and viewer.
@@ -167,6 +176,7 @@ The worker host needs a few system tools:
 | Feature | Tools |
 | --- | --- |
 | ICMP discovery and reverse DNS | `ping` (iputils) and `getent` |
+| Host names over NetBIOS and mDNS | `nmblookup` (`samba-client` / `samba-common-bin`) and `dig` (`bind-tools` / `dnsutils`) |
 | MAC addresses from ARP/NDP | `iproute2` |
 | SNMP | `snmp` on Debian/Ubuntu, `net-snmp-tools` on Alpine |
 | MAC vendor lookup in **Tools** | `ieee-data`, or the IEEE CSV files in `/usr/share/ieee-data` |
@@ -183,15 +193,58 @@ Administrators configure everything from **Settings** in the application. Authen
 | Operator | Read and edit the inventory, acknowledge alerts |
 | Viewer | Read the inventory, devices and alerts |
 
+- **Users**: the list shows every account with a Local, LDAP or OpenID Connect badge and its last sign-in, and filters by source. Directory and SSO accounts appear after their first sign-in.
 - **Local accounts**: create them in **Users** and share the temporary password. The installation account keeps local access as a fallback when local sign-in is disabled.
 - **LDAP**: enter the LDAPS URL, base DN, allowed AD group DN and service account. Direct and nested members of the group sign in with their `mail` attribute and get a viewer account on first sign-in. Install the directory CA in the server trust store if needed.
 - **OpenID Connect**: register a confidential client using HTTPS discovery, the authorization code flow, PKCE S256 and RSA signatures. Declare the callback URL shown in **Settings** (`/auth/openid/callback`) at your provider. Authorized users get a viewer account on first sign-in.
 - **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
 - **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
-- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll.
+- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
+- **DHCP leases**: enter the Kea control agent URL and credentials, or the path of an ISC `dhcpd.leases` file readable by the worker, and an import interval. Active leases name the addresses they cover and add unknown ones that fall in an inventoried subnet.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
 SQLite is the default database. MariaDB is supported and tested in CI, and the Compose file uses it. Configure the connection through the standard Laravel `DB_*` variables.
+
+## REST API
+
+The API lives under `/api/v1` and returns JSON. Only administrators create tokens, in **Administration → API tokens**, for the account the token will act as; a dedicated account per automation tool is recommended. A token is shown once, is either read-only or read-write (writes also require the operator or administrator role of its account), and can expire. The same page revokes tokens and shows their history: token creation and revocation, and every change made with each token, which the audit log also labels with the token name. Send the token as a bearer token:
+
+```sh
+curl -H "Authorization: Bearer $NEXORA_TOKEN" https://ipam.example.com/api/v1/me
+```
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /me` | Current account and token abilities. |
+| `GET /search?q=` | Global search, as with <kbd>Ctrl</kbd> + <kbd>K</kbd>: subnets containing an IP, switch port of a MAC, and so on. |
+| `GET /subnets` | Subnets. Filters: `search`, `location`, `tag`, `per_page`. |
+| `POST /subnets`, `GET/PATCH/DELETE /subnets/{id}` | Manage a subnet: `name`, `cidr`, `location_id`, `vlan_id`, `gateway`, `dns_servers`, `domain`, `dhcp_start`, `dhcp_end`, `tags`, `custom_fields`. |
+| `GET /subnets/{id}/addresses` | Addresses of a subnet. |
+| `POST /subnets/{id}/next-free` | Reserve the next free address, with optional `hostname`, `description`, `status`, `tags` and `custom_fields`. |
+| `GET /addresses` | Addresses. Filters: `subnet`, `status`, `address`, `mac`, `search`. |
+| `POST /addresses`, `GET/PATCH/DELETE /addresses/{id}` | Manage an address: `subnet_id`, `address`, `hostname`, `status`, `description`, `tags`, `custom_fields`. |
+| `GET /vlans`, `POST /vlans`, `GET/PATCH/DELETE /vlans/{id}` | Manage VLANs: `number`, `name`, `location_id`, `color`, `description`. |
+| `GET /locations`, `GET /locations/{id}` | Locations, read-only. |
+| `GET /devices`, `GET /devices/{id}` | SNMP devices, read-only. A single device includes its ports, VLANs, throughput, MAC addresses and LLDP neighbours. |
+
+Reserve an address for a new virtual machine:
+
+```sh
+curl -X POST -H "Authorization: Bearer $NEXORA_TOKEN" -H "Content-Type: application/json" \
+  -d '{"hostname": "vm-web-01", "tags": ["production"]}' \
+  https://ipam.example.com/api/v1/subnets/12/next-free
+```
+
+The API applies the same rules as the interface: CIDR and addresses are normalised, the gateway and DHCP range must belong to the subnet, a subnet with addresses cannot be deleted, and every change is written to the audit log with the token owner as author.
+
+| Status | Meaning |
+| --- | --- |
+| `401` | Missing or invalid token. |
+| `403` | Token without the needed ability, role not allowed to write, or account disabled. |
+| `409` | Conflict: no free address left, or a subnet that still holds addresses. |
+| `422` | Validation error, with the details in `errors`. |
+
+Lists are paginated with `data`, `links` and `meta`. Error messages follow the `Accept-Language` header (English or French). Each token is limited to 120 requests per minute.
 
 ## Releases
 

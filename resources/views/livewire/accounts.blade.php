@@ -4,17 +4,34 @@
         <x-button icon="plus" wire:click="open">{{ __('Ajouter un compte interne') }}</x-button>
     </div>
     <section class="card">
+        <div class="table-toolbar">
+            <label class="search">
+                <x-icon name="search" class="size-4"/>
+                <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher…') }}" maxlength="100" aria-label="{{ __('Rechercher un utilisateur') }}">
+            </label>
+            <nav class="segmented" aria-label="{{ __('Source du compte') }}">
+                <button type="button" @class(['active' => $source === '']) wire:click="$set('source', '')" aria-current="{{ $source === '' ? 'true' : 'false' }}">
+                    {{ __('Tous') }} <span class="count-pill">{{ $counts->sum() }}</span>
+                </button>
+                @foreach (\App\Livewire\Accounts::PROVIDERS as $value => $label)
+                    <button type="button" @class(['active' => $source === $value]) wire:click="$set('source', '{{ $value }}')" aria-current="{{ $source === $value ? 'true' : 'false' }}">
+                        {{ __($label) }} <span class="count-pill">{{ $counts[$value] ?? 0 }}</span>
+                    </button>
+                @endforeach
+            </nav>
+        </div>
         @if ($accounts->isEmpty())
             <x-empty-state icon="accounts" :title="__('Aucun compte')" :text="__('Les comptes LDAP et OpenID Connect apparaissent après leur première connexion.')"/>
         @else
             <div class="table-scroll"><table>
-                <thead><tr><th>{{ __('Compte') }}</th><th>{{ __('Rôle') }}</th><th>{{ __('Connexion') }}</th><th>{{ __('Accès') }}</th><th class="text-right">{{ __('Actions') }}</th></tr></thead>
+                <thead><tr><th>{{ __('Compte') }}</th><th>{{ __('Rôle') }}</th><th>{{ __('Connexion') }}</th><th>{{ __('Dernière connexion') }}</th><th>{{ __('Accès') }}</th><th class="text-right">{{ __('Actions') }}</th></tr></thead>
                 <tbody>
                     @foreach ($accounts as $account)
                         <tr wire:key="account-{{ $account->id }}">
                             <td><span class="font-semibold">{{ $account->name }}</span><small class="muted block">{{ $account->email }}</small></td>
                             <td>{{ __(\App\Livewire\Accounts::ROLES[$account->role]) }}</td>
-                            <td>{{ ['local' => __('Interne'), 'ldap' => 'LDAP', 'oidc' => 'OpenID Connect'][$account->provider] }}</td>
+                            <td><span @class(['badge', 'tone-blue' => $account->provider === 'ldap', 'tone-violet' => $account->provider === 'oidc'])>{{ __(\App\Livewire\Accounts::PROVIDERS[$account->provider] ?? $account->provider) }}</span></td>
+                            <td>@if ($account->last_login_at)<time datetime="{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->toIso8601String() }}" title="{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->isoFormat('LLL') }}">{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->diffForHumans() }}</time>@else<span class="muted">{{ __('Jamais') }}</span>@endif</td>
                             <td><span @class(['badge', 'tone-cyan' => $account->active, 'tone-amber' => ! $account->active])>{{ $account->active ? __('Actif') : __('Désactivé') }}</span></td>
                             <td class="text-right">
                                 @if ($account->email !== \App\Console\Commands\InstallAdmin::EMAIL || $account->id === auth()->id())

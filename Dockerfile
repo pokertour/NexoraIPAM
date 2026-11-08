@@ -63,7 +63,7 @@ LABEL org.opencontainers.image.title="NexoraIPAM" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.licenses="LicenseRef-NexoraIPAM-Source-Available-1.0"
 
-RUN apk add --no-cache supervisor iproute2-minimal iputils-ping net-snmp-tools \
+RUN apk add --no-cache supervisor iproute2-minimal iputils-ping net-snmp-tools samba-client bind-tools \
     && setcap -r /usr/local/bin/frankenphp \
     && mkdir -p /var/lib/nexora /config/caddy /data/caddy \
     && touch /var/lib/nexora/database.sqlite \

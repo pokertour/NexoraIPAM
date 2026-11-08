@@ -85,6 +85,12 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame([10, 20, 30], $uplink->tagged_vlans);
         $this->assertSame(['core-sw01.example.test', 'TenGigabitEthernet1/0/48'], [$uplink->neighbor_name, $uplink->neighbor_port]);
         $this->assertSame([10, 20], $device->ports()->where('name', 'TenGigabitEthernet1/1/2')->sole()->tagged_vlans);
+        $this->assertSame([1], $uplink->untagged_vlans);
+        $this->assertSame([10], $access->untagged_vlans);
+
+        $this->assertSame(['rj45', 'sfp', 'sfp'], [$access->media, $device->ports()->where('name', 'GigabitEthernet1/0/24')->value('media'), $uplink->media]);
+        $this->assertNull($device->ports()->where('name', 'Vlan10')->value('media'));
+        $this->assertSame('00:1b:54:00:03:e9', $access->mac_address);
 
         $server = $device->ports()->where('name', 'GigabitEthernet1/0/13')->sole();
         $this->assertSame(3, $server->mac_count);
@@ -98,6 +104,33 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame(2, Alert::where('type', 'unknown_host')->count());
         $this->assertSame(['ports' => [null, 28], 'up' => [null, 18], 'macs' => [null, 8], 'arp' => [null, 4], 'addresses' => [null, 3]],
             AuditLog::where('action', 'device.polled')->sole()->changes);
+    }
+
+    public function test_mikrotik_vlans_come_from_the_current_vlan_table(): void
+    {
+        $this->agent->asMikrotik();
+        $device = $this->poll(NetworkDevice::factory()->create());
+        $ports = $device->ports()->get()->keyBy('name');
+
+        $this->assertSame('completed', $device->poll_status);
+        $this->assertSame(['rj45', 'sfp', 'sfp', 'qsfp'], [$ports['ether1']->media, $ports['sfp-sfpplus1']->media, $ports['sfp-sfpplus2']->media, $ports['qsfpplus1-1']->media]);
+        $this->assertFalse($ports['bridge']->physical);
+        $this->assertSame([10, [10], null], [$ports['ether1']->pvid, $ports['ether1']->untagged_vlans, $ports['ether1']->tagged_vlans]);
+        $this->assertSame([10, 20], $ports['sfp-sfpplus1']->tagged_vlans);
+        $this->assertSame([20, [20], null], [$ports['sfp-sfpplus2']->pvid, $ports['sfp-sfpplus2']->untagged_vlans, $ports['sfp-sfpplus2']->tagged_vlans]);
+        $this->assertSame([10, 20], $ports['qsfpplus1-1']->tagged_vlans);
+    }
+
+    public function test_the_snmp_dump_prints_the_tables_without_credentials(): void
+    {
+        $this->agent->asMikrotik();
+        NetworkDevice::factory()->create(['name' => 'crs-core', 'credentials' => ['community' => 'top-secret']]);
+
+        $this->artisan('nexora:snmp-dump', ['device' => 'crs-core'])->assertSuccessful()
+            ->expectsOutputToContain('## vlan-current')
+            ->expectsOutputToContain('1.3.6.1.2.1.31.1.1.1.1.2 = sfp-sfpplus1')
+            ->doesntExpectOutputToContain('top-secret');
+        $this->artisan('nexora:snmp-dump', ['device' => 'absent'])->assertFailed();
     }
 
     public function test_a_second_poll_computes_the_throughput_of_each_port(): void
