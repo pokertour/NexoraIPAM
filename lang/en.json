@@ -555,5 +555,9 @@
     "Aucun résultat pour « :query ».": "No results for “:query”.",
     "Ports de switch": "Switch ports",
     "VLAN non taggés": "Untagged VLANs",
-    "Connecteur": "Connector"
+    "Connecteur": "Connector",
+    "Automatique": "Automatic",
+    "La couleur automatique dépend du numéro du VLAN. Elle s’affiche sur la façade des switchs.": "The automatic colour depends on the VLAN number. It is shown on switch front panels.",
+    "VLAN présents sur l’équipement": "VLANs on this device",
+    "Mettre en évidence les ports du VLAN :vlan": "Highlight the ports of VLAN :vlan"
 }

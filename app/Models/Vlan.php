@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\HasMetadata;
+use App\Support\VlanColor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ class Vlan extends Model
 {
     use Auditable, HasFactory, HasMetadata;
 
-    protected $fillable = ['number', 'name', 'description', 'location_id'];
+    protected $fillable = ['number', 'name', 'description', 'location_id', 'color'];
 
     protected static function booted(): void
     {
@@ -36,6 +37,11 @@ class Vlan extends Model
     public function auditIgnored(): array
     {
         return ['scope_id'];
+    }
+
+    public function displayColor(): string
+    {
+        return VlanColor::for((int) $this->number, $this->color);
     }
 
     public function auditLabel(): string

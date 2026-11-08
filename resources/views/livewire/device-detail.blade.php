@@ -24,7 +24,7 @@
         <div class="card stat tone-card-amber"><div class="stat-top"><span class="stat-icon tone-amber"><x-icon name="history" class="size-[18px]"/></span></div><div><p class="stat-value text-[1.35rem]">{{ $device->sys_uptime !== null ? \Carbon\CarbonInterval::seconds(intdiv($device->sys_uptime, 100))->cascade()->forHumans(['short' => true, 'parts' => 2]) : '—' }}</p><p class="stat-label mt-1.5">{{ __('Disponibilité') }}@if ($device->polled_at) · {{ $device->polled_at->diffForHumans() }}@endif</p></div></div>
     </div>
 
-    <section class="card mb-4">
+    <section class="card mb-4" x-data="{ vlan: null }">
         <div class="section-heading">
             <div>
                 <h2>{{ $device->sys_name ?: $device->name }}</h2>
@@ -37,6 +37,14 @@
                 <span><i data-state="down" data-trunk></i>{{ __('Trunk') }}</span>
             </div>
         </div>
+        @if ($vlanColors !== [])
+            <div class="vlan-legend" role="group" aria-label="{{ __('VLAN présents sur l’équipement') }}">
+                <span class="muted text-xs">{{ __('VLAN') }}</span>
+                @foreach ($vlanColors as $number => $color)
+                    <button type="button" class="vlan-chip" style="--vlan: {{ $color }}" x-on:click="vlan = vlan === {{ $number }} ? null : {{ $number }}" :aria-pressed="vlan === {{ $number }}" title="{{ __('Mettre en évidence les ports du VLAN :vlan', ['vlan' => $number]) }}">{{ $number }}@if ($name = $vlans->get($number)?->first()?->name)<span class="vlan-chip-name">{{ $name }}</span>@endif</button>
+                @endforeach
+            </div>
+        @endif
         @if ($groups->isEmpty())
             <x-empty-state icon="switch" :title="__('Aucun port physique')" :text="__('Les ports apparaîtront après la première interrogation réussie.')"/>
         @else
@@ -46,7 +54,7 @@
                     @foreach ($groups as $prefix => $group)
                         <div class="faceplate-group" @if ($group->count() > 1) data-rows="2" @endif>
                             @foreach ($group as $item)
-                                <x-switch-port :port="$item" :selected="$port?->is($item)"/>
+                                <x-switch-port :port="$item" :selected="$port?->is($item)" :colors="$vlanColors"/>
                             @endforeach
                         </div>
                     @endforeach
@@ -68,11 +76,11 @@
                 <dl class="port-facts">
                     <div><dt>{{ __('État') }}</dt><dd><span @class(['badge', 'tone-cyan' => $port->state() === 'up', 'tone-amber' => $port->state() === 'disabled', 'tone-blue' => $port->state() === 'down'])>{{ ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$port->state()] }}</span></dd></div>
                     <div><dt>{{ __('Vitesse') }}</dt><dd>{{ $port->speedLabel() ?? '—' }}@if ($port->media) · {{ \App\Support\PortMedia::LABELS[$port->media] }}@endif</dd></div>
-                    <div><dt>{{ __('VLAN natif') }}</dt><dd>@if ($port->pvid)<code>{{ $port->pvid }}</code>@if ($name = $vlans->get($port->pvid)?->first()?->name) · {{ $name }}@endif @else — @endif</dd></div>
+                    <div><dt>{{ __('VLAN natif') }}</dt><dd>@if ($port->pvid)<x-vlan-chip :number="$port->pvid" :color="$vlanColors[$port->pvid] ?? null" :name="$vlans->get($port->pvid)?->first()?->name"/>@else — @endif</dd></div>
                     @if ($port->untagged_vlans && $port->untagged_vlans !== [$port->pvid])
-                        <div><dt>{{ __('VLAN non taggés') }}</dt><dd><span class="vlan-list">@foreach ($port->untagged_vlans as $vlan)<code title="{{ $vlans->get($vlan)?->first()?->name }}">{{ $vlan }}</code>@endforeach</span></dd></div>
+                        <div><dt>{{ __('VLAN non taggés') }}</dt><dd><span class="vlan-list">@foreach ($port->untagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span></dd></div>
                     @endif
-                    <div><dt>{{ __('VLAN taggés') }}</dt><dd>@if ($port->isTrunk())<span class="vlan-list">@foreach ($port->tagged_vlans as $vlan)<code title="{{ $vlans->get($vlan)?->first()?->name }}">{{ $vlan }}</code>@endforeach</span>@else — @endif</dd></div>
+                    <div><dt>{{ __('VLAN taggés') }}</dt><dd>@if ($port->isTrunk())<span class="vlan-list">@foreach ($port->tagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span>@else — @endif</dd></div>
                     <div><dt>{{ __('Voisin LLDP') }}</dt><dd>@if ($port->neighbor_name)<span class="font-semibold">{{ $port->neighbor_name }}</span>@if ($port->neighbor_port) · <code>{{ $port->neighbor_port }}</code>@endif @else — @endif</dd></div>
                     <div><dt>{{ __('Erreurs entrée / sortie') }}</dt><dd class="tabular-nums">{{ number_format($port->in_errors ?? 0, 0, ',', ' ') }} / {{ number_format($port->out_errors ?? 0, 0, ',', ' ') }}</dd></div>
                 </dl>
@@ -139,7 +147,7 @@
                             <td><span class="port-dot" data-state="{{ $row->state() }}"></span> {{ ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$row->state()] }}</td>
                             <td class="whitespace-nowrap">{{ $row->speedLabel() ?? '—' }}</td>
                             <td>{{ $row->media ? \App\Support\PortMedia::LABELS[$row->media] : '—' }}</td>
-                            <td>@if ($row->pvid)<code>{{ $row->pvid }}</code>@endif @if ($row->isTrunk())<span class="badge tone-violet ml-1" title="{{ implode(', ', $row->tagged_vlans) }}">{{ __('Trunk') }} · {{ count($row->tagged_vlans) }}</span>@endif @if (! $row->pvid && ! $row->isTrunk())—@endif</td>
+                            <td>@if ($row->pvid)<x-vlan-chip :number="$row->pvid" :color="$vlanColors[$row->pvid] ?? null"/>@endif @if ($row->isTrunk())<span class="badge tone-violet ml-1" title="{{ implode(', ', $row->tagged_vlans) }}">{{ __('Trunk') }} · {{ count($row->tagged_vlans) }}</span>@endif @if (! $row->pvid && ! $row->isTrunk())—@endif</td>
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->in_bps) }}</td>
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->out_bps) }}</td>
                             <td class="tabular-nums">{{ $row->mac_count ?: '—' }}</td>

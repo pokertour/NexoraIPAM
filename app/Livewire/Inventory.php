@@ -16,6 +16,7 @@ use App\Support\DiscoveryQueue;
 use App\Support\IpNetwork;
 use App\Support\MacAddress;
 use App\Support\SubnetSpace;
+use App\Support\VlanColor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -199,7 +200,7 @@ class Inventory extends Component
         $this->recordId = $id;
         $this->form = $id === null ? [
             'name' => '', 'cidr' => '', 'vlan_id' => null, 'description' => '', 'number' => '',
-            'discovery_interval' => null, 'location_id' => null, 'gateway' => '', 'dns_servers' => '', 'domain' => '', 'dhcp_start' => '', 'dhcp_end' => '', 'kind' => 'agency', 'parent_id' => null, 'subnet_id' => null, 'address' => '', 'hostname' => '', 'status' => 'used',
+            'discovery_interval' => null, 'location_id' => null, 'color' => '', 'gateway' => '', 'dns_servers' => '', 'domain' => '', 'dhcp_start' => '', 'dhcp_end' => '', 'kind' => 'agency', 'parent_id' => null, 'subnet_id' => null, 'address' => '', 'hostname' => '', 'status' => 'used',
         ] : $this->query()->findOrFail($id)->getAttributes();
         unset($this->form['custom_values']);
         if ($this->hasMetadata()) {
@@ -314,8 +315,10 @@ class Inventory extends Component
                     'status' => ['required', Rule::in(array_keys(IpAddress::STATUSES))],
                 ];
             } elseif ($record instanceof Vlan) {
+                $this->form['color'] = filled($this->form['color'] ?? null) ? $this->form['color'] : null;
                 $rules += [
                     'number' => ['required', 'integer', 'between:1,4094', Rule::unique('vlans', 'number')->where('scope_id', $this->scopeId())->ignore($record)],
+                    'color' => ['nullable', Rule::in(VlanColor::PALETTE)],
                     'name' => ['required', 'string', 'max:100'],
                 ];
             } else {

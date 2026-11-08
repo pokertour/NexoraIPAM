@@ -8,6 +8,7 @@ use App\Models\NetworkDevice;
 use App\Models\Vlan;
 use App\Support\DevicePollQueue;
 use App\Support\MacAddress;
+use App\Support\VlanColor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -79,7 +80,8 @@ class DeviceDetail extends Component
 
         $selected = ctype_digit($this->selected) ? $ports->firstWhere('if_index', (int) $this->selected) : null;
         $macs = $selected ? $selected->macs()->orderBy('vlan')->orderBy('mac_address')->get() : collect();
-        $vlanNumbers = $ports->pluck('pvid')->merge($ports->pluck('tagged_vlans')->flatten())->filter()->unique()->values();
+        $vlanNumbers = $ports->pluck('pvid')->merge($ports->pluck('tagged_vlans')->flatten())->merge($ports->pluck('untagged_vlans')->flatten())
+            ->filter()->unique()->sort()->values();
 
         return view('livewire.device-detail', [
             'device' => $device,
@@ -89,6 +91,7 @@ class DeviceDetail extends Component
             'macs' => $macs,
             'inventory' => $macs->isEmpty() ? collect() : IpAddress::with('subnet')->whereIn('mac_address', $macs->pluck('mac_address'))->get()->groupBy('mac_address'),
             'vlans' => Vlan::whereIn('number', $vlanNumbers)->get()->groupBy('number'),
+            'vlanColors' => VlanColor::map($vlanNumbers),
             'summary' => [
                 'physical' => $ports->where('physical', true)->count(),
                 'up' => $ports->where('physical', true)->where('oper_status', 1)->count(),
