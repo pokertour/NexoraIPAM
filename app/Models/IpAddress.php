@@ -66,7 +66,7 @@ class IpAddress extends Model
     /** @return list<string> */
     public function auditIgnored(): array
     {
-        return ['address_key', 'last_probe_at', 'last_seen_at', 'last_probe_responded'];
+        return ['address_key', 'last_probe_at', 'last_seen_at', 'last_probe_responded', 'hostname_source'];
     }
 
     public function auditLabel(): string

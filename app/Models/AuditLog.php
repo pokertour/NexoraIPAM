@@ -26,6 +26,7 @@ class AuditLog extends Model
         'discovery.completed' => 'Découverte terminée',
         'device.queued' => 'Interrogation SNMP demandée',
         'device.polled' => 'Interrogation SNMP',
+        'dhcp.imported' => 'Import DHCP',
         'alert.opened' => 'Alerte ouverte',
         'alert.acknowledged' => 'Alerte acquittée',
     ];

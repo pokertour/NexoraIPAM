@@ -7,6 +7,7 @@ use App\Models\Subnet;
 use App\Support\AddressHistory;
 use App\Support\AlertMonitor;
 use App\Support\Audit;
+use App\Support\HostnameResolver;
 use App\Support\NetworkDiscovery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -60,7 +61,7 @@ class DiscoverSubnet implements ShouldQueue
                     $responded++;
                     $record ??= $subnet->addresses()->make(['address' => $address, 'status' => 'used']);
                     $record->last_seen_at = $timestamp;
-                    $record->resolved_hostname = $result['hostname'];
+                    HostnameResolver::assign($record, $result['hostname'], $result['source'] ?? 'dns');
                     $record->mac_address = $result['mac'] ?? $record->mac_address;
                 }
                 if ($record) {

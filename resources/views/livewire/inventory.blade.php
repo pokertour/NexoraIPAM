@@ -119,7 +119,7 @@
                                             <x-record-metadata :record="$record" :fields="$customFields"/>
                                         </td><td>{{ $record->hostname ?: ($record->resolved_hostname ?: '—') }}
                                             @if ($record->resolved_hostname && $record->hostname !== $record->resolved_hostname)
-                                                <small class="muted block">{{ __('Résolution inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
+                                                <small class="muted block">{{ __(\App\Support\HostnameResolver::SOURCES[$record->hostname_source ?? 'dns'] ?? 'DNS inverse') }} @if ($record->hostname) · {{ $record->resolved_hostname }}@endif</small>
                                             @endif
                                         </td><td>{{ $record->subnet->name }}<small class="muted block">{{ $record->subnet->location?->path() ?? __('Sans emplacement') }}</small></td>
                                         <td><span @class(['badge', 'tone-violet' => $record->status === 'used', 'tone-amber' => $record->status === 'reserved', 'tone-cyan' => $record->status === 'available'])>{{ __(\App\Models\IpAddress::STATUSES[$record->status]) }}</span></td>

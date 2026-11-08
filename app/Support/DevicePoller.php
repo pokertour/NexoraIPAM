@@ -76,6 +76,9 @@ class DevicePoller
 
     private const LLDP_LOC_PORT_DESC = '1.0.8802.1.1.2.1.3.7.1.4';
 
+    /** Management addresses of LLDP neighbours, indexed by neighbour then address. */
+    private const LLDP_REM_MAN_ADDR = '1.0.8802.1.1.2.1.4.2.1.3';
+
     private const ARP = '1.3.6.1.2.1.4.22.1.2';
 
     /** Ethernet, fast Ethernet, ISO 88023 and gigabit Ethernet interface types. */
@@ -186,6 +189,7 @@ class DevicePoller
         }, attempts: 3);
 
         $summary['addresses'] = $this->recordArp($device, $arp, $now);
+        $this->nameAddresses($device, $system[self::SYSTEM['name']] ?? null);
 
         return $summary;
     }
@@ -307,6 +311,37 @@ class DevicePoller
      * @param  array<int, int>  $bridgeToIf
      * @return array<int, array{name: ?string, port: ?string}>
      */
+    private function nameAddresses(NetworkDevice $device, ?string $systemName): void
+    {
+        $names = [];
+        if ($systemName !== null && ($address = IpNetwork::address($device->host))) {
+            $names[$address] = [$systemName, 'snmp'];
+        }
+
+        $neighbours = $this->snmp->walk($device, self::LLDP_REM_SYS_NAME);
+        if ($neighbours !== []) {
+            foreach ($this->snmp->walk($device, self::LLDP_REM_MAN_ADDR) as $suffix => $value) {
+                $parts = explode('.', (string) $suffix);
+                // timeMark.localPort.remIndex.addressSubtype.length.address…; subtype 1 is IPv4.
+                if (count($parts) === 9 && $parts[3] === '1' && $parts[4] === '4') {
+                    $address = IpNetwork::address(implode('.', array_slice($parts, 5)));
+                    $name = $neighbours[implode('.', array_slice($parts, 0, 3))] ?? null;
+                    if ($address && $name) {
+                        $names[$address] ??= [$name, 'lldp'];
+                    }
+                }
+            }
+        }
+
+        foreach ($names as $address => [$name, $source]) {
+            IpAddress::where('address', $address)->get()->each(function (IpAddress $record) use ($name, $source): void {
+                if (HostnameResolver::assign($record, $name, $source)) {
+                    $record->save();
+                }
+            });
+        }
+    }
+
     private function neighbors(NetworkDevice $device, array $interfaces, array $bridgeToIf): array
     {
         $names = $this->snmp->walk($device, self::LLDP_REM_SYS_NAME);

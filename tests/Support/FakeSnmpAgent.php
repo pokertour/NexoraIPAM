@@ -84,6 +84,7 @@ class FakeSnmpAgent
         $this->set('1.0.8802.1.1.2.1.4.1.1.7.0.25.1', 'STRING', 'Te1/0/48');
         $this->set('1.0.8802.1.1.2.1.4.1.1.8.0.25.1', 'STRING', 'TenGigabitEthernet1/0/48');
         $this->set('1.0.8802.1.1.2.1.4.1.1.9.0.25.1', 'STRING', 'core-sw01.example.test');
+        $this->set('1.0.8802.1.1.2.1.4.2.1.3.0.25.1.1.4.192.0.2.254', 'INTEGER', 2);
 
         uksort($this->values, fn (string $left, string $right): int => version_compare($left, $right));
     }

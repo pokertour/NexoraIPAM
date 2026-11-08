@@ -48,7 +48,9 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 
 ### 🔌 Switches and routers over SNMP
 - SNMP v2c and v3, with credentials encrypted at rest.
-- A **live front panel** of each switch. For every port: link state, speed, native and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- **VLAN colours**: every VLAN gets a stable colour, or one you choose, shown on ports and lists. Click a VLAN to highlight its ports.
+- **Racks and topology**: place devices and passive items in racks unit by unit. Links between switches are drawn automatically from LLDP, or from the MAC addresses each switch learns from the other.
 - The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.
 - Uses standard MIBs (IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB, IP-MIB), so it works across vendors.
 
@@ -57,6 +59,8 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 ### 📡 Discovery, history and alerts
 - **ICMP discovery** with reverse DNS and ARP/NDP MAC collection, on demand or on a schedule.
 - **Address history**: every MAC address and host name seen on an IP, plus the switch port it is plugged into.
+- **Host names without DNS**: when reverse DNS has nothing, names come from DHCP leases (Kea API or ISC `dhcpd.leases`), NetBIOS, mDNS, LLDP and SNMP. A less reliable source never overwrites a better one.
+- **Interactive dashboard**: every figure opens the matching filtered list. It also shows hosts first seen this week with their MAC vendor and switch port, device health, the busiest ports, recent MAC changes and the latest changes.
 - **Alerts** for subnets over a usage threshold, unknown hosts, available addresses that respond, MAC changes, hosts that go silent and unreachable devices. Alerts can be acknowledged and sent by e-mail.
 
 ### 🔍 Global search
@@ -167,6 +171,7 @@ The worker host needs a few system tools:
 | Feature | Tools |
 | --- | --- |
 | ICMP discovery and reverse DNS | `ping` (iputils) and `getent` |
+| Host names over NetBIOS and mDNS | `nmblookup` (`samba-client` / `samba-common-bin`) and `dig` (`bind-tools` / `dnsutils`) |
 | MAC addresses from ARP/NDP | `iproute2` |
 | SNMP | `snmp` on Debian/Ubuntu, `net-snmp-tools` on Alpine |
 | MAC vendor lookup in **Tools** | `ieee-data`, or the IEEE CSV files in `/usr/share/ieee-data` |
@@ -189,6 +194,7 @@ Administrators configure everything from **Settings** in the application. Authen
 - **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
 - **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
 - **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
+- **DHCP leases**: enter the Kea control agent URL and credentials, or the path of an ISC `dhcpd.leases` file readable by the worker, and an import interval. Active leases name the addresses they cover and add unknown ones that fall in an inventoried subnet.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
 SQLite is the default database. MariaDB is supported and tested in CI, and the Compose file uses it. Configure the connection through the standard Laravel `DB_*` variables.

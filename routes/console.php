@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\QueueDhcpImport;
 use App\Console\Commands\QueueScheduledDevicePolls;
 use App\Console\Commands\QueueScheduledDiscoveries;
 use Illuminate\Foundation\Inspiring;
@@ -14,4 +15,7 @@ Schedule::command(QueueScheduledDiscoveries::class)
     ->everyMinute()->withoutOverlapping(10);
 
 Schedule::command(QueueScheduledDevicePolls::class)
+    ->everyMinute()->withoutOverlapping(10);
+
+Schedule::command(QueueDhcpImport::class)
     ->everyMinute()->withoutOverlapping(10);

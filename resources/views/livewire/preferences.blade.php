@@ -43,6 +43,31 @@
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
         </form>
 
+        <form wire:submit="save('dhcp')" class="card settings-card">
+            <div><h2>{{ __('Baux DHCP') }}</h2><p>{{ __('Récupère les noms et adresses MAC annoncés par les clients DHCP, pour nommer les hôtes absents du DNS.') }}</p></div>
+            <label class="checkbox"><input type="checkbox" wire:model="dhcp.enabled"> {{ __('Importer les baux DHCP') }}</label>
+            @error('dhcp.enabled')<p class="field-error" role="alert">{{ $message }}</p>@enderror
+            <x-field name="dhcp.kea_url" :label="__('URL de l’agent de contrôle Kea')" wire:model="dhcp.kea_url" placeholder="http://kea.exemple.fr:8000/" :hint="__('Commande lease4-get-all. Laissez vide pour n’utiliser que le fichier.')"/>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <x-field name="dhcp.kea_username" :label="__('Identifiant Kea')" wire:model="dhcp.kea_username" autocomplete="off"/>
+                <x-field name="dhcp.kea_password" :label="__('Mot de passe Kea')" type="password" wire:model="dhcp.kea_password" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-[1fr_9rem]">
+                <x-field name="dhcp.leases_file" :label="__('Fichier de baux ISC dhcpd')" wire:model="dhcp.leases_file" placeholder="/var/lib/dhcp/dhcpd.leases" :hint="__('Chemin lisible par le worker, par exemple un volume monté.')"/>
+                <x-field name="dhcp.interval" :label="__('Intervalle (minutes)')" type="number" min="1" max="1440" wire:model="dhcp.interval"/>
+            </div>
+            @if ($dhcpState['last_run'] ?? null)
+                <p @class(['text-sm', 'field-error' => $dhcpState['error'] ?? null])>
+                    {{ __('Dernier import : :date', ['date' => \Illuminate\Support\Carbon::parse($dhcpState['last_run'])->diffForHumans()]) }}
+                    @if ($dhcpState['error'] ?? null) · {{ $dhcpState['error'] }}@elseif (isset($dhcpState['leases'])) · {{ __(':leases baux, :named noms, :created adresses ajoutées', ['leases' => $dhcpState['leases'], 'named' => $dhcpState['named'], 'created' => $dhcpState['created']]) }}@endif
+                </p>
+            @endif
+            <div class="flex flex-wrap gap-2">
+                <x-button type="submit">{{ __('Enregistrer') }}</x-button>
+                <x-button variant="secondary" wire:click="importDhcp" wire:loading.attr="disabled" wire:target="importDhcp">{{ __('Importer maintenant') }}</x-button>
+            </div>
+        </form>
+
         <form wire:submit="save('smtp')" class="card settings-card">
             <div><h2>{{ __('Serveur SMTP') }}</h2><p>{{ __('Configurez l’expédition des messages et envoyez un e-mail de test à votre compte.') }}</p></div>
             <label class="checkbox"><input type="checkbox" wire:model="smtp.enabled"> {{ __('Activer l’envoi via SMTP') }}</label>
