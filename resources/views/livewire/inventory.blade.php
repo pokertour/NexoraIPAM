@@ -37,6 +37,15 @@
                     @endforeach
                 </x-select>
             @endif
+            @if ($section === 'addresses')
+                <x-select class="location-filter" name="status" wire:model.live="status" aria-label="{{ __('Filtrer par statut') }}">
+                    <option value="">{{ __('Tous les statuts') }}</option>
+                    @foreach (\App\Models\IpAddress::STATUSES as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                </x-select>
+                @if (isset(\App\Livewire\Inventory::PING_FILTERS[$ping]))
+                    <button type="button" class="filter-chip" wire:click="$set('ping', '')" aria-label="{{ __('Retirer le filtre') }}">{{ __('Dernier ping') }} · {{ __(\App\Livewire\Inventory::PING_FILTERS[$ping]) }} <x-icon name="close" class="size-3"/></button>
+                @endif
+            @endif
             @if ($allTags->isNotEmpty())
                 <x-select class="location-filter" name="tag" wire:model.live="tag" aria-label="{{ __('Filtrer par étiquette') }}">
                     <option value="">{{ __('Toutes les étiquettes') }}</option>

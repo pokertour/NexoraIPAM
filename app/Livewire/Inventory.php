@@ -69,6 +69,15 @@ class Inventory extends Component
     #[Url(except: '')]
     public string $tag = '';
 
+    #[Url(except: '')]
+    public string $status = '';
+
+    #[Url(except: '')]
+    public string $ping = '';
+
+    /** @var array<string, string> */
+    public const PING_FILTERS = ['responding' => 'Répondent', 'unresponsive' => 'Sans réponse', 'unprobed' => 'Jamais sondées'];
+
     #[Locked]
     public ?int $allocationParent = null;
 
@@ -94,6 +103,16 @@ class Inventory extends Component
     }
 
     public function updatedSubnet(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPing(): void
     {
         $this->resetPage();
     }
@@ -556,6 +575,8 @@ class Inventory extends Component
         } elseif ($this->section === 'addresses') {
             $query->with('subnet.location.parent.parent')
                 ->when($selectedSubnet, fn (Builder $query) => $query->where('subnet_id', $selectedSubnet->id))
+                ->when(isset(IpAddress::STATUSES[$this->status]), fn (Builder $query) => $query->where('status', $this->status))
+                ->when(isset(self::PING_FILTERS[$this->ping]), fn (Builder $query) => IpAddress::wherePing($query, $this->ping))
                 ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->whereLike('address', '%'.$search.'%')->orWhereLike('hostname', '%'.$search.'%')->orWhereLike('resolved_hostname', '%'.$search.'%')->orWhereLike('mac_address', '%'.(MacAddress::normalize($search) ?? $search).'%')->orWhere($metadataSearch)))
                 ->orderBy('address_key');
         } elseif ($this->section === 'vlans') {

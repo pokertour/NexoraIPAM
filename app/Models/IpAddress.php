@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\HasMetadata;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,24 @@ class IpAddress extends Model
     protected function casts(): array
     {
         return ['last_seen_at' => 'datetime', 'last_probe_at' => 'datetime', 'last_probe_responded' => 'boolean'];
+    }
+
+    /**
+     * Filters addresses by the outcome of their last probe, with the same rules
+     * as lastPingResponded().
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public static function wherePing(Builder $query, string $state): Builder
+    {
+        $answered = 'COALESCE(last_probe_responded, CASE WHEN last_seen_at IS NOT NULL AND last_probe_at = last_seen_at THEN 1 ELSE 0 END)';
+
+        return match ($state) {
+            'responding' => $query->whereNotNull('last_probe_at')->whereRaw($answered.' = 1'),
+            'unresponsive' => $query->whereNotNull('last_probe_at')->whereRaw($answered.' = 0'),
+            default => $query->whereNull('last_probe_at'),
+        };
     }
 
     public function lastPingResponded(): ?bool
