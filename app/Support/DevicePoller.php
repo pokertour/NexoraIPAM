@@ -53,6 +53,21 @@ class DevicePoller
 
     private const Q_VLAN_UNTAGGED = '1.3.6.1.2.1.17.7.1.4.3.1.4';
 
+    /** Currently active VLANs, used when the static VLAN table is empty (MikroTik and others). */
+    private const Q_VLAN_CURRENT_EGRESS = '1.3.6.1.2.1.17.7.1.4.2.1.4';
+
+    private const Q_VLAN_CURRENT_UNTAGGED = '1.3.6.1.2.1.17.7.1.4.2.1.5';
+
+    private const IF_PHYS_ADDRESS = '1.3.6.1.2.1.2.2.1.6';
+
+    private const ENT_DESCR = '1.3.6.1.2.1.47.1.1.1.1.2';
+
+    private const ENT_CONTAINED_IN = '1.3.6.1.2.1.47.1.1.1.1.4';
+
+    private const ENT_NAME = '1.3.6.1.2.1.47.1.1.1.1.7';
+
+    private const ENT_ALIAS = '1.3.6.1.2.1.47.1.3.2.1.2';
+
     private const LLDP_REM_PORT_ID = '1.0.8802.1.1.2.1.4.1.1.7';
 
     private const LLDP_REM_PORT_DESC = '1.0.8802.1.1.2.1.4.1.1.8';
@@ -93,8 +108,20 @@ class DevicePoller
         }
 
         $bridgeToIf = array_map('intval', array_filter($this->snmp->walk($device, self::BRIDGE_PORT_IF), 'ctype_digit'));
+        if ($bridgeToIf === []) {
+            // Without BRIDGE-MIB port mapping, bridge ports are numbered like interfaces.
+            $bridgeToIf = array_combine(array_keys($interfaces), array_keys($interfaces));
+        }
         $pvids = $this->snmp->walk($device, self::Q_PVID);
-        $tagged = $this->taggedVlans($device, $bridgeToIf);
+        $membership = $this->vlanMembership($device, $bridgeToIf);
+        $inventory = $this->inventory($device);
+        $physicalMacs = [];
+        foreach ($this->snmp->walk($device, self::IF_PHYS_ADDRESS, true) as $index => $hex) {
+            $mac = SnmpClient::mac(SnmpClient::bytes($hex));
+            if (ctype_digit((string) $index) && $mac && $mac !== '00:00:00:00:00:00') {
+                $physicalMacs[(int) $index] = $mac;
+            }
+        }
         $macs = $this->forwardingTable($device, $bridgeToIf);
         $neighbors = $this->neighbors($device, $interfaces, $bridgeToIf);
         $arp = $this->arpTable($device);
@@ -104,7 +131,7 @@ class DevicePoller
         $ifToBridge = array_flip($bridgeToIf);
         $summary = ['ports' => 0, 'up' => 0, 'macs' => 0, 'arp' => count($arp), 'addresses' => 0];
 
-        DB::transaction(function () use ($device, $system, $interfaces, $pvids, $tagged, $macs, $neighbors, $ipByMac, $ifToBridge, $now, &$summary, $arp): void {
+        DB::transaction(function () use ($device, $system, $interfaces, $pvids, $membership, $inventory, $physicalMacs, $macs, $neighbors, $ipByMac, $ifToBridge, $now, &$summary, $arp): void {
             $previous = $device->ports()->get()->keyBy('if_index');
             $seconds = $device->polled_at ? max(1, $device->polled_at->diffInSeconds($now)) : null;
 
@@ -121,7 +148,10 @@ class DevicePoller
                     'alias' => filled($values['alias'] ?? null) ? mb_substr($values['alias'], 0, 255) : null, 'type' => $type, 'physical' => $physical,
                     'admin_status' => isset($values['admin']) ? (int) $values['admin'] : null, 'oper_status' => isset($values['oper']) ? (int) $values['oper'] : null,
                     'speed_mbps' => $speed ?: null, 'pvid' => $bridge !== null && isset($pvids[$bridge]) ? (int) $pvids[$bridge] : null,
-                    'tagged_vlans' => $tagged[$index] ?? null,
+                    'tagged_vlans' => $membership['tagged'][$index] ?? null,
+                    'untagged_vlans' => $membership['untagged'][$index] ?? null,
+                    'media' => $physical ? PortMedia::detect($name, $values['descr'] ?? null, $speed ?: null, $inventory[$index] ?? null) : null,
+                    'mac_address' => $physicalMacs[$index] ?? null,
                     'in_octets' => $this->counter($values['in'] ?? null), 'out_octets' => $this->counter($values['out'] ?? null),
                     'in_bps' => $this->rate($old?->in_octets, $values['in'] ?? null, $seconds),
                     'out_bps' => $this->rate($old?->out_octets, $values['out'] ?? null, $seconds),
@@ -161,31 +191,81 @@ class DevicePoller
     }
 
     /**
+     * Reads VLAN membership from the static VLAN table, or from the table of
+     * currently active VLANs when a device leaves the static one empty.
+     *
      * @param  array<int, int>  $bridgeToIf
-     * @return array<int, list<int>> Tagged VLAN numbers keyed by interface index.
+     * @return array{tagged: array<int, list<int>>, untagged: array<int, list<int>>} VLAN numbers keyed by interface index.
      */
-    private function taggedVlans(NetworkDevice $device, array $bridgeToIf): array
+    private function vlanMembership(NetworkDevice $device, array $bridgeToIf): array
     {
         $egress = $this->snmp->walk($device, self::Q_VLAN_EGRESS, true);
         $untagged = $this->snmp->walk($device, self::Q_VLAN_UNTAGGED, true);
-        $tagged = [];
+        if ($egress === []) {
+            // Rows of the current table are indexed by time mark, then VLAN.
+            $byVlan = fn (array $rows): array => collect($rows)->mapWithKeys(fn (string $bitmap, string|int $suffix): array => [(string) last(explode('.', (string) $suffix)) => $bitmap])->all();
+            $egress = $byVlan($this->snmp->walk($device, self::Q_VLAN_CURRENT_EGRESS, true));
+            $untagged = $byVlan($this->snmp->walk($device, self::Q_VLAN_CURRENT_UNTAGGED, true));
+        }
+
+        $membership = ['tagged' => [], 'untagged' => []];
         foreach ($egress as $vlan => $bitmap) {
             if (! ctype_digit((string) $vlan)) {
                 continue;
             }
             $plain = SnmpClient::portList($untagged[$vlan] ?? '');
-            foreach (array_diff(SnmpClient::portList($bitmap), $plain) as $bridge) {
+            foreach (SnmpClient::portList($bitmap) as $bridge) {
                 if (isset($bridgeToIf[$bridge])) {
-                    $tagged[$bridgeToIf[$bridge]][] = (int) $vlan;
+                    $membership[in_array($bridge, $plain, true) ? 'untagged' : 'tagged'][$bridgeToIf[$bridge]][] = (int) $vlan;
                 }
             }
         }
 
-        return array_map(function (array $vlans): array {
-            sort($vlans);
+        foreach ($membership as $kind => $ports) {
+            $membership[$kind] = array_map(function (array $vlans): array {
+                sort($vlans);
 
-            return $vlans;
-        }, $tagged);
+                return array_values(array_unique($vlans));
+            }, $ports);
+        }
+
+        return $membership;
+    }
+
+    /**
+     * Describes the hardware behind each interface with ENTITY-MIB: the port
+     * entity and the transceiver it contains, when the device exposes them.
+     *
+     * @return array<int, string> Inventory text keyed by interface index.
+     */
+    private function inventory(NetworkDevice $device): array
+    {
+        $aliases = $this->snmp->walk($device, self::ENT_ALIAS);
+        if ($aliases === []) {
+            return [];
+        }
+
+        $descriptions = $this->snmp->walk($device, self::ENT_DESCR);
+        $names = $this->snmp->walk($device, self::ENT_NAME);
+        $children = [];
+        foreach ($this->snmp->walk($device, self::ENT_CONTAINED_IN) as $entity => $parent) {
+            $children[(string) $parent][] = (string) $entity;
+        }
+
+        $inventory = [];
+        foreach ($aliases as $suffix => $target) {
+            if (! preg_match('/1\.3\.6\.1\.2\.1\.2\.2\.1\.1\.(\d+)$/', $target, $matches)) {
+                continue;
+            }
+            $entity = explode('.', (string) $suffix)[0];
+            $parts = [$descriptions[$entity] ?? '', $names[$entity] ?? ''];
+            foreach ($children[$entity] ?? [] as $child) {
+                $parts[] = ($descriptions[$child] ?? '').' '.($names[$child] ?? '');
+            }
+            $inventory[(int) $matches[1]] = trim(implode(' ', array_filter($parts)));
+        }
+
+        return $inventory;
     }
 
     /**

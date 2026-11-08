@@ -188,7 +188,7 @@ Administrators configure everything from **Settings** in the application. Authen
 - **OpenID Connect**: register a confidential client using HTTPS discovery, the authorization code flow, PKCE S256 and RSA signatures. Declare the callback URL shown in **Settings** (`/auth/openid/callback`) at your provider. Authorized users get a viewer account on first sign-in.
 - **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
 - **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
-- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll.
+- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 
 SQLite is the default database. MariaDB is supported and tested in CI, and the Compose file uses it. Configure the connection through the standard Laravel `DB_*` variables.
