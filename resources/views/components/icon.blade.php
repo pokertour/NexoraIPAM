@@ -27,6 +27,8 @@
         @case('history') <path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2"/> @break
         @case('bell') <path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Zm4 11a2 2 0 0 0 4 0"/> @break
         @case('switch') <rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11h1m3 0h1m3 0h1m3 0h1M6 14h12"/> @break
+        @case('rack') <rect x="5" y="2" width="14" height="20" rx="1.5"/><path d="M8 6h8M8 10h8M8 14h8M8 18h3"/> @break
+        @case('topology') <rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v3M12 10 5 17m7-7 7 7M8 19.5h8"/> @break
         @case('key') <circle cx="8" cy="9" r="4"/><path d="m11 12 8 8m-3-3 3-3m-5 1 2-2"/> @break
     @endswitch
 </svg>

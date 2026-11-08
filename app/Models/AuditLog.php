@@ -40,6 +40,8 @@ class AuditLog extends Model
         'tag' => 'Étiquette',
         'custom_field' => 'Champ personnalisé',
         'network_device' => 'Équipement',
+        'rack' => 'Baie',
+        'rack_item' => 'Élément de baie',
         'alert' => 'Alerte',
         'settings' => 'Paramètres',
     ];

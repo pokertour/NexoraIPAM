@@ -381,6 +381,58 @@
     .search-results a:hover .search-arrow, .search-results a.active .search-arrow { opacity: 1; transform: translateX(2px); color: var(--highlight); }
     .search-hint { padding: 1.5rem 1rem; color: var(--muted); text-align: center; font-size: .85rem; }
 
+    /* Racks */
+    .rack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: 1rem; align-items: start; }
+    .rack-body { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) 64px; gap: .35rem; padding: 1rem .9rem 1.1rem; }
+    .rack-scale { display: grid; grid-template-rows: repeat(var(--units), var(--u)); color: var(--muted); font-family: var(--font-mono); font-size: .6rem; text-align: right; }
+    .rack-scale li { line-height: var(--u); }
+    .rack-frame { position: relative; height: calc(var(--units) * var(--u)); border-radius: .4rem; background: repeating-linear-gradient(180deg, transparent 0 calc(var(--u) - 1px), color-mix(in srgb, var(--line) 80%, transparent) calc(var(--u) - 1px) var(--u)), linear-gradient(180deg, #1a2131, #0d121d); box-shadow: inset 0 0 0 4px #2a3346, inset 0 0 0 5px #0b0f17, 0 10px 30px -18px #000; }
+    .rack-slot { position: absolute; left: 6px; right: 6px; height: var(--u); display: grid; place-items: center; color: transparent; border-radius: .25rem; transition: background .12s, color .12s; }
+    .rack-slot:hover { background: #a996ff22; color: #c4b5fd; }
+    .rack-item { position: absolute; left: 6px; right: 6px; display: flex; align-items: center; gap: .5rem; padding: 0 .5rem; border-radius: .3rem; background: linear-gradient(180deg, #2a3346, #1a2131); box-shadow: inset 0 1px 0 #ffffff1c, 0 0 0 1px #0b0f17; color: #e2e8f0; font-size: .74rem; overflow: hidden; }
+    .rack-item[data-kind=device] { background: linear-gradient(180deg, #243049, #151c2b); box-shadow: inset 0 1px 0 #ffffff22, inset 3px 0 0 #7c3aed, 0 0 0 1px #0b0f17; }
+    .rack-item[data-kind=patch_panel] { background: repeating-linear-gradient(90deg, #1d2433 0 10px, #0f141e 10px 12px); }
+    .rack-item[data-kind=pdu] { box-shadow: inset 3px 0 0 #f59e0b, 0 0 0 1px #0b0f17; }
+    .rack-item[data-kind=server] { box-shadow: inset 3px 0 0 #06b6d4, 0 0 0 1px #0b0f17; }
+    .rack-item-name { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f1f5f9; }
+    a.rack-item-name:hover { color: #c4b5fd; }
+    .rack-item-kind { font-size: .66rem; white-space: nowrap; }
+    .rack-led { width: .45rem; height: .45rem; flex-shrink: 0; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .rack-led.is-down { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .rack-led.is-unknown { background: #64748b; box-shadow: none; }
+    .rack-ports { display: flex; flex-wrap: wrap; gap: 2px; margin-left: auto; max-width: 9rem; }
+    .rack-ports i { width: 4px; height: 4px; border-radius: 1px; background: #334155; }
+    .rack-ports i[data-state=up] { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+    .rack-item-actions { display: none; gap: .1rem; margin-left: auto; }
+    .rack-item:hover .rack-item-actions { display: flex; }
+    .rack-item:hover .rack-ports { display: none; }
+    .rack-item .icon-button { width: 1.5rem; height: 1.5rem; color: #cbd5e1; }
+    .rack-links { overflow: visible; }
+    .rack-links path { fill: none; stroke-width: 2; stroke: #22d3ee; filter: drop-shadow(0 0 3px #22d3ee99); }
+    .rack-links path[data-source=mac] { stroke: #a78bfa; stroke-dasharray: 4 3; filter: drop-shadow(0 0 3px #a78bfa99); }
+    .rack-link-list { display: grid; gap: .35rem; padding: .8rem 1.1rem 1rem; border-top: 1px solid var(--line); font-size: .76rem; }
+    .link-source { display: inline-block; padding: .05rem .35rem; border-radius: .3rem; font-size: .62rem; font-weight: 700; letter-spacing: .06em; color: #0e7490; background: #06b6d41f; }
+    .link-source[data-source=mac] { color: #6d28d9; background: #7c3aed1c; }
+    [data-theme=dark] .link-source { color: #67e8f9; } [data-theme=dark] .link-source[data-source=mac] { color: #c4b5fd; }
+
+    /* Topology */
+    .topology-card { overflow: hidden; background: radial-gradient(circle at 50% 50%, #7c3aed14, transparent 60%), var(--surface); }
+    .topology-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: .9rem 1.1rem 0; font-size: .76rem; }
+    .topology-legend span { display: inline-flex; align-items: center; gap: .4rem; }
+    .topology-legend i { width: 1.4rem; height: 2px; background: #22d3ee; }
+    .topology-legend i[data-source=mac] { background: repeating-linear-gradient(90deg, #a78bfa 0 4px, transparent 4px 7px); }
+    .topology { display: block; width: 100%; height: auto; }
+    .topology-link line { stroke: #22d3ee; stroke-width: 2.2; filter: drop-shadow(0 0 4px #22d3ee88); }
+    .topology-link[data-source=mac] line { stroke: #a78bfa; stroke-dasharray: 6 5; filter: drop-shadow(0 0 4px #a78bfa88); }
+    .topology-link text { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; text-anchor: middle; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; }
+    .topology-node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; transition: stroke .15s; }
+    .topology-node:hover rect { stroke: var(--highlight); }
+    .topology-name { fill: var(--text); font-size: 13px; font-weight: 650; }
+    .topology-host { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
+    .topology-led { fill: #22c55e; filter: drop-shadow(0 0 4px #22c55e); }
+    .topology-node[data-state=down] .topology-led { fill: #ef4444; filter: drop-shadow(0 0 4px #ef4444); }
+    .topology-node[data-state=unknown] .topology-led { fill: #64748b; filter: none; }
+
     /* Dialogs */
     .dialog { position: fixed; inset: 0; margin: auto; padding: 0; width: min(32rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 1.1rem; box-shadow: var(--shadow-overlay), var(--inner-light); }
     .dialog-wide { width: min(56rem, calc(100vw - 2rem)); }
