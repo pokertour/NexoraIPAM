@@ -296,6 +296,25 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame(2, AuditLog::where('action', 'device.port_media')->count());
     }
 
+    public function test_administrators_edit_a_device_from_its_page(): void
+    {
+        $this->withoutVite();
+        $device = NetworkDevice::factory()->create(['name' => 'sw-rdc', 'credentials' => ['community' => 'r34d-only']]);
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->assertDontSee('Modifier l’équipement')->call('open', $device->id)->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])
+            ->call('open', $device->id)->assertSee('Modifier l’équipement')->assertSet('form.name', 'sw-rdc')
+            ->set('form.name', 'sw-rdc-1')->call('save')->assertHasNoErrors()
+            ->assertDispatched('nexora-toast', tone: 'success')->assertSet('editing', false)
+            ->assertSee('sw-rdc-1');
+
+        $this->assertSame(['sw-rdc-1', ['community' => 'r34d-only']], [$device->fresh()->name, $device->fresh()->credentials]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'updated', 'subject_type' => 'network_device', 'subject_id' => $device->id]);
+    }
+
     public function test_due_devices_are_polled_by_the_scheduler(): void
     {
         $due = NetworkDevice::factory()->create(['poll_interval' => 15, 'next_poll_at' => now()->subMinute()]);
