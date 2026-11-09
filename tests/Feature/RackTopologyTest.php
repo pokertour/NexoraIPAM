@@ -4,10 +4,14 @@ namespace Tests\Feature;
 
 use App\Livewire\NetworkTopology;
 use App\Livewire\Racks;
+use App\Models\AuditLog;
+use App\Models\CableLink;
 use App\Models\DevicePort;
 use App\Models\DevicePortMac;
+use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\Rack;
+use App\Models\RackItem;
 use App\Models\User;
 use App\Support\Topology;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -90,9 +94,99 @@ class RackTopologyTest extends TestCase
         $rack->items()->create(['network_device_id' => $access->id, 'kind' => 'device', 'position' => 2, 'height' => 1]);
         $rack->items()->create(['network_device_id' => $core->id, 'kind' => 'device', 'position' => 8, 'height' => 1]);
 
-        $this->get(route('racks'))->assertOk()->assertSeeHtml('<path d="M0 204 C14 204, 14 60, 0 60" data-source="lldp"><title>48 ↔ 1</title></path>');
+        $this->get(route('racks'))->assertOk()->assertSeeHtml('<path d="M0 204 C14 204, 14 60, 0 60" data-source="lldp" :class="{ \'is-hot\': hot === \'l0\' }"><title>48 ↔ 1</title></path>');
         $this->get(route('topology'))->assertOk()->assertSee('1 liaison détectée')->assertSee('sw-access')->assertSee('ether48');
         Livewire::test(NetworkTopology::class)->assertViewHas('links', fn ($links) => $links->count() === 1);
+    }
+
+    public function test_operators_document_cables_between_rack_items(): void
+    {
+        $this->withoutVite();
+        $switch = NetworkDevice::factory()->create(['name' => 'sw-a']);
+        $this->port($switch, 1, 'ether1');
+        $rack = Rack::factory()->create(['name' => 'Baie A', 'units' => 10]);
+        $device = $rack->items()->create(['network_device_id' => $switch->id, 'kind' => 'device', 'position' => 9, 'height' => 1]);
+        $panel = Rack::factory()->create(['name' => 'Baie B', 'units' => 10])->items()->create(['kind' => 'patch_panel', 'label' => 'Tiroir F', 'position' => 9, 'height' => 1]);
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(Racks::class)->call('open', 'cable', null, $device->id)->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(Racks::class)
+            ->call('open', 'cable', null, $device->id)->assertSet('form.a_rack_item_id', $device->id)
+            ->call('save')->assertHasErrors('form.b_rack_item_id')
+            ->set('form.b_rack_item_id', $device->id)->call('save')->assertHasErrors('form.b_rack_item_id')
+            ->set('form.b_rack_item_id', $panel->id)->set('form.a_port', 'ether99')->call('save')->assertHasErrors('form.a_port')
+            ->set('form.a_port', 'ether1')->set('form.b_port', ' 12 ')->set('form.medium', 'laser')->call('save')->assertHasErrors('form.medium')
+            ->set('form.medium', 'fiber')->set('form.label', 'F12')->call('save')->assertHasNoErrors();
+
+        $cable = CableLink::sole();
+        $this->assertSame([$device->id, 'ether1', $panel->id, '12', 'fiber', 'F12'], [$cable->a_rack_item_id, $cable->a_port, $cable->b_rack_item_id, $cable->b_port, $cable->medium, $cable->label]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'subject_type' => 'cable_link', 'subject_label' => 'F12 · sw-a ether1 ↔ Tiroir F 12']);
+
+        Livewire::test(Racks::class)->call('open', 'cable', $cable->id)->set('form.b_rack_item_id', $device->id)->assertSet('form.b_port', '');
+        $this->get(route('racks'))->assertSee('Tiroir F')->assertSee('MANUEL')->assertSee('Fibre');
+
+        Livewire::test(Racks::class)->call('confirmDelete', 'item', $panel->id)->call('delete');
+        $this->assertModelMissing($cable);
+        $this->assertSame(1, AuditLog::where('action', 'deleted')->where('subject_type', 'cable_link')->count());
+    }
+
+    public function test_documented_cables_confirm_detected_links_or_add_manual_ones(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        [$access, $core, $edge] = [
+            NetworkDevice::factory()->create(['name' => 'sw-access', 'sys_name' => 'sw-access']),
+            NetworkDevice::factory()->create(['name' => 'core', 'sys_name' => 'core']),
+            NetworkDevice::factory()->create(['name' => 'edge']),
+        ];
+        $this->port($access, 48, 'ether48', ['neighbor_name' => 'core', 'neighbor_port' => 'ether1']);
+        $this->port($core, 1, 'ether1');
+        $this->port($core, 2, 'ether2');
+        $this->port($edge, 5, 'ether5');
+        $rack = Rack::factory()->create(['units' => 10]);
+        [$a, $c, $e] = collect([$access, $core, $edge])->map(fn (NetworkDevice $device, int $index): RackItem => $rack->items()->create(['network_device_id' => $device->id, 'kind' => 'device', 'position' => $index * 2 + 1, 'height' => 1]))->all();
+        CableLink::create(['a_rack_item_id' => $c->id, 'a_port' => 'ether1', 'b_rack_item_id' => $a->id, 'b_port' => 'ether48', 'medium' => 'copper']);
+        CableLink::create(['a_rack_item_id' => $c->id, 'a_port' => 'ether2', 'b_rack_item_id' => $e->id, 'medium' => 'dac']);
+
+        $links = app(Topology::class)->links();
+
+        $this->assertCount(2, $links);
+        $this->assertSame([['lldp', true], ['manual', false]], $links->map(fn (array $link): array => [$link['source'], $link['confirmed']])->all());
+        $this->assertSame(['core', 'ether2', 'edge', null], [$links[1]['a']->name, $links[1]['a_port']->name, $links[1]['b']->name, $links[1]['b_port']]);
+        $this->get(route('topology'))->assertOk()->assertSee('Manuelle')->assertSee('edge');
+    }
+
+    public function test_racks_of_a_location_form_a_row_with_the_cables_between_them(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        $paris = Location::factory()->create(['name' => 'Paris']);
+        $lyon = Location::factory()->create(['name' => 'Lyon']);
+        $access = NetworkDevice::factory()->create(['name' => 'sw-access', 'sys_name' => 'sw-access']);
+        $core = NetworkDevice::factory()->create(['name' => 'core', 'sys_name' => 'core']);
+        $remote = NetworkDevice::factory()->create(['name' => 'sw-lyon', 'sys_name' => 'sw-lyon']);
+        $this->port($access, 48, 'ether48', ['neighbor_name' => 'core', 'neighbor_port' => 'ether1']);
+        $this->port($core, 1, 'ether1');
+        $this->port($core, 2, 'ether2', ['neighbor_name' => 'sw-lyon', 'neighbor_port' => 'ether24']);
+        $this->port($remote, 24, 'ether24');
+        $second = Rack::factory()->create(['name' => 'Baie P2', 'location_id' => $paris->id, 'sort_order' => 2]);
+        $first = Rack::factory()->create(['name' => 'Baie P1', 'location_id' => $paris->id, 'sort_order' => 1]);
+        $lyonRack = Rack::factory()->create(['name' => 'Baie L1', 'location_id' => $lyon->id]);
+        $coreItem = $first->items()->create(['network_device_id' => $core->id, 'kind' => 'device', 'position' => 10, 'height' => 1]);
+        $accessItem = $second->items()->create(['network_device_id' => $access->id, 'kind' => 'device', 'position' => 10, 'height' => 1]);
+        $lyonRack->items()->create(['network_device_id' => $remote->id, 'kind' => 'device', 'position' => 10, 'height' => 1]);
+
+        $component = Livewire::test(Racks::class);
+        $rows = $component->viewData('rows');
+        $this->assertSame(['Lyon', 'Paris'], $rows->map(fn (array $row): string => $row['location']->name)->all());
+        $this->assertSame(['Baie P1', 'Baie P2'], $rows[1]['racks']->pluck('name')->all());
+        $this->assertSame([[$accessItem->id, $coreItem->id]], array_map(fn (array $cable): array => [$cable['a'], $cable['b']], $rows[1]['cables']));
+        $this->assertSame([], $rows[0]['cables']);
+
+        $component->assertSeeHtml('data-item="'.$coreItem->id.'"')->assertSee('1 liaison entre baies')
+            ->assertSee('Baie P2')->assertSee('Baie L1')->assertSeeHtml('@click="jump('.$accessItem->id.', ');
     }
 
     /** @param array<string, mixed> $attributes */

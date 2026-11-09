@@ -52,6 +52,7 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 - A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. When a vendor's port names give no clue, administrators can set the connector of a port by hand; polls keep that choice. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
 - **VLAN colours**: every VLAN gets a stable colour, or one you choose, shown on ports and lists. Click a VLAN to highlight its ports.
 - **Racks and topology**: place devices and passive items in racks unit by unit. Links between switches are drawn automatically from LLDP, or from the MAC addresses each switch learns from the other.
+- **Rooms and cables**: the racks of a location stand side by side in the order you choose, and the cables between them run through a tray drawn above the row. Hover a cable or an item to highlight both ends; click a link tag to jump to the other end. Document by hand what detection cannot see (patch cords, fibres between racks, devices without SNMP), with a medium and a tag: a detected link between the same ports confirms it.
 - The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.
 - Uses standard MIBs (IF-MIB, BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB, IP-MIB), so it works across vendors.
 

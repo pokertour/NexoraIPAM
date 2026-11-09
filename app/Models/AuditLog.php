@@ -48,6 +48,7 @@ class AuditLog extends Model
         'network_device' => 'Équipement',
         'rack' => 'Baie',
         'rack_item' => 'Élément de baie',
+        'cable_link' => 'Liaison manuelle',
         'alert' => 'Alerte',
         'settings' => 'Paramètres',
     ];

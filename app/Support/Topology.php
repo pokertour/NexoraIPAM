@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CableLink;
 use App\Models\DevicePort;
 use App\Models\DevicePortMac;
 use App\Models\NetworkDevice;
@@ -10,12 +11,14 @@ use Illuminate\Support\Collection;
 /**
  * Works out which devices are cabled together. LLDP neighbours are matched by
  * system name first; without LLDP, two switches are linked when each one has
- * learned a MAC address of the other, keeping the closest candidate.
+ * learned a MAC address of the other, keeping the closest candidate. Cables
+ * documented by hand between two racked devices confirm a detected link, or
+ * are added as manual links.
  */
 class Topology
 {
     /**
-     * @return Collection<int, array{a: NetworkDevice, a_port: DevicePort, b: NetworkDevice, b_port: ?DevicePort, source: string}>
+     * @return Collection<int, array{a: NetworkDevice, a_port: ?DevicePort, b: NetworkDevice, b_port: ?DevicePort, source: string, confirmed: bool, cable: ?CableLink}>
      */
     public function links(): Collection
     {
@@ -24,6 +27,15 @@ class Topology
             return collect();
         }
 
+        return $this->withCables($this->detected($devices), $devices);
+    }
+
+    /**
+     * @param  Collection<int, NetworkDevice>  $devices
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function detected(Collection $devices): Collection
+    {
         $links = collect();
         $taken = [];
         $byName = [];
@@ -100,7 +112,51 @@ class Topology
             $taken[$end] = true;
         }
         $taken['pair:'.$pair] = true;
-        $links->push(['a' => $a, 'a_port' => $aPort, 'b' => $b, 'b_port' => $bPort, 'source' => $source]);
+        $links->push(['a' => $a, 'a_port' => $aPort, 'b' => $b, 'b_port' => $bPort, 'source' => $source, 'confirmed' => false, 'cable' => null]);
+    }
+
+    /**
+     * Confirms detected links with the cables documented between racked
+     * devices, and adds the other cables as manual links.
+     *
+     * @param  Collection<int, array<string, mixed>>  $links
+     * @param  Collection<int, NetworkDevice>  $devices
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function withCables(Collection $links, Collection $devices): Collection
+    {
+        $cables = CableLink::with(['a', 'b'])->get()
+            ->filter(fn (CableLink $cable): bool => $cable->a?->network_device_id && $cable->b?->network_device_id
+                && isset($devices[$cable->a->network_device_id], $devices[$cable->b->network_device_id]));
+
+        foreach ($cables as $cable) {
+            $a = $devices[$cable->a->network_device_id];
+            $b = $devices[$cable->b->network_device_id];
+            $aPort = $cable->a_port ? $a->ports->first(fn (DevicePort $port): bool => self::samePort($port, $cable->a_port)) : null;
+            $bPort = $cable->b_port ? $b->ports->first(fn (DevicePort $port): bool => self::samePort($port, $cable->b_port)) : null;
+
+            $match = $links->search(function (array $link) use ($a, $b, $aPort, $bPort): bool {
+                $ends = [[$link['a'], $link['a_port']], [$link['b'], $link['b_port']]];
+                foreach ([[$ends[0], $ends[1]], [$ends[1], $ends[0]]] as [$first, $second]) {
+                    if ($first[0]->is($a) && $second[0]->is($b)
+                        && ($aPort === null || $first[1] === null || $first[1]->is($aPort))
+                        && ($bPort === null || $second[1] === null || $second[1]->is($bPort))) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+            if ($match !== false && $links[$match]['cable'] === null) {
+                $links[$match] = ['confirmed' => true, 'cable' => $cable] + $links[$match];
+
+                continue;
+            }
+            $links->push(['a' => $a, 'a_port' => $aPort, 'b' => $b, 'b_port' => $bPort, 'source' => 'manual', 'confirmed' => false, 'cable' => $cable]);
+        }
+
+        return $links->values();
     }
 
     private static function normalize(string $name): string

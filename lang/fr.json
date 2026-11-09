@@ -83,5 +83,7 @@
     ":count sous-réseau délégué. Ses adresses sont gérées depuis son propre inventaire.|:count sous-réseaux délégués. Leurs adresses sont gérées depuis leur propre inventaire.": ":count sous-réseau délégué. Ses adresses sont gérées depuis son propre inventaire.|:count sous-réseaux délégués. Leurs adresses sont gérées depuis leur propre inventaire.",
     ":count adresse MAC apprise|:count adresses MAC apprises": ":count adresse MAC apprise|:count adresses MAC apprises",
     ":count liaison détectée|:count liaisons détectées": ":count liaison détectée|:count liaisons détectées",
-    "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours.": "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours."
+    "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours.": "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours.",
+    ":count baie|:count baies": ":count baie|:count baies",
+    ":count liaison entre baies|:count liaisons entre baies": ":count liaison entre baies|:count liaisons entre baies"
 }
