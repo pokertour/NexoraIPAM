@@ -266,7 +266,7 @@ class NetworkDeviceTest extends TestCase
             ->set('form.api_verify_tls', false)->call('save')->assertHasNoErrors();
 
         $device->refresh();
-        $this->assertSame(['routeros', 443, false], [$device->api_driver, $device->api_port, $device->api_verify_tls]);
+        $this->assertSame(['routeros', null, false], [$device->api_driver, $device->api_port, $device->api_verify_tls]);
         $this->assertSame(['username' => 'nexora', 'password' => 'api-secret'], $device->api_credentials);
         $this->assertStringNotContainsString('api-secret', (string) $device->getRawOriginal('api_credentials'));
         $this->assertSame([null, Audit::MASK], AuditLog::where('action', 'updated')->where('subject_type', 'network_device')->latest('id')->first()->changes['api_credentials']);
@@ -276,8 +276,39 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame('api-secret', $device->fresh()->api_credentials['password']);
 
         Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->set('form.api_port', 8443)->set('form.api_driver', 'routeros-api-ssl')->assertSet('form.api_port', null)
+            ->assertSee('Laissez vide pour conserver le secret enregistré.')
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame(['routeros-api-ssl', null, 'api-secret'], [$device->fresh()->api_driver, $device->fresh()->api_port, $device->fresh()->api_credentials['password']]);
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->set('form.api_port', 18729)->call('save')->assertHasNoErrors();
+        $this->assertSame(18729, $device->fresh()->api_port);
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
             ->set('form.api_driver', '')->call('save')->assertHasNoErrors();
         $this->assertSame([null, null, null], [$device->fresh()->api_driver, $device->fresh()->api_port, $device->fresh()->api_credentials]);
+    }
+
+    public function test_tls_failures_explain_their_reason_and_blame_the_certificate_only_when_it_is_verified(): void
+    {
+        $this->agent->asMikrotik()->withoutVlanTables();
+        $device = NetworkDevice::factory()->create(['api_driver' => 'routeros', 'api_verify_tls' => true, 'api_credentials' => ['username' => 'nexora', 'password' => 'api-secret']]);
+        $cases = [
+            [true, 'cURL error 60: SSL certificate problem: self-signed certificate (see https://curl.haxx.se/libcurl/c/libcurl-errors.html)', 'Le certificat de l’API RouterOS n’est pas reconnu (certificate problem: self-signed certificate). Installez un certificat valide ou désactivez la vérification.'],
+            [false, 'cURL error 35: OpenSSL/3.0.13: error:0A000152:SSL routines::unsafe legacy renegotiation disabled (see https://curl.haxx.se/libcurl/c/libcurl-errors.html)', 'La connexion chiffrée à l’API RouterOS a échoué (unsafe legacy renegotiation disabled). Vérifiez le port et le service www-ssl.'],
+            [false, 'cURL error 7: Failed to connect to 192.0.2.2 port 443 after 3 ms: Connection refused', 'L’API RouterOS est injoignable. Vérifiez que le service www-ssl est activé et le port autorisé.'],
+        ];
+
+        $error = '';
+        Http::fake(function () use (&$error) {
+            return Http::failedConnection($error);
+        });
+        foreach ($cases as [$verify, $error, $expected]) {
+            $device->forceFill(['api_verify_tls' => $verify])->save();
+
+            $this->assertSame($expected, $this->poll($device)->api_error);
+        }
     }
 
     public function test_lldp_neighbours_land_on_the_local_port_they_name(): void

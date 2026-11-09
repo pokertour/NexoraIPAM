@@ -18,7 +18,8 @@ class RouterOsRest extends RouterOs
         $credentials = $device->api_credentials ?? [];
         $request = Http::baseUrl('https://'.$this->host($device).':'.($device->api_port ?: 443).'/rest/')
             ->withBasicAuth((string) ($credentials['username'] ?? ''), (string) ($credentials['password'] ?? ''))
-            ->withOptions(['verify' => $device->api_verify_tls])
+            // Without verification, also accept the weak keys and signatures of older RouterOS certificates.
+            ->withOptions(['verify' => $device->api_verify_tls] + ($device->api_verify_tls ? [] : ['curl' => [CURLOPT_SSL_CIPHER_LIST => 'DEFAULT:@SECLEVEL=0']]))
             ->acceptJson()->connectTimeout(5)->timeout(20);
 
         $rows = [];
@@ -30,9 +31,7 @@ class RouterOsRest extends RouterOs
                     ? __('L’API RouterOS a refusé les identifiants.')
                     : __('L’API RouterOS a répondu :status sur :path.', ['status' => $exception->response->status(), 'path' => '/rest/'.$menu]));
             } catch (ConnectionException $exception) {
-                throw new RuntimeException(str_contains($exception->getMessage(), 'SSL') || str_contains($exception->getMessage(), 'certificate')
-                    ? __('Le certificat de l’API RouterOS n’est pas reconnu. Installez un certificat valide ou désactivez la vérification.')
-                    : __('L’API RouterOS est injoignable. Vérifiez que le service :service est activé et le port autorisé.', ['service' => 'www-ssl']));
+                throw $this->connectionFailure($device, $exception->getMessage(), 'www-ssl');
             }
             $rows[$menu] = is_array($response) ? array_values(array_filter($response, 'is_array')) : [];
         }

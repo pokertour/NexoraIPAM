@@ -49,6 +49,13 @@ trait EditsNetworkDevice
         $this->editing = true;
     }
 
+    /** A port typed for one API rarely fits another: changing the API goes back to its default port. */
+    public function updatedFormApiDriver(): void
+    {
+        $this->form['api_port'] = null;
+        $this->resetValidation('form.api_port');
+    }
+
     protected function resetDeviceForm(): void
     {
         $this->reset('editing', 'recordId', 'form', 'hasApiPassword');
@@ -71,7 +78,7 @@ trait EditsNetworkDevice
         $this->form['api_port'] = filled($this->form['api_port'] ?? null) ? $this->form['api_port'] : null;
         $api = $this->form['api_driver'] !== null;
         $storedApi = $device->api_credentials ?? [];
-        $keepApiPassword = blank($this->form['api_password'] ?? null) && filled($storedApi['password'] ?? null) && $device->api_driver === $this->form['api_driver'];
+        $keepApiPassword = blank($this->form['api_password'] ?? null) && filled($storedApi['password'] ?? null);
 
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
@@ -111,7 +118,8 @@ trait EditsNetworkDevice
             'location_id' => $data['location_id'], 'description' => $data['description'] ?: null,
             'poll_interval' => $data['poll_interval'] === null ? null : (int) $data['poll_interval'],
             'api_driver' => $data['api_driver'],
-            'api_port' => $api ? (int) ($data['api_port'] ?? DeviceApis::DRIVERS[$data['api_driver']]['port']) : null,
+            // An empty port follows the default port of the chosen API.
+            'api_port' => $api && $data['api_port'] !== null && (int) $data['api_port'] !== DeviceApis::DRIVERS[$data['api_driver']]['port'] ? (int) $data['api_port'] : null,
             'api_verify_tls' => (bool) ($data['api_verify_tls'] ?? true),
         ]);
         $apiCredentials = $api ? ['username' => $data['api_username'], 'password' => $data['api_password'] ?: ($storedApi['password'] ?? null)] : null;

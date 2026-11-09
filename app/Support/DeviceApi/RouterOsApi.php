@@ -75,6 +75,8 @@ class RouterOsApi extends RouterOs
         $context = stream_context_create(['ssl' => [
             'verify_peer' => $verify, 'verify_peer_name' => $verify, 'allow_self_signed' => ! $verify,
             'peer_name' => $device->host, 'SNI_enabled' => true,
+            // Without a certificate, api-ssl only offers anonymous Diffie-Hellman, refused by the default cipher list.
+            'ciphers' => $verify ? 'DEFAULT' : 'ALL:@SECLEVEL=0',
         ]]);
         $address = ($this->tls ? 'tls' : 'tcp').'://'.$this->host($device).':'.($device->api_port ?: ($this->tls ? 8729 : 8728));
         $warnings = [];
@@ -89,11 +91,8 @@ class RouterOsApi extends RouterOs
             restore_error_handler();
         }
         if ($stream === false) {
-            // OpenSSL reports a rejected certificate in a warning, not in the connection error.
-            $error = implode(' ', [...$warnings, (string) $message]);
-            throw new RuntimeException($this->tls && preg_match('/certificate|SSL operation failed|handshake/i', $error)
-                ? __('Le certificat de l’API RouterOS n’est pas reconnu. Installez un certificat valide ou désactivez la vérification.')
-                : __('L’API RouterOS est injoignable. Vérifiez que le service :service est activé et le port autorisé.', ['service' => $this->service]));
+            // OpenSSL reports TLS failures in warnings, not in the connection error.
+            throw $this->connectionFailure($device, implode(' | ', [...$warnings, (string) $message]), $this->service);
         }
         stream_set_timeout($stream, 20);
 
