@@ -108,7 +108,10 @@ class Topology
         return strtolower(explode('.', trim($name))[0]);
     }
 
-    /** Matches Te1/0/48 with TenGigabitEthernet1/0/48 and exact names. */
+    /**
+     * Matches Te1/0/48 with TenGigabitEthernet1/0/48, exact names, and the
+     * last segment of RouterOS labels such as bridge/UplinkCore01/sfp-sfpplus22.
+     */
     private static function samePort(DevicePort $port, ?string $label): bool
     {
         if ($label === null || $label === '') {
@@ -116,6 +119,10 @@ class Topology
         }
 
         $label = strtolower($label);
+        $last = last(explode('/', $label));
+        if ($last !== $label && preg_match('/[a-z]/', $last) && in_array($last, array_map('strtolower', array_filter([$port->name, $port->descr, $port->alias])), true)) {
+            return true;
+        }
         foreach (array_filter([$port->name, $port->descr, $port->alias]) as $candidate) {
             $candidate = strtolower($candidate);
             if ($candidate === $label) {

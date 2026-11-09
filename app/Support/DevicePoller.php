@@ -79,6 +79,11 @@ class DevicePoller
 
     private const LLDP_LOC_PORT_DESC = '1.0.8802.1.1.2.1.3.7.1.4';
 
+    /** lldpLocPortIdSubtype: 3 is a MAC address, 5 an interface name, 7 a locally assigned name. */
+    private const LLDP_LOC_PORT_ID_SUBTYPE = '1.0.8802.1.1.2.1.3.7.1.2';
+
+    private const LLDP_LOC_PORT_ID = '1.0.8802.1.1.2.1.3.7.1.3';
+
     /** Management addresses of LLDP neighbours, indexed by neighbour then address. */
     private const LLDP_REM_MAN_ADDR = '1.0.8802.1.1.2.1.4.2.1.3';
 
@@ -130,7 +135,7 @@ class DevicePoller
             }
         }
         $macs = $this->forwardingTable($device, $bridgeToIf);
-        $neighbors = $this->neighbors($device, $interfaces, $bridgeToIf);
+        $neighbors = $this->neighbors($device, $interfaces, $bridgeToIf, $physicalMacs);
         $arp = $this->arpTable($device);
         $ipByMac = array_flip(array_reverse($arp, true));
 
@@ -361,6 +366,7 @@ class DevicePoller
      *
      * @param  array<int, array<string, string>>  $interfaces
      * @param  array<int, int>  $bridgeToIf
+     * @param  array<int, string>  $physicalMacs
      * @return array<int, array{name: ?string, port: ?string}>
      */
     private function nameAddresses(NetworkDevice $device, ?string $systemName): void
@@ -394,20 +400,46 @@ class DevicePoller
         }
     }
 
-    private function neighbors(NetworkDevice $device, array $interfaces, array $bridgeToIf): array
+    /**
+     * LLDP neighbours keyed by local interface index.
+     *
+     * @param  array<int, array<string, string>>  $interfaces
+     * @param  array<int, int>  $bridgeToIf
+     * @param  array<int, string>  $physicalMacs
+     * @return array<int, array{name: string, port: ?string}>
+     */
+    private function neighbors(NetworkDevice $device, array $interfaces, array $bridgeToIf, array $physicalMacs = []): array
     {
         $names = $this->snmp->walk($device, self::LLDP_REM_SYS_NAME);
         if ($names === []) {
             return [];
         }
         $ports = $this->snmp->walk($device, self::LLDP_REM_PORT_DESC) + $this->snmp->walk($device, self::LLDP_REM_PORT_ID);
-        $localDescriptions = $this->snmp->walk($device, self::LLDP_LOC_PORT_DESC);
         $byLabel = [];
         foreach ($interfaces as $index => $values) {
             foreach (['name', 'descr', 'alias'] as $key) {
                 if (filled($values[$key] ?? null)) {
                     $byLabel[strtolower($values[$key])] ??= $index;
                 }
+            }
+        }
+
+        // The local port number has no fixed meaning: match the local port by its description or identifier first.
+        $localLabels = [];
+        foreach ($this->snmp->walk($device, self::LLDP_LOC_PORT_DESC) as $local => $description) {
+            $localLabels[(string) $local][] = $description;
+        }
+        $subtypes = $this->snmp->walk($device, self::LLDP_LOC_PORT_ID_SUBTYPE);
+        $byMac = array_flip($physicalMacs);
+        foreach ($this->snmp->walk($device, self::LLDP_LOC_PORT_ID, true) as $local => $hex) {
+            $bytes = SnmpClient::bytes($hex);
+            if ((int) ($subtypes[$local] ?? 0) === 3) {
+                $mac = SnmpClient::mac($bytes);
+                if ($mac !== null && isset($byMac[$mac])) {
+                    $localLabels[(string) $local][] = (string) ($interfaces[$byMac[$mac]]['name'] ?? $interfaces[$byMac[$mac]]['descr'] ?? '');
+                }
+            } elseif ($bytes !== []) {
+                $localLabels[(string) $local][] = implode('', array_map('chr', $bytes));
             }
         }
 
@@ -418,14 +450,45 @@ class DevicePoller
                 continue;
             }
             $local = (int) $parts[1];
-            $description = strtolower($localDescriptions[(string) $local] ?? '');
-            $index = $byLabel[$description] ?? $bridgeToIf[$local] ?? (isset($interfaces[$local]) ? $local : null);
+            $index = null;
+            foreach ($localLabels[(string) $local] ?? [] as $label) {
+                if (($index = self::interfaceByLabel($byLabel, $label)) !== null) {
+                    break;
+                }
+            }
+            $index ??= $bridgeToIf[$local] ?? (isset($interfaces[$local]) ? $local : null);
             if ($index !== null) {
                 $neighbors[$index] = ['name' => mb_substr($name, 0, 255), 'port' => isset($ports[$suffix]) ? mb_substr($ports[$suffix], 0, 255) : null];
             }
         }
 
         return $neighbors;
+    }
+
+    /**
+     * Finds an interface by name, description or alias. RouterOS prefixes the
+     * port with its bridge and bond, as in bridge/UplinkCore01/sfp-sfpplus22:
+     * the physical port is then the last segment that names an interface.
+     *
+     * @param  array<string, int>  $byLabel
+     */
+    public static function interfaceByLabel(array $byLabel, string $label): ?int
+    {
+        $label = strtolower(trim($label));
+        if ($label === '') {
+            return null;
+        }
+        if (isset($byLabel[$label])) {
+            return $byLabel[$label];
+        }
+
+        foreach (array_reverse(explode('/', $label)) as $segment) {
+            if (preg_match('/[a-z]/', $segment) && isset($byLabel[$segment])) {
+                return $byLabel[$segment];
+            }
+        }
+
+        return null;
     }
 
     /** @return array<string, string> MAC addresses keyed by IPv4 address. */

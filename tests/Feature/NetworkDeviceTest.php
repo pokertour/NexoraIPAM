@@ -18,6 +18,7 @@ use App\Support\Audit;
 use App\Support\DeviceApi\RouterOsApi;
 use App\Support\DeviceApi\RouterOsApiPlain;
 use App\Support\SnmpClient;
+use App\Support\Topology;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -277,6 +278,22 @@ class NetworkDeviceTest extends TestCase
         Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
             ->set('form.api_driver', '')->call('save')->assertHasNoErrors();
         $this->assertSame([null, null, null], [$device->fresh()->api_driver, $device->fresh()->api_port, $device->fresh()->api_credentials]);
+    }
+
+    public function test_lldp_neighbours_land_on_the_local_port_they_name(): void
+    {
+        $this->agent->asMikrotik()->withRouterOsLldp();
+        $device = $this->poll(NetworkDevice::factory()->create());
+        $ports = $device->ports()->get()->keyBy('name');
+
+        $this->assertSame(['B1-Switch-J', 'bridge/sfp-sfpplus1'], [$ports['sfp-sfpplus1']->neighbor_name, $ports['sfp-sfpplus1']->neighbor_port]);
+        $this->assertSame('Switch-Core-02', $ports['sfp-sfpplus2']->neighbor_name);
+        $this->assertNull($ports['ether1']->neighbor_name);
+
+        $core = NetworkDevice::factory()->create(['name' => 'Switch-Core-02']);
+        $uplink = DevicePort::create(['network_device_id' => $core->id, 'if_index' => 22, 'name' => 'sfp-sfpplus22', 'physical' => true]);
+        $link = app(Topology::class)->links()->sole();
+        $this->assertTrue($link['b_port']?->is($uplink) || $link['a_port']->is($uplink));
     }
 
     public function test_the_snmp_dump_prints_the_tables_without_credentials(): void

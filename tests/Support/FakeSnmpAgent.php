@@ -135,6 +135,29 @@ class FakeSnmpAgent
         return $this;
     }
 
+    /**
+     * RouterOS-like LLDP: local port numbers that are neither bridge ports nor
+     * interface indexes, a bridge port table that would map them to the wrong
+     * port, local ports identified by name, and remote ports prefixed with
+     * their bridge and bond.
+     */
+    public function withRouterOsLldp(): self
+    {
+        $this->values = array_filter($this->values, fn (string $oid): bool => ! str_starts_with($oid, '1.0.8802.') && ! str_starts_with($oid, '1.3.6.1.2.1.17.1.4.'), ARRAY_FILTER_USE_KEY);
+        foreach ([1 => 3, 2 => 4, 3 => 1, 4 => 2] as $bridgePort => $ifIndex) {
+            $this->set('1.3.6.1.2.1.17.1.4.1.2.'.$bridgePort, 'INTEGER', $ifIndex);
+        }
+        foreach ([1 => ['sfp-sfpplus1', 'B1-Switch-J', 'bridge/sfp-sfpplus1'], 2 => ['sfp-sfpplus2', 'Switch-Core-02', 'bridge/UplinkCore01/sfp-sfpplus22']] as $local => [$port, $name, $remote]) {
+            $this->set('1.0.8802.1.1.2.1.3.7.1.2.'.$local, 'INTEGER', 5);
+            $this->set('1.0.8802.1.1.2.1.3.7.1.3.'.$local, 'STRING', $port);
+            $this->set('1.0.8802.1.1.2.1.4.1.1.8.0.'.$local.'.1', 'STRING', $remote);
+            $this->set('1.0.8802.1.1.2.1.4.1.1.9.0.'.$local.'.1', 'STRING', $name);
+        }
+        uksort($this->values, fn (string $left, string $right): int => version_compare($left, $right));
+
+        return $this;
+    }
+
     /** @param list<string> $command */
     public function respond(array $command): string
     {
