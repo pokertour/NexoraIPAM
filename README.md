@@ -49,7 +49,7 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 
 ### 🔌 Switches and routers over SNMP
 - SNMP v2c and v3, with credentials encrypted at rest.
-- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. When a vendor's port names give no clue, administrators can set the connector of a port by hand; polls keep that choice. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
 - **VLAN colours**: every VLAN gets a stable colour, or one you choose, shown on ports and lists. Click a VLAN to highlight its ports.
 - **Racks and topology**: place devices and passive items in racks unit by unit. Links between switches are drawn automatically from LLDP, or from the MAC addresses each switch learns from the other.
 - The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.

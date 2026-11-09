@@ -728,5 +728,11 @@
     "L’API RouterOS a refusé les identifiants.": "The RouterOS API rejected the credentials.",
     "L’API RouterOS a répondu :status sur :path.": "The RouterOS API answered :status on :path.",
     "Le certificat HTTPS de l’API RouterOS n’est pas reconnu. Installez un certificat valide ou désactivez la vérification.": "The RouterOS API HTTPS certificate is not trusted. Install a valid certificate or turn off verification.",
-    "L’API RouterOS est injoignable. Vérifiez que le service www-ssl est activé et le port autorisé.": "The RouterOS API is unreachable. Check that the www-ssl service is enabled and the port allowed."
+    "L’API RouterOS est injoignable. Vérifiez que le service www-ssl est activé et le port autorisé.": "The RouterOS API is unreachable. Check that the www-ssl service is enabled and the port allowed.",
+    "Type de connecteur": "Connector type",
+    "Détection automatique": "Automatic detection",
+    "Auto": "Auto",
+    "défini manuellement": "set manually",
+    "Connecteur du port :port enregistré.": "Connector of port :port saved.",
+    "Connecteur de port modifié": "Port connector changed"
 }

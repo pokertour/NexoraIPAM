@@ -266,6 +266,34 @@ class NetworkDeviceTest extends TestCase
             ->assertSee('sw-rdc · GigabitEthernet1/0/13')->assertSee('VLAN 20');
     }
 
+    public function test_administrators_override_a_wrongly_detected_connector(): void
+    {
+        $this->withoutVite();
+        $device = $this->poll(NetworkDevice::factory()->create(['name' => 'sw-dlink']));
+        $port = $device->ports()->where('name', 'GigabitEthernet1/0/13')->sole();
+        $this->assertSame('rj45', $port->connector());
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, 'sfp')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, 'usb')->assertStatus(422);
+        Livewire::test(DeviceDetail::class, ['device' => $device])
+            ->call('select', $port->if_index)->assertSee('Type de connecteur')
+            ->call('setMedia', $port->if_index, 'sfp')->assertDispatched('nexora-toast', tone: 'success')
+            ->assertSeeHtml('data-media="sfp"');
+
+        $this->assertSame(['rj45', 'sfp', 'sfp'], [$port->fresh()->media, $port->fresh()->media_override, $port->fresh()->connector()]);
+        $this->assertSame(['port' => [null, 'GigabitEthernet1/0/13'], 'media' => ['auto', 'sfp']], AuditLog::where('action', 'device.port_media')->sole()->changes);
+
+        $this->poll($device);
+        $this->assertSame('sfp', $port->fresh()->connector(), 'A poll keeps the manual choice.');
+
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, '');
+        $this->assertSame([null, 'rj45'], [$port->fresh()->media_override, $port->fresh()->connector()]);
+        $this->assertSame(2, AuditLog::where('action', 'device.port_media')->count());
+    }
+
     public function test_due_devices_are_polled_by_the_scheduler(): void
     {
         $due = NetworkDevice::factory()->create(['poll_interval' => 15, 'next_poll_at' => now()->subMinute()]);

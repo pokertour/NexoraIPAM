@@ -78,7 +78,21 @@
             <div class="port-grid">
                 <dl class="port-facts">
                     <div><dt>{{ __('État') }}</dt><dd><span @class(['badge', 'tone-cyan' => $port->state() === 'up', 'tone-amber' => $port->state() === 'disabled', 'tone-blue' => $port->state() === 'down'])>{{ ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$port->state()] }}</span></dd></div>
-                    <div><dt>{{ __('Vitesse') }}</dt><dd>{{ $port->speedLabel() ?? '—' }}@if ($port->media) · {{ \App\Support\PortMedia::LABELS[$port->media] }}@endif</dd></div>
+                    <div><dt>{{ __('Vitesse') }}</dt><dd>{{ $port->speedLabel() ?? '—' }}</dd></div>
+                    @if ($port->physical)
+                        <div><dt>{{ __('Connecteur') }}</dt><dd>
+                            @can('administer')
+                                <nav class="segmented segmented-sm" aria-label="{{ __('Type de connecteur') }}">
+                                    <button type="button" @class(['active' => $port->media_override === null]) wire:click="setMedia({{ $port->if_index }}, '')" aria-current="{{ $port->media_override === null ? 'true' : 'false' }}" title="{{ __('Détection automatique') }}">{{ __('Auto') }}@if ($port->media) · {{ \App\Support\PortMedia::LABELS[$port->media] }}@endif</button>
+                                    @foreach (\App\Support\PortMedia::LABELS as $value => $label)
+                                        <button type="button" @class(['active' => $port->media_override === $value]) wire:click="setMedia({{ $port->if_index }}, '{{ $value }}')" aria-current="{{ $port->media_override === $value ? 'true' : 'false' }}">{{ $label }}</button>
+                                    @endforeach
+                                </nav>
+                            @else
+                                {{ $port->connector() ? \App\Support\PortMedia::LABELS[$port->connector()] : '—' }}@if ($port->media_override) <small class="muted">({{ __('défini manuellement') }})</small>@endif
+                            @endcan
+                        </dd></div>
+                    @endif
                     <div><dt>{{ __('VLAN natif') }}</dt><dd>@if ($port->pvid)<x-vlan-chip :number="$port->pvid" :color="$vlanColors[$port->pvid] ?? null" :name="$vlans->get($port->pvid)?->first()?->name"/>@else — @endif</dd></div>
                     @if ($port->untagged_vlans && $port->untagged_vlans !== [$port->pvid])
                         <div><dt>{{ __('VLAN non taggés') }}</dt><dd><span class="vlan-list">@foreach ($port->untagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span></dd></div>
@@ -149,7 +163,7 @@
                             <td><button type="button" class="table-link font-semibold text-left" wire:click="select({{ $row->if_index }})">{{ $row->name }}</button>@if ($row->alias)<small class="muted block">{{ $row->alias }}</small>@endif</td>
                             <td><span class="port-dot" data-state="{{ $row->state() }}"></span> {{ ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$row->state()] }}</td>
                             <td class="whitespace-nowrap">{{ $row->speedLabel() ?? '—' }}</td>
-                            <td>{{ $row->media ? \App\Support\PortMedia::LABELS[$row->media] : '—' }}</td>
+                            <td>{{ $row->connector() ? \App\Support\PortMedia::LABELS[$row->connector()] : '—' }}</td>
                             <td>@if ($row->pvid)<x-vlan-chip :number="$row->pvid" :color="$vlanColors[$row->pvid] ?? null"/>@endif @if ($row->isTrunk())<span class="badge tone-violet ml-1" title="{{ implode(', ', $row->tagged_vlans) }}">{{ __('Trunk') }} · {{ count($row->tagged_vlans) }}</span>@endif @if (! $row->pvid && ! $row->isTrunk())—@endif</td>
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->in_bps) }}</td>
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->out_bps) }}</td>

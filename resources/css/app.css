@@ -290,6 +290,7 @@
     .segmented button { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: .45rem; color: var(--muted); font-weight: 600; font-size: .8rem; }
     .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
     .segmented .count-pill { padding: 0 .4rem; font-size: .68rem; }
+    .segmented-sm button { padding: .15rem .5rem; font-size: .72rem; }
 
     /* Devices */
     .device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
