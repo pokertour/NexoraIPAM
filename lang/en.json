@@ -889,5 +889,7 @@
     "Port WAN modifié": "WAN port changed",
     "Marquez le port de sortie de votre routeur ou pare-feu comme WAN pour afficher Internet.": "Mark the outgoing port of your router or firewall as WAN to show the Internet.",
     "Sans liaison connue": "No known link",
-    "Bordure": "Edge"
+    "Bordure": "Edge",
+    "Sans chiffrement": "No encryption",
+    "Sans chiffrement, les messages et l’identifiant éventuel passent en clair : réservez-le à un relais local ou sur un réseau de confiance, en général sur le port 25.": "Without encryption, messages and any credentials cross the network in clear text: keep it to a local relay or a trusted network, usually on port 25."
 }

@@ -73,11 +73,14 @@
             <label class="checkbox"><input type="checkbox" wire:model="smtp.enabled"> {{ __('Activer l’envoi via SMTP') }}</label>
             @error('smtp.enabled')<p class="field-error" role="alert">{{ $message }}</p>@enderror
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-field name="smtp.scheme" :label="__('Chiffrement')" wire:model="smtp.scheme">
-                    <option value="smtps">{{ __('TLS implicite') }}</option><option value="smtp">STARTTLS</option>
+                <x-field name="smtp.scheme" :label="__('Chiffrement')" wire:model.live="smtp.scheme">
+                    <option value="smtps">{{ __('TLS implicite') }}</option><option value="smtp">STARTTLS</option><option value="none">{{ __('Sans chiffrement') }}</option>
                 </x-field>
                 <x-field name="smtp.port" label="Port" type="number" wire:model="smtp.port" min="1" max="65535"/>
             </div>
+            @if (($smtp['scheme'] ?? null) === 'none')
+                <div class="callout callout-warning" role="note"><x-icon name="info" class="size-4"/> {{ __('Sans chiffrement, les messages et l’identifiant éventuel passent en clair : réservez-le à un relais local ou sur un réseau de confiance, en général sur le port 25.') }}</div>
+            @endif
             <x-field name="smtp.host" label="Serveur" wire:model="smtp.host" placeholder="smtp.exemple.fr"/>
             <x-field name="smtp.username" :label="__('Identifiant (si requis)')" wire:model="smtp.username"/>
             <x-field name="smtp.password" :label="__('Mot de passe (si requis)')" type="password" wire:model="smtp.password" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>

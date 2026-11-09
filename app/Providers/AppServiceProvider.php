@@ -45,12 +45,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->resolving('mail.manager', function (MailManager $manager): void {
             $smtp = Setting::read('smtp');
             if ($smtp['enabled'] ?? false) {
+                // smtps: implicit TLS. smtp: STARTTLS, required. none: plain SMTP for a local relay, without STARTTLS.
+                $plain = ($smtp['scheme'] ?? null) === 'none';
                 config([
                     'mail.default' => 'smtp',
                     'mail.mailers.smtp' => [
-                        'transport' => 'smtp', 'scheme' => $smtp['scheme'], 'host' => $smtp['host'],
+                        'transport' => 'smtp', 'scheme' => $plain ? 'smtp' : $smtp['scheme'], 'host' => $smtp['host'],
                         'port' => $smtp['port'], 'username' => $smtp['username'] ?? null, 'password' => $smtp['password'] ?? null,
-                        'timeout' => 8, 'require_tls' => true,
+                        'timeout' => 8, 'require_tls' => ! $plain, 'auto_tls' => ! $plain,
                     ],
                     'mail.from' => ['address' => $smtp['from'], 'name' => config('app.name')],
                 ]);

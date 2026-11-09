@@ -61,7 +61,7 @@ class Preferences extends Component
                 'secret' => [$required, 'nullable', 'string', 'max:1024'],
             ],
             'smtp' => [
-                'scheme' => ['required', 'in:smtp,smtps'],
+                'scheme' => ['required', 'in:smtp,smtps,none'],
                 'host' => [$required, 'nullable', 'string', 'max:253', 'regex:/^[a-zA-Z0-9.-]+$/D'],
                 'port' => [$required, 'nullable', 'integer', 'between:1,65535'],
                 'username' => ['nullable', 'string', 'max:255'],
