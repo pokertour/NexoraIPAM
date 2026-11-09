@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>NexoraIPAM · Modern IP address management</title>
+    <meta name="description" content="Self-hosted IPAM for subnets, IP addresses and VLANs, with ICMP discovery, live SNMP switch faceplates, racks, topology up to the Internet, wall outlets, alerts, audit log and a REST API.">
+    <meta property="og:title" content="NexoraIPAM · Modern IP address management">
+    <meta property="og:description" content="See your network, not a spreadsheet. Subnets, IPs, VLANs, SNMP faceplates, racks, topology, wall outlets and a full audit trail.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://pokertour.github.io/NexoraIPAM/assets/screens/dashboard-dark.webp">
+    <link rel="canonical" href="https://pokertour.github.io/NexoraIPAM/">
+    <link rel="icon" href="assets/brand/nexora-icon-light.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f7f8fc;
+            --bg-soft: #eef1f8;
+            --surface: #ffffff;
+            --surface-soft: #f3f5fb;
+            --text: #0b1020;
+            --text-soft: #334155;
+            --muted: #5d6b82;
+            --line: #e2e7f0;
+            --line-strong: #cfd6e4;
+            --violet: #7c3aed;
+            --blue: #2563eb;
+            --cyan: #06b6d4;
+            --brand: linear-gradient(120deg, #06b6d4 0%, #2563eb 45%, #7c3aed 100%);
+            --glow-a: #7c3aed22;
+            --glow-b: #06b6d41f;
+            --code-bg: #0d1220;
+            --shadow: 0 30px 80px -40px #1e1b4b55, 0 12px 30px -18px #0f172a33;
+            --radius: 18px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #070a14;
+                --bg-soft: #0c1120;
+                --surface: #0f1526;
+                --surface-soft: #131a2e;
+                --text: #f1f5f9;
+                --text-soft: #cbd5e1;
+                --muted: #8b98b0;
+                --line: #1e263b;
+                --line-strong: #2a3450;
+                --glow-a: #7c3aed33;
+                --glow-b: #06b6d42b;
+                --code-bg: #0a0f1c;
+                --shadow: 0 40px 100px -40px #000c, 0 12px 30px -18px #0009;
+            }
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        img { max-width: 100%; display: block; }
+        a { color: inherit; text-decoration: none; }
+        code, pre { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .wrap { width: min(1180px, 100% - 2.5rem); margin-inline: auto; }
+        .light-only { display: initial; }
+        .dark-only { display: none; }
+        @media (prefers-color-scheme: dark) { .light-only { display: none; } .dark-only { display: initial; } }
+
+        /* Header */
+        .site-header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(14px) saturate(1.4); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+        .site-header .wrap { display: flex; align-items: center; gap: 1.5rem; height: 4.25rem; }
+        .logo img { height: 34px; width: auto; }
+        .nav { display: flex; gap: 1.6rem; margin-left: auto; font-size: .92rem; font-weight: 500; color: var(--text-soft); }
+        .nav a:hover { color: var(--text); }
+        .button { display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1.15rem; border-radius: 12px; font-weight: 650; font-size: .95rem; border: 1px solid transparent; transition: transform .15s, box-shadow .15s, background .15s; white-space: nowrap; }
+        .button:hover { transform: translateY(-1px); }
+        .button svg { width: 18px; height: 18px; }
+        .button-primary { background: var(--brand); color: #fff; box-shadow: 0 12px 30px -12px #5b21b6aa; }
+        .button-primary:hover { box-shadow: 0 16px 36px -12px #5b21b6cc; }
+        .button-ghost { background: var(--surface); border-color: var(--line-strong); color: var(--text); }
+        .button-small { padding: .5rem .9rem; font-size: .88rem; }
+        @media (max-width: 860px) { .nav { display: none; } .site-header .button { margin-left: auto; } }
+
+        /* Hero */
+        .hero { position: relative; padding: 5.5rem 0 3rem; text-align: center; isolation: isolate; }
+        .hero::before { content: ""; position: absolute; inset: -10rem 0 auto; height: 46rem; z-index: -1; background: radial-gradient(40rem 26rem at 22% 30%, var(--glow-a), transparent 70%), radial-gradient(36rem 24rem at 80% 20%, var(--glow-b), transparent 70%); }
+        .hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background-image: radial-gradient(color-mix(in srgb, var(--line-strong) 80%, transparent) 1px, transparent 1px); background-size: 26px 26px; mask-image: radial-gradient(ellipse 70% 55% at 50% 25%, #000 30%, transparent 75%); }
+        .pill { display: inline-flex; align-items: center; gap: .55rem; padding: .35rem .85rem .35rem .4rem; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: .84rem; color: var(--text-soft); box-shadow: 0 6px 20px -14px #0f172a66; }
+        .pill b { white-space: nowrap; padding: .12rem .55rem; border-radius: 999px; background: var(--brand); color: #fff; font-size: .74rem; letter-spacing: .02em; }
+        h1 { margin: 1.4rem auto 0; max-width: 18ch; font-size: clamp(2.6rem, 6.4vw, 4.6rem); line-height: 1.04; letter-spacing: -.045em; font-weight: 800; }
+        .gradient-text { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .lead { margin: 1.4rem auto 0; max-width: 46rem; font-size: clamp(1.05rem, 1.6vw, 1.22rem); color: var(--text-soft); }
+        .hero-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .8rem; margin-top: 2.2rem; }
+        .hero-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.4rem; margin-top: 1.6rem; color: var(--muted); font-size: .86rem; }
+        .hero-meta span { display: inline-flex; align-items: center; gap: .4rem; }
+        .hero-meta svg { width: 16px; height: 16px; color: var(--cyan); }
+        .hero-shot { position: relative; margin: 4rem auto 0; max-width: 1120px; }
+        .hero-shot::before { content: ""; position: absolute; inset: 8% 6% -4%; z-index: -1; background: var(--brand); filter: blur(70px); opacity: .28; border-radius: 40px; }
+
+        /* Browser frame */
+        .frame { overflow: hidden; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--shadow); }
+        .frame-bar { display: flex; align-items: center; gap: .45rem; padding: .7rem .95rem; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
+        .frame-bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line-strong); }
+        .frame-bar i:nth-child(1) { background: #f87171; } .frame-bar i:nth-child(2) { background: #fbbf24; } .frame-bar i:nth-child(3) { background: #34d399; }
+        .frame-bar span { margin-left: .8rem; padding: .18rem .8rem; border-radius: 8px; background: var(--bg-soft); color: var(--muted); font: 500 .76rem "JetBrains Mono", monospace; }
+        .frame img { width: 100%; height: auto; }
+
+        /* Sections */
+        section { padding: 6rem 0; }
+        .eyebrow { display: inline-flex; align-items: center; gap: .5rem; color: var(--violet); font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+        @media (prefers-color-scheme: dark) { .eyebrow { color: #a78bfa; } }
+        .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 10px #7c3aed; }
+        h2 { margin: .8rem 0 0; font-size: clamp(1.9rem, 3.6vw, 2.8rem); line-height: 1.12; letter-spacing: -.035em; font-weight: 800; }
+        .section-head { max-width: 46rem; margin: 0 auto 3.5rem; text-align: center; }
+        .section-head p { margin: 1rem 0 0; color: var(--text-soft); font-size: 1.08rem; }
+
+        /* Features */
+        .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; }
+        @media (max-width: 960px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 620px) { .pill { font-size: .78rem; } .features { grid-template-columns: minmax(0, 1fr); } .hero-meta { gap: .4rem 1rem; } .cta { padding: 2.5rem 1.4rem; } }
+        .feature { position: relative; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); transition: border-color .2s, transform .2s, box-shadow .2s; }
+        .feature:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--violet) 40%, var(--line)); box-shadow: 0 22px 50px -30px #4c1d9566; }
+        .feature-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: #fff; background: var(--brand); box-shadow: 0 10px 22px -10px #4f46e5aa; }
+        .feature-icon svg { width: 22px; height: 22px; }
+        .feature h3 { margin: 1.1rem 0 .4rem; font-size: 1.06rem; letter-spacing: -.01em; }
+        .feature p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+        /* Showcase */
+        .showcase { display: grid; gap: 7rem; }
+        .show { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 3.5rem; align-items: center; }
+        .show:nth-child(even) { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+        .show:nth-child(even) .show-text { order: 2; }
+        @media (max-width: 900px) { .show, .show:nth-child(even) { grid-template-columns: minmax(0, 1fr); gap: 2rem; } .show:nth-child(even) .show-text { order: 0; } }
+        .show-text h3 { margin: .8rem 0 0; font-size: clamp(1.5rem, 2.6vw, 2rem); line-height: 1.15; letter-spacing: -.03em; }
+        .show-text p { margin: 1rem 0 0; color: var(--text-soft); }
+        .checks { list-style: none; margin: 1.4rem 0 0; padding: 0; display: grid; gap: .65rem; }
+        .checks li { display: flex; gap: .65rem; color: var(--text-soft); font-size: .95rem; }
+        .checks svg { flex: none; width: 20px; height: 20px; margin-top: .15rem; color: var(--cyan); }
+
+        /* Integrations */
+        .band { background: var(--bg-soft); border-block: 1px solid var(--line); }
+        .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .7rem; }
+        .chip { padding: .55rem 1rem; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: .9rem; font-weight: 600; color: var(--text-soft); }
+
+        /* Quick start */
+        .start { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 3rem; align-items: start; }
+        @media (max-width: 900px) { .start { grid-template-columns: minmax(0, 1fr); } }
+        .steps { list-style: none; counter-reset: step; margin: 2rem 0 0; padding: 0; display: grid; gap: 1.3rem; }
+        .steps li { counter-increment: step; display: grid; grid-template-columns: 2.4rem 1fr; gap: .9rem; color: var(--text-soft); }
+        .steps li::before { content: counter(step); display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-strong); font-weight: 750; color: var(--text); }
+        .steps b { display: block; color: var(--text); }
+        .terminal { overflow: hidden; border-radius: var(--radius); background: var(--code-bg); border: 1px solid #1f2940; box-shadow: var(--shadow); }
+        .tabs { display: flex; gap: .25rem; padding: .6rem .7rem 0; border-bottom: 1px solid #1f2940; }
+        .tab { padding: .55rem .9rem; border: 0; border-radius: 10px 10px 0 0; background: transparent; color: #8b98b0; font: 600 .85rem Inter, sans-serif; cursor: pointer; }
+        .tab[aria-selected="true"] { background: #141c31; color: #f1f5f9; }
+        .panel { position: relative; }
+        .panel[hidden] { display: none; }
+        pre { margin: 0; padding: 1.3rem 1.4rem; overflow-x: auto; color: #e2e8f0; font-size: .85rem; line-height: 1.75; }
+        pre .c { color: #64748b; } pre .k { color: #c4b5fd; } pre .s { color: #67e8f9; }
+        .copy { position: absolute; top: .7rem; right: .7rem; padding: .35rem .7rem; border-radius: 8px; border: 1px solid #2a3450; background: #141c31; color: #cbd5e1; font: 600 .75rem Inter, sans-serif; cursor: pointer; }
+        .copy:hover { color: #fff; border-color: #475569; }
+        .note { margin-top: 1rem; color: var(--muted); font-size: .88rem; }
+
+        /* API */
+        .api { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 3rem; align-items: center; }
+        @media (max-width: 900px) { .api { grid-template-columns: minmax(0, 1fr); } }
+
+        /* CTA & footer */
+        .cta { position: relative; overflow: hidden; padding: 3.5rem; border-radius: 28px; text-align: center; color: #fff; background: radial-gradient(30rem 18rem at 15% 0%, #22d3ee55, transparent 70%), radial-gradient(30rem 20rem at 90% 100%, #a78bfa66, transparent 70%), linear-gradient(120deg, #0e7490, #1d4ed8 45%, #6d28d9); box-shadow: 0 40px 90px -40px #4c1d95; }
+        .cta h2 { color: #fff; }
+        .cta p { margin: 1rem auto 0; max-width: 38rem; color: #e0e7ff; }
+        .cta .hero-actions .button-ghost { background: #ffffff1a; border-color: #ffffff44; color: #fff; }
+        footer { padding: 3rem 0 3.5rem; color: var(--muted); font-size: .88rem; }
+        footer .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+        footer nav { display: flex; flex-wrap: wrap; gap: 1.3rem; }
+        footer a:hover { color: var(--text); }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+    </style>
+</head>
+<body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".25" fill="currentColor" stroke="none"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.82 1.19 3.08 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+</svg>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="logo" href="#top" aria-label="NexoraIPAM">
+            <img class="light-only" src="assets/brand/nexora-logo-light.svg" alt="NexoraIPAM" width="170" height="34">
+            <img class="dark-only" src="assets/brand/nexora-logo-dark.svg" alt="NexoraIPAM" width="170" height="34">
+        </a>
+        <nav class="nav" aria-label="Sections">
+            <a href="#features">Features</a>
+            <a href="#tour">Tour</a>
+            <a href="#start">Quick start</a>
+            <a href="#api">API</a>
+        </nav>
+        <a class="button button-ghost button-small" href="https://github.com/pokertour/NexoraIPAM"><svg><use href="#i-github"/></svg> GitHub</a>
+    </div>
+</header>
+
+<main id="top">
+    <div class="hero">
+        <div class="wrap">
+            <a class="pill" href="https://github.com/pokertour/NexoraIPAM/releases"><b>Self-hosted</b> One Docker image · English and French</a>
+            <h1>See your network,<br><span class="gradient-text">not a spreadsheet.</span></h1>
+            <p class="lead">NexoraIPAM keeps your subnets, IP addresses and VLANs in one place. It discovers hosts, draws your switches over SNMP and maps your racks, cables and topology all the way to the Internet. Every change is recorded in an audit log.</p>
+            <div class="hero-actions">
+                <a class="button button-primary" href="#start">Get started <svg><use href="#i-arrow"/></svg></a>
+                <a class="button button-ghost" href="https://github.com/pokertour/NexoraIPAM"><svg><use href="#i-github"/></svg> View on GitHub</a>
+            </div>
+            <div class="hero-meta">
+                <span><svg><use href="#i-check"/></svg> SNMP v2c / v3</span>
+                <span><svg><use href="#i-check"/></svg> LDAP, OpenID Connect, TOTP 2FA</span>
+                <span><svg><use href="#i-check"/></svg> REST API</span>
+                <span><svg><use href="#i-check"/></svg> Light and dark themes</span>
+            </div>
+            <div class="hero-shot">
+                <div class="frame">
+                    <div class="frame-bar"><i></i><i></i><i></i><span>ipam.example.com</span></div>
+                    <picture>
+                        <source media="(prefers-color-scheme: dark)" srcset="assets/screens/dashboard-dark.webp">
+                        <img src="assets/screens/dashboard-light.webp" alt="NexoraIPAM dashboard with subnets, alerts, new hosts and device health" width="2160" height="1350" fetchpriority="high">
+                    </picture>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="features">
+        <div class="wrap">
+            <div class="section-head">
+                <span class="eyebrow">Features</span>
+                <h2>Everything about your network, in one place</h2>
+                <p>From the address plan down to the wall outlet in an office, and up to the line that leads to the Internet.</p>
+            </div>
+            <div class="features">
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg></div>
+                    <h3>Subnets and address map</h3>
+                    <p>IPv4 and IPv6 subnets by location, an interactive address map with gateway and DHCP pool, splitting and delegation.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg></div>
+                    <h3>Next free IP</h3>
+                    <p>One click, or one API call, reserves the next free address while skipping the gateway, the DHCP pool and delegated blocks.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="m12 12 7-7"/></svg></div>
+                    <h3>Discovery and history</h3>
+                    <p>ICMP discovery on a schedule, host names from DNS, DHCP, NetBIOS, mDNS and LLDP, plus a timeline of every MAC address seen.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11h2m3 0h2m3 0h2M6 14h12"/></svg></div>
+                    <h3>Live switch faceplates</h3>
+                    <p>RJ45, SFP and QSFP ports with link state, speed, VLANs, throughput, learned MACs and LLDP neighbours, across vendors.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="1.5"/><path d="M8 6h8M8 10h8M8 14h8M8 18h3"/></svg></div>
+                    <h3>Racks, rooms and cables</h3>
+                    <p>Place devices unit by unit, line racks up per room and see the cables between them, detected or documented by hand.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9a3.5 3.5 0 0 1 .5 6.97"/><path d="M12 13v8m-4-3 4 3 4-3"/></svg></div>
+                    <h3>Topology to the Internet</h3>
+                    <p>A layered map from the Internet down: WAN links, edge firewalls, core, distribution and access switches.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 10v2m6-2v2m-5 4h4"/></svg></div>
+                    <h3>Wall outlets</h3>
+                    <p>Create A1 to A24 in one go, patch each outlet to a switch port and find any of them from the search bar.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+                    <h3>Alerts</h3>
+                    <p>Full subnets, unknown hosts, MAC changes, hosts that go silent and unreachable devices, by e-mail if you want.</p>
+                </article>
+                <article class="feature">
+                    <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+                    <h3>Security and audit log</h3>
+                    <p>Roles, TOTP two-factor sign-in, LDAP and OpenID Connect, and every change recorded with its author and before/after values.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section id="tour" class="band">
+        <div class="wrap showcase">
+            <div class="show">
+                <div class="show-text">
+                    <span class="eyebrow">SNMP</span>
+                    <h3>Your switches, drawn port by port</h3>
+                    <p>NexoraIPAM polls your switches and routers with standard MIBs and draws their front panel. Click a port to see who is plugged in.</p>
+                    <ul class="checks">
+                        <li><svg><use href="#i-check"/></svg> Native, untagged and tagged VLANs with stable colours</li>
+                        <li><svg><use href="#i-check"/></svg> Throughput, errors, learned MACs and their IP addresses</li>
+                        <li><svg><use href="#i-check"/></svg> MikroTik VLANs read through the RouterOS API</li>
+                    </ul>
+                </div>
+                <div class="frame"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/screens/device-dark.webp"><img src="assets/screens/device-light.webp" alt="Switch front panel with VLAN colours and the list of ports" width="1776" height="1260" loading="lazy"></picture></div>
+            </div>
+            <div class="show">
+                <div class="show-text">
+                    <span class="eyebrow">Infrastructure</span>
+                    <h3>Racks, rooms and the cables between them</h3>
+                    <p>Racks of the same room stand side by side. Links found by LLDP or MAC tables run through a cable tray, next to the patch cords and fibres you document yourself.</p>
+                    <ul class="checks">
+                        <li><svg><use href="#i-check"/></svg> Hover a cable to light up both ends</li>
+                        <li><svg><use href="#i-check"/></svg> Copper, fibre or DAC, with a tag such as F12</li>
+                        <li><svg><use href="#i-check"/></svg> A detected link confirms a documented one</li>
+                    </ul>
+                </div>
+                <div class="frame"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/screens/racks-dark.webp"><img src="assets/screens/racks-light.webp" alt="Three racks in a room with cables drawn between them" width="1776" height="1260" loading="lazy"></picture></div>
+            </div>
+            <div class="show">
+                <div class="show-text">
+                    <span class="eyebrow">Topology</span>
+                    <h3>From the Internet down to the access switch</h3>
+                    <p>Mark the ports that lead to your carriers as WAN, give your firewall the edge role, and the topology arranges itself in layers.</p>
+                    <ul class="checks">
+                        <li><svg><use href="#i-check"/></svg> Several WAN links, with their name and public IP</li>
+                        <li><svg><use href="#i-check"/></svg> Edge, core, distribution and access layers</li>
+                        <li><svg><use href="#i-check"/></svg> Devices with no known link are set apart</li>
+                    </ul>
+                </div>
+                <div class="frame"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/screens/topology-dark.webp"><img src="assets/screens/topology-light.webp" alt="Layered topology from the Internet to the access switches" width="1776" height="1260" loading="lazy"></picture></div>
+            </div>
+            <div class="show">
+                <div class="show-text">
+                    <span class="eyebrow">Offices</span>
+                    <h3>Know where every wall outlet goes</h3>
+                    <p>Create a whole series of outlets per location, then patch each one to a switch port, from the outlet list or straight from the port.</p>
+                    <ul class="checks">
+                        <li><svg><use href="#i-check"/></svg> Port state and VLAN next to each outlet</li>
+                        <li><svg><use href="#i-check"/></svg> Patched and free outlets, bulk unpatch or delete</li>
+                        <li><svg><use href="#i-check"/></svg> Search an outlet name to jump to its port</li>
+                    </ul>
+                </div>
+                <div class="frame"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/screens/outlets-dark.webp"><img src="assets/screens/outlets-light.webp" alt="Wall outlets patched to switch ports" width="1776" height="1260" loading="lazy"></picture></div>
+            </div>
+            <div class="show">
+                <div class="show-text">
+                    <span class="eyebrow">Inventory</span>
+                    <h3>An address map you can read at a glance</h3>
+                    <p>Free, assigned and reserved addresses, the gateway and the DHCP pool on one grid, with tags, custom fields and the full history of each IP.</p>
+                    <ul class="checks">
+                        <li><svg><use href="#i-check"/></svg> Gateway, DNS servers and domain per subnet</li>
+                        <li><svg><use href="#i-check"/></svg> Host names even without reverse DNS</li>
+                        <li><svg><use href="#i-check"/></svg> Global search with <kbd>Ctrl</kbd> + <kbd>K</kbd>, MAC addresses included</li>
+                    </ul>
+                </div>
+                <div class="frame"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/screens/addresses-dark.webp"><img src="assets/screens/addresses-light.webp" alt="Address map of a subnet" width="1776" height="1260" loading="lazy"></picture></div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="wrap">
+            <div class="section-head">
+                <span class="eyebrow">Works with</span>
+                <h2>Built on the standards your network already speaks</h2>
+            </div>
+            <div class="chips">
+                <span class="chip">SNMP v2c / v3</span><span class="chip">IF-MIB · BRIDGE-MIB · Q-BRIDGE-MIB</span><span class="chip">LLDP</span><span class="chip">ICMP</span>
+                <span class="chip">Kea DHCP · ISC dhcpd</span><span class="chip">NetBIOS · mDNS</span><span class="chip">MikroTik RouterOS API</span>
+                <span class="chip">LDAP · Active Directory</span><span class="chip">OpenID Connect</span><span class="chip">TOTP 2FA</span><span class="chip">SMTP</span>
+                <span class="chip">MariaDB · SQLite</span><span class="chip">Docker</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="start" class="band">
+        <div class="wrap start">
+            <div>
+                <span class="eyebrow">Quick start</span>
+                <h2>Up and running in two minutes</h2>
+                <ol class="steps">
+                    <li><div><b>Create the <code>.env</code> file</b>An application key, the public URL and a database password.</div></li>
+                    <li><div><b>Start the stack</b>NexoraIPAM waits for MariaDB, then applies the migrations. The worker and the scheduler start with it.</div></li>
+                    <li><div><b>Sign in</b>Read the temporary administrator password in the logs and sign in as <code>admin@example.com</code>.</div></li>
+                </ol>
+            </div>
+            <div>
+                <div class="terminal">
+                    <div class="tabs" role="tablist" aria-label="Installation method">
+                        <button class="tab" role="tab" id="tab-compose" aria-controls="panel-compose" aria-selected="true">Docker Compose</button>
+                        <button class="tab" role="tab" id="tab-docker" aria-controls="panel-docker" aria-selected="false" tabindex="-1">Docker</button>
+                    </div>
+                    <div class="panel" role="tabpanel" id="panel-compose" aria-labelledby="tab-compose">
+                        <button class="copy" type="button" data-copy>Copy</button>
+<pre><code><span class="c"># In a new directory, next to compose.yaml from the repository</span>
+<span class="k">printf</span> <span class="s">'APP_KEY=base64:%s\nAPP_URL=%s\nDB_PASSWORD=%s\n'</span> \
+  "$(openssl rand -base64 32)" https://ipam.example.com \
+  "$(openssl rand -hex 24)" > .env
+<span class="k">docker</span> compose up -d
+<span class="k">docker</span> compose logs nexora   <span class="c"># temporary administrator password</span></code></pre>
+                    </div>
+                    <div class="panel" role="tabpanel" id="panel-docker" aria-labelledby="tab-docker" hidden>
+                        <button class="copy" type="button" data-copy>Copy</button>
+<pre><code><span class="k">printf</span> <span class="s">'APP_KEY=base64:%s\nAPP_URL=%s\n'</span> \
+  "$(openssl rand -base64 32)" https://ipam.example.com > .env
+<span class="k">docker</span> volume create nexora-data
+<span class="k">docker</span> run -d --name nexora --env-file .env \
+  -v nexora-data:/var/lib/nexora -p 8080:8080 \
+  ghcr.io/pokertour/nexoraipam:latest
+<span class="k">docker</span> logs nexora   <span class="c"># temporary administrator password</span></code></pre>
+                    </div>
+                </div>
+                <p class="note">The worker probes your networks from the container, so it must be able to reach them. All options are in the <a class="gradient-text" href="https://github.com/pokertour/NexoraIPAM#quick-start-with-docker">README</a>.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="api">
+        <div class="wrap api">
+            <div class="terminal">
+                <div class="panel">
+                    <button class="copy" type="button" data-copy>Copy</button>
+<pre><code><span class="c"># Reserve the next free address of a subnet from a deployment</span>
+<span class="k">curl</span> -X POST \
+  -H <span class="s">"Authorization: Bearer $NEXORA_TOKEN"</span> \
+  -H <span class="s">"Accept: application/json"</span> \
+  -d hostname=web-03 \
+  https://ipam.example.com/api/v1/subnets/12/next-free</code></pre>
+                </div>
+            </div>
+            <div>
+                <span class="eyebrow">REST API</span>
+                <h2>Automate it</h2>
+                <p class="lead" style="margin-left: 0">A versioned JSON API for subnets, addresses, VLANs, locations and devices. Administrators issue read-only or read-write tokens, and every change made with a token is recorded in the audit log under its name.</p>
+                <ul class="checks">
+                    <li><svg><use href="#i-check"/></svg> Next free IP in one call, from Terraform, Ansible or a script</li>
+                    <li><svg><use href="#i-check"/></svg> The same validation rules as the interface</li>
+                    <li><svg><use href="#i-check"/></svg> Per-token history and rate limiting</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section style="padding-top: 0">
+        <div class="wrap">
+            <div class="cta">
+                <h2>Map your network this afternoon</h2>
+                <p>One container, your own server, your data. Try NexoraIPAM on a test subnet and see your switches light up.</p>
+                <div class="hero-actions">
+                    <a class="button button-ghost" href="#start">Quick start <svg><use href="#i-arrow"/></svg></a>
+                    <a class="button button-ghost" href="https://github.com/pokertour/NexoraIPAM"><svg><use href="#i-github"/></svg> Star on GitHub</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <div class="wrap">
+        <span>© <span data-year>2026</span> Guillaume Vaillant · <a href="https://github.com/pokertour/NexoraIPAM/blob/main/LICENSE">NexoraIPAM Source Available License</a></span>
+        <nav aria-label="Links">
+            <a href="https://github.com/pokertour/NexoraIPAM">GitHub</a>
+            <a href="https://github.com/pokertour/NexoraIPAM/releases">Releases</a>
+            <a href="https://github.com/pokertour/NexoraIPAM/blob/main/CONTRIBUTING.md">Contributing</a>
+            <a href="https://github.com/pokertour/NexoraIPAM/issues">Issues</a>
+        </nav>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('[role="tab"]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('[role="tab"]').forEach(other => {
+                const selected = other === tab;
+                other.setAttribute('aria-selected', String(selected));
+                other.tabIndex = selected ? 0 : -1;
+                document.getElementById(other.getAttribute('aria-controls')).hidden = !selected;
+            });
+        });
+    });
+    document.querySelectorAll('[data-copy]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const text = button.parentElement.querySelector('code').innerText.replace(/\s+#.*$/gm, '').replace(/^#.*\n/gm, '').trim();
+            try { await navigator.clipboard.writeText(text); button.textContent = 'Copied'; } catch { button.textContent = 'Select and copy'; }
+            setTimeout(() => { button.textContent = 'Copy'; }, 1600);
+        });
+    });
+    document.querySelectorAll('[data-year]').forEach(element => { element.textContent = new Date().getFullYear(); });
+</script>
+</body>
+</html>
