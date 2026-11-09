@@ -112,6 +112,18 @@
         .section-head { max-width: 46rem; margin: 0 auto 3.5rem; text-align: center; }
         .section-head p { margin: 1rem 0 0; color: var(--text-soft); font-size: 1.08rem; }
 
+        /* Why */
+        .why { padding: 2rem 0 0; }
+        .quote { margin: 0 auto; max-width: 62rem; text-align: center; }
+        .quote blockquote { margin: 0; }
+        .quote blockquote p { margin: 0; font-size: clamp(1.7rem, 3.6vw, 2.7rem); font-weight: 800; line-height: 1.15; letter-spacing: -.035em; }
+        .quote blockquote p::before { content: "\201C"; display: block; height: 2.6rem; margin-bottom: .3rem; font-size: 4.5rem; line-height: 1; background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .quote figcaption { max-width: 44rem; margin: 1.2rem auto 0; color: var(--text-soft); font-size: 1.08rem; }
+        .quote-facts { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2.5rem 0 0; padding: 0; text-align: left; }
+        @media (max-width: 760px) { .quote-facts { grid-template-columns: minmax(0, 1fr); } }
+        .quote-facts li { padding: 1rem 1.2rem; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: .92rem; }
+        .quote-facts b { display: block; margin-bottom: .2rem; color: var(--text); font-size: .98rem; }
+
         /* Features */
         .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; }
         @media (max-width: 960px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -201,7 +213,7 @@
 <main id="top">
     <div class="hero">
         <div class="wrap">
-            <a class="pill" href="https://github.com/pokertour/NexoraIPAM/releases"><b>Self-hosted</b> One Docker image · English and French</a>
+            <a class="pill" href="#why"><b>By network engineers</b> For network engineers</a>
             <h1>See your network,<br><span class="gradient-text">not a spreadsheet.</span></h1>
             <p class="lead">NexoraIPAM keeps your subnets, IP addresses and VLANs in one place. It discovers hosts, draws your switches over SNMP and maps your racks, cables and topology all the way to the Internet. Every change is recorded in an audit log.</p>
             <div class="hero-actions">
@@ -225,6 +237,22 @@
             </div>
         </div>
     </div>
+
+    <section id="why" class="why">
+        <div class="wrap">
+            <figure class="quote">
+                <blockquote>
+                    <p>Built by a network engineer, <span class="gradient-text">for network engineers.</span></p>
+                </blockquote>
+                <figcaption>Every screen answers a question asked in front of a rack: which switch port is this desk on, where does this fibre go, what is still free in this subnet, and who changed it last?</figcaption>
+                <ul class="quote-facts">
+                    <li><b>Shaped on real gear</b>MikroTik, D-Link and Stormshield networks, not a lab</li>
+                    <li><b>Standard MIBs</b>No agent to install, read-only SNMP is enough</li>
+                    <li><b>Your server</b>One container, your data, no cloud account</li>
+                </ul>
+            </figure>
+        </div>
+    </section>
 
     <section id="features">
         <div class="wrap">

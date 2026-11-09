@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\InstallAdmin;
 use App\Livewire\Accounts;
 use App\Livewire\Inventory;
 use App\Livewire\Preferences;
@@ -48,6 +49,27 @@ class WorkspaceTest extends TestCase
         foreach (['dashboard', 'subnets', 'addresses', 'vlans', 'accounts', 'preferences'] as $name) {
             $this->get(route($name))->assertOk();
         }
+    }
+
+    public function test_the_temporary_password_is_printed_as_is_whatever_its_characters(): void
+    {
+        $password = 'a<b>c\\>d<info>e</info>f\\';
+        $this->app->bind(InstallAdmin::class, fn () => new class($password) extends InstallAdmin
+        {
+            public function __construct(private string $fixed)
+            {
+                parent::__construct();
+            }
+
+            protected function temporaryPassword(): string
+            {
+                return $this->fixed;
+            }
+        });
+
+        $this->assertSame(0, Artisan::call('nexora:install'));
+        $this->assertStringContainsString('Mot de passe temporaire : '.$password, Artisan::output());
+        $this->assertTrue(Hash::check($password, User::whereEmail(InstallAdmin::EMAIL)->sole()->password));
     }
 
     public function test_a_reader_cannot_modify_inventory_or_access_admin_pages(): void
