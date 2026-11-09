@@ -10,6 +10,14 @@
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
         </form>
 
+        <form wire:submit="save('login')" class="card settings-card">
+            <div><h2>{{ __('Page de connexion') }}</h2><p>{{ __('Choisissez la méthode proposée en premier, par exemple le SSO au-dessus du formulaire interne.') }}</p></div>
+            <x-field name="login.primary" :label="__('Méthode proposée en premier')" wire:model="login.primary" :hint="__('Une méthode désactivée n’est pas affichée : la suivante prend sa place. Le formulaire interne reste disponible pour le compte d’installation.')">
+                @foreach (\App\Support\LoginMethods::DEFAULTS as $value => $method)<option value="{{ $value }}">{{ ($value === 'local' ? null : (${$value}['button_label'] ?? null)) ?: __($method['label']) }}</option>@endforeach
+            </x-field>
+            <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
+        </form>
+
         <form wire:submit="save('ldap')" class="card settings-card">
             <div><h2>{{ __('Annuaire LDAP') }}</h2><p>{{ __('Les membres du groupe AD autorisé peuvent se connecter et obtiennent un compte Lecteur au premier accès.') }}</p></div>
             <label class="checkbox"><input type="checkbox" wire:model="ldap.enabled"> {{ __('Activer LDAP') }}</label>
@@ -19,6 +27,12 @@
             <x-field name="ldap.group_dn" :label="__('Groupe AD autorisé (DN)')" wire:model="ldap.group_dn" placeholder="CN=NexoraIPAM,OU=Groupes,DC=exemple,DC=fr" :hint="__('Les membres directs et imbriqués de ce groupe ont accès.')"/>
             <x-field name="ldap.bind_dn" :label="__('Compte de service (DN)')" wire:model="ldap.bind_dn"/>
             <x-field name="ldap.password" :label="__('Mot de passe du compte de service')" type="password" wire:model="ldap.password" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
+            <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <x-field name="ldap.button_label" :label="__('Texte du bouton')" wire:model="ldap.button_label" maxlength="60" :placeholder="__(\App\Support\LoginMethods::DEFAULTS['ldap']['label'])" :hint="__('Affiché sur la page de connexion. Laissez vide pour le texte par défaut.')"/>
+                <x-field name="ldap.button_icon" :label="__('Icône')" wire:model="ldap.button_icon">
+                    @foreach (\App\Support\LoginMethods::ICONS as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                </x-field>
+            </div>
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
         </form>
 
@@ -30,6 +44,12 @@
             <x-field name="oidc.client_id" :label="__('Identifiant du client')" wire:model="oidc.client_id"/>
             <x-field name="oidc.scopes" label="Scopes" wire:model="oidc.scopes" :placeholder="\App\Support\OpenIdClient::DEFAULT_SCOPES" :hint="__('Séparés par des espaces. openid est toujours demandé ; le compte est créé à partir de l’e-mail vérifié et du nom, gardez donc email et profile, ou leurs équivalents chez votre fournisseur.')"/>
             <x-field name="oidc.secret" :label="__('Secret du client')" type="password" wire:model="oidc.secret" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
+            <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <x-field name="oidc.button_label" :label="__('Texte du bouton')" wire:model="oidc.button_label" maxlength="60" :placeholder="__(\App\Support\LoginMethods::DEFAULTS['oidc']['label'])" :hint="__('Affiché sur la page de connexion. Laissez vide pour le texte par défaut.')"/>
+                <x-field name="oidc.button_icon" :label="__('Icône')" wire:model="oidc.button_icon">
+                    @foreach (\App\Support\LoginMethods::ICONS as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                </x-field>
+            </div>
             <x-field name="oidc.callback" :label="__('URL de retour à déclarer chez le fournisseur')" :value="route('oidc.callback')" readonly/>
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
         </form>

@@ -92,6 +92,42 @@ class OpenIdTest extends TestCase
         $this->assertSame('email profile groups offline_access openid', $query['scope']);
     }
 
+    public function test_the_login_page_offers_the_preferred_method_first_with_its_label_and_icon(): void
+    {
+        $this->withoutVite();
+        Setting::write('ldap', ['enabled' => true, 'uri' => 'ldaps://dc.example.test', 'button_label' => 'Active Directory', 'button_icon' => 'building']);
+        Setting::write('oidc', ['enabled' => true, 'issuer' => 'https://sso.example.com', 'button_label' => 'Se connecter avec Microsoft', 'button_icon' => 'microsoft']);
+
+        $this->get(route('login'))->assertOk()
+            ->assertSeeInOrder(['name="provider" value="local"', 'Compte interne', 'name="provider" value="ldap"', 'Active Directory', 'ou</span>', 'Se connecter avec Microsoft'], false);
+
+        Setting::write('login', ['primary' => 'oidc']);
+        $this->get(route('login'))->assertSeeInOrder(['Se connecter avec Microsoft', 'ou</span>', 'name="email"'], false)
+            ->assertSee('#f25022', false);
+
+        Setting::write('login', ['primary' => 'ldap']);
+        $this->get(route('login'))->assertSeeInOrder(['value="ldap" checked', 'Active Directory', 'value="local"', 'Se connecter avec Microsoft'], false);
+
+        Setting::write('oidc', ['enabled' => false] + Setting::read('oidc'));
+        Setting::write('ldap', ['enabled' => false] + Setting::read('ldap'));
+        $this->get(route('login'))->assertSee('name="provider" value="local"', false)->assertDontSee('Active Directory')->assertDontSee('Microsoft');
+    }
+
+    public function test_administrators_set_the_buttons_and_the_preferred_method(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test(Preferences::class)->assertSet('login.primary', 'local')->assertSet('oidc.button_icon', 'key')
+            ->set('login.primary', 'fax')->call('save', 'login')->assertHasErrors('login.primary')
+            ->set('login.primary', 'oidc')->call('save', 'login')->assertHasNoErrors()
+            ->set('oidc.enabled', false)->set('oidc.button_icon', 'skull')->call('save', 'oidc')->assertHasErrors('oidc.button_icon')
+            ->set('oidc.button_icon', 'shield')->set('oidc.button_label', '  Portail SSO  ')->call('save', 'oidc')->assertHasNoErrors();
+
+        $this->assertSame(['primary' => 'oidc'], Setting::read('login'));
+        $this->assertSame(['Portail SSO', 'shield'], [Setting::read('oidc')['button_label'], Setting::read('oidc')['button_icon']]);
+        $this->assertSame([null, 'oidc'], AuditLog::where('subject_label', 'login')->sole()->changes['primary']);
+    }
+
     public function test_the_callback_rejects_missing_state_before_exchanging_the_code(): void
     {
         Setting::write('oidc', ['enabled' => true, 'issuer' => 'https://sso.example.com', 'client_id' => 'nexora', 'secret' => 'secret']);
