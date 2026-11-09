@@ -22,7 +22,7 @@ class DeviceApis
             'class' => RouterOsApi::class,
             'port' => 8729,
             'tls' => true,
-            'hint' => 'RouterOS 6.43 ou plus récent. Activez le service api-ssl avec un certificat et créez un utilisateur dont le groupe a les droits read et api.',
+            'hint' => 'RouterOS 6.43 ou plus récent. Activez le service api-ssl et créez un utilisateur dont le groupe a les droits read et api. Sans certificat sur le routeur, décochez la vérification.',
         ],
         'routeros' => [
             'label' => 'MikroTik RouterOS 7 (REST, HTTPS)',

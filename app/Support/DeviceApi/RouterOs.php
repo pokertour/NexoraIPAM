@@ -75,6 +75,29 @@ abstract class RouterOs implements DeviceApiDriver
         }, $ports);
     }
 
+    /**
+     * Explains a failed connection: an untrusted certificate only when it is
+     * verified, otherwise the TLS reason given by OpenSSL, or an unreachable
+     * service.
+     */
+    protected function connectionFailure(NetworkDevice $device, string $error, string $service): RuntimeException
+    {
+        $reason = null;
+        if (preg_match('/error:[0-9A-F]+:[^:]*:[^:]*:([^\n|(]+)/i', $error, $match)) {
+            $reason = trim($match[1]);
+        } elseif (preg_match('/SSL certificate problem: ([^\n(]+)/i', $error, $match)) {
+            $reason = 'certificate problem: '.trim($match[1]);
+        } elseif (preg_match('/\b(SSL|TLS)\b[^\n(]*/', $error, $match)) {
+            $reason = trim(preg_replace('/^.*?cURL error \d+: /', '', $match[0]));
+        }
+
+        return match (true) {
+            $reason === null => new RuntimeException(__('L’API RouterOS est injoignable. Vérifiez que le service :service est activé et le port autorisé.', ['service' => $service])),
+            $device->api_verify_tls && (bool) preg_match('/certificate|verify|self.signed|issuer/i', $reason) => new RuntimeException(__('Le certificat de l’API RouterOS n’est pas reconnu (:reason). Installez un certificat valide ou désactivez la vérification.', ['reason' => $reason])),
+            default => new RuntimeException(__('La connexion chiffrée à l’API RouterOS a échoué (:reason). Vérifiez le port et le service :service.', ['reason' => $reason, 'service' => $service])),
+        };
+    }
+
     /** Host as written in a URL or a socket address, with brackets around IPv6. */
     protected function host(NetworkDevice $device): string
     {
