@@ -12,11 +12,11 @@ class Rack extends Model
 {
     use Auditable, HasFactory;
 
-    protected $fillable = ['name', 'location_id', 'units', 'description'];
+    protected $fillable = ['name', 'location_id', 'units', 'sort_order', 'description'];
 
     protected function casts(): array
     {
-        return ['units' => 'integer'];
+        return ['units' => 'integer', 'sort_order' => 'integer'];
     }
 
     public function location(): BelongsTo

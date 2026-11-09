@@ -2,11 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\CableLink;
 use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\Rack;
 use App\Models\RackItem;
-use App\Support\Topology;
+use App\Support\RackCabling;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -39,16 +40,28 @@ class Racks extends Component
     public function open(string $kind, ?int $id = null, ?int $rackId = null, ?int $position = null): void
     {
         Gate::authorize('edit-inventory');
-        abort_unless(in_array($kind, ['rack', 'item'], true), 404);
+        abort_unless(in_array($kind, ['rack', 'item', 'cable'], true), 404);
         $this->close();
         $this->editing = $kind;
         $this->recordId = $id;
+
+        if ($kind === 'cable') {
+            // For a new cable, $rackId carries the item the cable starts from.
+            $cable = $id ? CableLink::findOrFail($id) : null;
+            $this->form = [
+                'a_rack_item_id' => $cable?->a_rack_item_id ?? ($rackId ? RackItem::findOrFail($rackId)->id : null), 'a_port' => $cable?->a_port ?? '',
+                'b_rack_item_id' => $cable?->b_rack_item_id, 'b_port' => $cable?->b_port ?? '',
+                'medium' => $cable?->medium ?? 'copper', 'label' => $cable?->label ?? '',
+            ];
+
+            return;
+        }
 
         if ($kind === 'rack') {
             $rack = $id ? Rack::findOrFail($id) : null;
             $this->form = [
                 'name' => $rack?->name ?? '', 'location_id' => $rack?->location_id ?? (ctype_digit($this->location) ? (int) $this->location : null),
-                'units' => $rack?->units ?? 42, 'description' => $rack?->description ?? '',
+                'units' => $rack?->units ?? 42, 'sort_order' => $rack?->sort_order ?? 0, 'description' => $rack?->description ?? '',
             ];
 
             return;
@@ -81,12 +94,19 @@ class Racks extends Component
                     'form.name' => ['required', 'string', 'max:100'],
                     'form.location_id' => ['nullable', 'integer', 'exists:locations,id'],
                     'form.units' => ['required', 'integer', 'between:1,60'],
+                    'form.sort_order' => ['required', 'integer', 'between:0,999'],
                     'form.description' => ['nullable', 'string', 'max:255'],
                 ])['form'];
                 if ($rack->exists && $rack->items()->get()->contains(fn (RackItem $item): bool => $item->top() > (int) $data['units'])) {
                     throw ValidationException::withMessages(['form.units' => __('Des éléments occupent des unités au-dessus de cette hauteur.')]);
                 }
                 $rack->fill($data)->save();
+
+                return;
+            }
+
+            if ($this->editing === 'cable') {
+                $this->saveCable();
 
                 return;
             }
@@ -116,13 +136,25 @@ class Racks extends Component
         $this->dispatch('nexora-toast', tone: 'success', message: __('Entrée enregistrée.'));
     }
 
+    /** A port typed for one item does not belong to another. */
+    public function updatedForm(mixed $value, string $key): void
+    {
+        if ($this->editing === 'cable' && in_array($key, ['a_rack_item_id', 'b_rack_item_id'], true)) {
+            $this->form[$key[0].'_port'] = '';
+        }
+    }
+
     public function confirmDelete(string $kind, int $id): void
     {
         Gate::authorize('edit-inventory');
-        abort_unless(in_array($kind, ['rack', 'item'], true), 404);
+        abort_unless(in_array($kind, ['rack', 'item', 'cable'], true), 404);
         $this->close();
         $this->deleting = $kind;
-        $this->recordId = ($kind === 'rack' ? Rack::findOrFail($id) : RackItem::findOrFail($id))->id;
+        $this->recordId = match ($kind) {
+            'rack' => Rack::findOrFail($id)->id,
+            'item' => RackItem::findOrFail($id)->id,
+            'cable' => CableLink::findOrFail($id)->id,
+        };
     }
 
     public function delete(): void
@@ -133,6 +165,8 @@ class Racks extends Component
             $rack = Rack::findOrFail($this->recordId);
             $rack->items()->get()->each->delete();
             $rack->delete();
+        } elseif ($this->deleting === 'cable') {
+            CableLink::findOrFail($this->recordId)->delete();
         } else {
             RackItem::findOrFail($this->recordId)->delete();
         }
@@ -141,27 +175,55 @@ class Racks extends Component
     }
 
     /**
-     * Links between two devices of the same rack, with the vertical centre of
+     * Validates and stores a cable documented by hand. On a device, the port
+     * must be one of its physical ports; on a passive item it is free text.
+     */
+    private function saveCable(): void
+    {
+        $cable = $this->recordId ? CableLink::lockForUpdate()->findOrFail($this->recordId) : new CableLink;
+        foreach (['a', 'b'] as $end) {
+            $this->form[$end.'_port'] = trim((string) ($this->form[$end.'_port'] ?? '')) ?: null;
+        }
+        $this->form['label'] = trim((string) ($this->form['label'] ?? '')) ?: null;
+        $ports = fn (string $end): ?array => ($item = RackItem::with('device.ports')->find($this->form[$end.'_rack_item_id'] ?? 0))?->device
+            ? $item->device->ports->where('physical', true)->pluck('name')->all() : null;
+        $portRules = fn (string $end): array => ['nullable', 'string', 'max:100', ...($ports($end) !== null ? [Rule::in($ports($end))] : [])];
+
+        $data = $this->validate([
+            'form.a_rack_item_id' => ['required', 'integer', 'exists:rack_items,id'],
+            'form.b_rack_item_id' => ['required', 'integer', 'exists:rack_items,id', 'different:form.a_rack_item_id'],
+            'form.a_port' => $portRules('a'),
+            'form.b_port' => $portRules('b'),
+            'form.medium' => ['required', Rule::in(array_keys(CableLink::MEDIA))],
+            'form.label' => ['nullable', 'string', 'max:100'],
+        ], [
+            'form.b_rack_item_id.different' => __('Une liaison relie deux éléments différents.'),
+            'form.a_port.in' => __('Choisissez un port de cet équipement.'),
+            'form.b_port.in' => __('Choisissez un port de cet équipement.'),
+        ])['form'];
+
+        $cable->fill($data)->save();
+    }
+
+    /**
+     * Cables between two items of the same rack, with the vertical centre of
      * each end in pixels from the top of the rack.
      *
-     * @param  Collection<int, array<string, mixed>>  $links
-     * @return list<array{from: int, to: int, label: string, source: string}>
+     * @param  Collection<int, array<string, mixed>>  $cables
+     * @return list<array{key: string, from: int, to: int, label: string, source: string}>
      */
-    public static function rackLinks(Rack $rack, Collection $links): array
+    public static function rackLinks(Rack $rack, Collection $cables): array
     {
-        $centres = [];
-        foreach ($rack->items as $item) {
-            if ($item->network_device_id) {
-                $centres[$item->network_device_id] = (int) round(($rack->units - $item->top()) * self::UNIT + $item->height * self::UNIT / 2);
-            }
-        }
+        $centre = fn (RackItem $item): int => (int) round(($rack->units - $item->top()) * self::UNIT + $item->height * self::UNIT / 2);
+        $short = fn (array $end): string => $end['port'] !== null ? (preg_match('/(\d+)\D*$/', $end['port'], $match) ? $match[1] : $end['port']) : '?';
 
         $drawn = [];
-        foreach ($links as $link) {
-            if (isset($centres[$link['a']->id], $centres[$link['b']->id])) {
+        foreach ($cables as $cable) {
+            [$a, $b] = $cable['ends'];
+            if ($a['item']?->rack_id === $rack->id && $b['item']?->rack_id === $rack->id) {
                 $drawn[] = [
-                    'from' => $centres[$link['a']->id], 'to' => $centres[$link['b']->id], 'source' => $link['source'],
-                    'label' => $link['a_port']->shortName().' ↔ '.($link['b_port']?->shortName() ?? '?'),
+                    'key' => $cable['key'], 'from' => $centre($a['item']), 'to' => $centre($b['item']), 'source' => $cable['source'],
+                    'label' => $short($a).' ↔ '.$short($b),
                 ];
             }
         }
@@ -169,16 +231,49 @@ class Racks extends Component
         return $drawn;
     }
 
-    public function render(Topology $topology): View
+    /**
+     * Racks grouped in rows, one per location: racks of a room stand side by
+     * side, so cables between them can be drawn.
+     *
+     * @param  Collection<int, Rack>  $racks
+     * @param  Collection<int, array<string, mixed>>  $cables
+     * @return Collection<int, array{location: ?Location, racks: Collection<int, Rack>, cables: list<array{key: string, a: int, b: int, source: string, confirmed: bool, label: string}>}>
+     */
+    public static function rows(Collection $racks, Collection $cables): Collection
+    {
+        return $racks->groupBy(fn (Rack $rack): string => (string) $rack->location_id)
+            ->sortBy(fn (Collection $group): string => $group->first()->location ? '0'.mb_strtolower($group->first()->location->path()) : '1')
+            ->map(function (Collection $group) use ($cables): array {
+                $ids = $group->pluck('id')->all();
+                $between = $cables->filter(fn (array $cable): bool => in_array($cable['ends'][0]['item']?->rack_id, $ids, true)
+                    && in_array($cable['ends'][1]['item']?->rack_id, $ids, true)
+                    && $cable['ends'][0]['item']->rack_id !== $cable['ends'][1]['item']->rack_id);
+
+                return [
+                    'location' => $group->first()->location,
+                    'racks' => $group->values(),
+                    'cables' => $between->map(fn (array $cable): array => [
+                        'key' => $cable['key'], 'a' => $cable['ends'][0]['item']->id, 'b' => $cable['ends'][1]['item']->id,
+                        'source' => $cable['source'], 'confirmed' => $cable['confirmed'],
+                        'label' => collect($cable['ends'])->map(fn (array $end): string => $end['name'].($end['port'] ? ' '.$end['port'] : ''))->implode(' ↔ '),
+                    ])->values()->all(),
+                ];
+            })->values();
+    }
+
+    public function render(RackCabling $cabling): View
     {
         $racks = Rack::with(['location.parent.parent', 'items.device.ports' => fn ($query) => $query->where('physical', true)])
             ->when(ctype_digit($this->location), fn ($query) => $query->whereIn('location_id', Location::findOrFail($this->location)->descendantsAndSelf()))
-            ->orderBy('name')->get();
-        $links = $topology->links();
+            ->orderBy('sort_order')->orderBy('name')->get();
+        $cables = $cabling->cables();
 
         return view('livewire.racks', [
             'racks' => $racks,
-            'links' => $links,
+            'rows' => self::rows($racks, $cables),
+            'cables' => $cables,
+            'cableItems' => $this->editing === 'cable' ? RackItem::with(['rack', 'device.ports' => fn ($query) => $query->where('physical', true)])->get()
+                ->sortBy(fn (RackItem $item): string => mb_strtolower($item->rack->name).sprintf('%03d', 999 - $item->position)) : collect(),
             'locations' => Location::with('parent.parent')->orderBy('name')->get(),
             'devices' => $this->editing === 'item'
                 ? NetworkDevice::whereDoesntHave('rackItem', fn ($query) => $query->whereKeyNot($this->recordId ?? 0))->orderBy('name')->get()

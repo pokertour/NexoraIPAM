@@ -21,7 +21,7 @@
                     @php([$a, $b] = [$nodes[$link['a']->id], $nodes[$link['b']->id]])
                     <g class="topology-link" data-source="{{ $link['source'] }}">
                         <line x1="{{ $a['x'] }}" y1="{{ $a['y'] }}" x2="{{ $b['x'] }}" y2="{{ $b['y'] }}"/>
-                        <text x="{{ (int) round($a['x'] + ($b['x'] - $a['x']) * .22) }}" y="{{ (int) round($a['y'] + ($b['y'] - $a['y']) * .22) - 6 }}">{{ $link['a_port']->name }}</text>
+                        @if ($link['a_port'])<text x="{{ (int) round($a['x'] + ($b['x'] - $a['x']) * .22) }}" y="{{ (int) round($a['y'] + ($b['y'] - $a['y']) * .22) - 6 }}">{{ $link['a_port']->name }}</text>@endif
                         @if ($link['b_port'])<text x="{{ (int) round($b['x'] + ($a['x'] - $b['x']) * .22) }}" y="{{ (int) round($b['y'] + ($a['y'] - $b['y']) * .22) - 6 }}">{{ $link['b_port']->name }}</text>@endif
                     </g>
                 @endforeach
@@ -46,10 +46,13 @@
                         @foreach ($links as $link)
                             <tr>
                                 <td><a class="table-link font-semibold" href="{{ route('devices.show', $link['a']) }}" wire:navigate>{{ $link['a']->name }}</a></td>
-                                <td><a class="table-link font-mono text-xs" href="{{ route('devices.show', ['device' => $link['a']->id, 'port' => $link['a_port']->if_index]) }}" wire:navigate>{{ $link['a_port']->name }}</a></td>
+                                <td>@if ($link['a_port'])<a class="table-link font-mono text-xs" href="{{ route('devices.show', ['device' => $link['a']->id, 'port' => $link['a_port']->if_index]) }}" wire:navigate>{{ $link['a_port']->name }}</a>@else — @endif</td>
                                 <td><a class="table-link font-semibold" href="{{ route('devices.show', $link['b']) }}" wire:navigate>{{ $link['b']->name }}</a></td>
                                 <td>@if ($link['b_port'])<a class="table-link font-mono text-xs" href="{{ route('devices.show', ['device' => $link['b']->id, 'port' => $link['b_port']->if_index]) }}" wire:navigate>{{ $link['b_port']->name }}</a>@else — @endif</td>
-                                <td><span class="link-source" data-source="{{ $link['source'] }}">{{ $link['source'] === 'lldp' ? 'LLDP' : __('Adresses MAC') }}</span></td>
+                                <td>
+                                    <span class="link-source" data-source="{{ $link['source'] }}">{{ ['lldp' => 'LLDP', 'mac' => __('Adresses MAC'), 'manual' => __('Manuelle')][$link['source']] }}</span>
+                                    @if ($link['confirmed'])<span class="link-confirmed" title="{{ __('Liaison documentée confirmée par la détection') }}"><x-icon name="check" class="size-3"/></span>@endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
