@@ -78,6 +78,7 @@ Automate the inventory with a versioned JSON API and personal tokens: reserve th
 ### 🛡️ Security and accountability
 - **Roles**: administrator, operator and viewer.
 - **Sign-in**: local accounts with TOTP two-factor authentication, LDAP group membership, or OpenID Connect with PKCE.
+- **Profile**: local accounts change their name, password and two-factor settings, and their e-mail address after confirming a link sent to the new one (the former address is told of the change). Everyone sees their recent sign-ins.
 - **Audit log**: every creation, change and deletion with its author, IP address and before/after values. Secrets are masked. Sign-ins, settings changes, discoveries, SNMP polls and alerts are recorded too.
 
 <p align="center"><img src=".github/assets/addresses-light.png" alt="Address map with gateway and DHCP pool" width="100%"></p>

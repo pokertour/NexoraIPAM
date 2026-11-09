@@ -18,6 +18,8 @@ class AuditLog extends Model
         'auth.failed' => 'Échec de connexion',
         'auth.logout' => 'Déconnexion',
         'password.changed' => 'Mot de passe modifié',
+        'email.change_requested' => 'Changement d’e-mail demandé',
+        'email.change_cancelled' => 'Changement d’e-mail annulé',
         'two_factor.enabled' => '2FA activée',
         'two_factor.disabled' => '2FA désactivée',
         'settings.updated' => 'Paramètres modifiés',
