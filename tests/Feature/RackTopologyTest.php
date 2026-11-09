@@ -189,6 +189,51 @@ class RackTopologyTest extends TestCase
             ->assertSee('Baie P2')->assertSee('Baie L1')->assertSeeHtml('@click="jump('.$accessItem->id.', ');
     }
 
+    public function test_the_medium_of_a_detected_link_is_set_from_the_topology_or_the_racks(): void
+    {
+        $this->withoutVite();
+        $access = NetworkDevice::factory()->create(['name' => 'sw-access', 'sys_name' => 'sw-access']);
+        $core = NetworkDevice::factory()->create(['name' => 'core', 'sys_name' => 'core']);
+        $this->port($access, 48, 'ether48', ['neighbor_name' => 'core', 'neighbor_port' => 'ether1']);
+        $this->port($core, 1, 'ether1');
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(NetworkTopology::class)->assertDontSeeHtml('wire:click="editMedium(')->call('editMedium', $access->id, 'ether48', $core->id, 'ether1')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(NetworkTopology::class)
+            ->call('editMedium', $access->id, 'ether48', $core->id, 'ether1')
+            ->set('form.medium', 'laser')->call('save')->assertHasErrors('form.medium')
+            ->set('form.medium', 'fiber')->set('form.label', 'F7')->call('save')->assertHasNoErrors()
+            ->assertSee('Fibre')->assertSee('F7');
+
+        $cable = CableLink::sole();
+        $this->assertSame([null, $access->id, 'ether48', null, $core->id, 'ether1'], [$cable->a_rack_item_id, $cable->a_network_device_id, $cable->a_port, $cable->b_rack_item_id, $cable->b_network_device_id, $cable->b_port]);
+        $link = app(Topology::class)->links()->sole();
+        $this->assertSame(['lldp', true, 'fiber'], [$link['source'], $link['confirmed'], $link['cable']->medium]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'subject_type' => 'cable_link', 'subject_label' => 'F7 · sw-access ether48 ↔ core ether1']);
+
+        Livewire::test(NetworkTopology::class)->call('editMedium', $access->id, 'ether48', $core->id, 'ether1', $cable->id)
+            ->assertSet('form.medium', 'fiber')->set('form.medium', 'dac')->call('save');
+        $this->assertSame('dac', $cable->fresh()->medium);
+        Livewire::test(NetworkTopology::class)->call('editMedium', $access->id, 'ether48', $core->id, 'ether1', $cable->id)->call('forget');
+        $this->assertModelMissing($cable);
+        $this->assertSame('lldp', app(Topology::class)->links()->sole()['source']);
+
+        $rack = Rack::factory()->create(['units' => 10]);
+        $a = $rack->items()->create(['network_device_id' => $access->id, 'kind' => 'device', 'position' => 2, 'height' => 1]);
+        $c = $rack->items()->create(['network_device_id' => $core->id, 'kind' => 'device', 'position' => 8, 'height' => 1]);
+        Livewire::test(Racks::class)->assertSeeHtml('wire:click="describe(')
+            ->call('describe', $a->id, 'ether48', $c->id, 'ether1')
+            ->assertSet('form.a_rack_item_id', $a->id)->assertSet('form.b_port', 'ether1')
+            ->set('form.medium', 'copper')->call('save')->assertHasNoErrors();
+        $this->assertSame([$a->id, $c->id, 'copper'], [CableLink::sole()->a_rack_item_id, CableLink::sole()->b_rack_item_id, CableLink::sole()->medium]);
+        $this->assertTrue(app(Topology::class)->links()->sole()['confirmed']);
+
+        Livewire::test(NetworkTopology::class)->call('editMedium', $core->id, 'ether1', $access->id, 'ether48')->call('save');
+        $this->assertSame(2, CableLink::count(), 'A second cable for the same link is listed as manual, not merged.');
+    }
+
     /** @param array<string, mixed> $attributes */
     private function port(NetworkDevice $device, int $index, string $name, array $attributes = []): DevicePort
     {

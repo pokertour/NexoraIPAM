@@ -75,6 +75,16 @@ class Racks extends Component
         ];
     }
 
+    /**
+     * Documents a detected link between two racked items: the cable form opens
+     * with both ends filled in, to set its medium and tag.
+     */
+    public function describe(int $aItem, ?string $aPort, int $bItem, ?string $bPort): void
+    {
+        $this->open('cable', null, $aItem);
+        $this->form = ['b_rack_item_id' => RackItem::findOrFail($bItem)->id, 'a_port' => $aPort ?? '', 'b_port' => $bPort ?? ''] + $this->form;
+    }
+
     public function close(): void
     {
         $this->reset('editing', 'deleting', 'recordId', 'form');

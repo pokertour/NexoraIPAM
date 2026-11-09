@@ -863,5 +863,12 @@
     "Prise :name": "Outlet :name",
     "Prise murale brassée sur ce port": "Wall outlet patched to this port",
     "Prise brassée sur :port.": "Outlet patched to :port.",
-    "Prise débrassée de :port.": "Outlet unpatched from :port."
+    "Prise débrassée de :port.": "Outlet unpatched from :port.",
+    "Ethernet (cuivre)": "Ethernet (copper)",
+    "Type de liaison": "Link type",
+    "Type de liaison entre :a et :b": "Link type between :a and :b",
+    "Type de liaison enregistré.": "Link type saved.",
+    "Liaison documentée supprimée.": "Documented link deleted.",
+    "Supprimer la liaison documentée": "Delete the documented link",
+    "Préciser le type de la liaison": "Set the link type"
 }

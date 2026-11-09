@@ -418,6 +418,10 @@
     .rack-link-actions { display: flex; gap: .1rem; opacity: 0; transition: opacity .12s; }
     .rack-link-list li:hover .rack-link-actions, .rack-link-list li:focus-within .rack-link-actions { opacity: 1; }
     .rack-link-list .icon-button { width: 1.5rem; height: 1.5rem; }
+    .cable-medium { display: inline-flex; padding: .05rem .45rem; border-radius: 999px; font-size: .72rem; font-weight: 650; background: var(--surface-hover); color: var(--text-soft); }
+    .cable-medium[data-medium=fiber] { background: #f59e0b22; color: #b45309; }
+    .cable-medium[data-medium=dac] { background: #06b6d41f; color: #0e7490; }
+    [data-theme=dark] .cable-medium[data-medium=fiber] { color: #fcd34d; } [data-theme=dark] .cable-medium[data-medium=dac] { color: #67e8f9; }
     .link-confirmed { display: inline-grid; place-items: center; width: 1rem; height: 1rem; border-radius: 50%; background: var(--success-bg); color: var(--success); }
     .rack-body { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) 64px; gap: .35rem; padding: 1rem .9rem 1.1rem; }
     .rack-scale { display: grid; grid-template-rows: repeat(var(--units), var(--u)); color: var(--muted); font-family: var(--font-mono); font-size: .6rem; text-align: right; }

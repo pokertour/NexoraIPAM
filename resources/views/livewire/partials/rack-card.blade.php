@@ -93,10 +93,20 @@
                         {{ $cable['far']['name'] }} @if ($cable['far']['port'])<code>{{ $cable['far']['port'] }}</code>@endif
                         @if ($cable['cable'])<small class="muted">· {{ __(\App\Models\CableLink::MEDIA[$cable['cable']->medium] ?? $cable['cable']->medium) }}@if ($cable['cable']->label) · {{ $cable['cable']->label }}@endif</small>@endif
                     </span>
+                    @if (! $cable['cable'] && $cable['far']['item'])
+                        @can('edit-inventory')
+                            <span class="rack-link-actions">
+                                <button class="icon-button" type="button" aria-label="{{ __('Préciser le type de la liaison') }}" title="{{ __('Préciser le type de la liaison') }}"
+                                    wire:click="describe({{ $cable['near']['item']->id }}, @js($cable['near']['port']), {{ $cable['far']['item']->id }}, @js($cable['far']['port']))"><x-icon name="edit" class="size-3.5"/></button>
+                            </span>
+                        @endcan
+                    @endif
                     @if ($cable['cable'])
                         @can('edit-inventory')
                             <span class="rack-link-actions">
-                                <button class="icon-button" type="button" aria-label="{{ __('Modifier la liaison') }}" wire:click="open('cable', {{ $cable['cable']->id }})"><x-icon name="edit" class="size-3.5"/></button>
+                                @if ($cable['cable']->a_rack_item_id && $cable['cable']->b_rack_item_id)
+                                    <button class="icon-button" type="button" aria-label="{{ __('Modifier la liaison') }}" wire:click="open('cable', {{ $cable['cable']->id }})"><x-icon name="edit" class="size-3.5"/></button>
+                                @endif
                                 <button class="icon-button danger-text" type="button" aria-label="{{ __('Supprimer la liaison') }}" wire:click="confirmDelete('cable', {{ $cable['cable']->id }})"><x-icon name="trash" class="size-3.5"/></button>
                             </span>
                         @endcan

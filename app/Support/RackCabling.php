@@ -43,9 +43,8 @@ class RackCabling
         }
 
         // Cables to passive items are not part of the device topology.
-        CableLink::all()
-            ->reject(fn (CableLink $cable): bool => $items->get($cable->a_rack_item_id)?->network_device_id !== null
-                && $items->get($cable->b_rack_item_id)?->network_device_id !== null)
+        CableLink::with(['a', 'b', 'aDevice', 'bDevice'])->get()
+            ->reject(fn (CableLink $cable): bool => $cable->deviceId('a') !== null && $cable->deviceId('b') !== null)
             ->each(function (CableLink $cable) use ($cables, $items): void {
                 $a = $items->get($cable->a_rack_item_id);
                 $b = $items->get($cable->b_rack_item_id);
@@ -55,8 +54,8 @@ class RackCabling
                     'confirmed' => false,
                     'cable' => $cable,
                     'ends' => [
-                        ['item' => $a, 'name' => $a?->displayName() ?? '?', 'port' => $cable->a_port, 'if_index' => null],
-                        ['item' => $b, 'name' => $b?->displayName() ?? '?', 'port' => $cable->b_port, 'if_index' => null],
+                        ['item' => $a, 'name' => $a?->displayName() ?? $cable->endName('a'), 'port' => $cable->a_port, 'if_index' => null],
+                        ['item' => $b, 'name' => $b?->displayName() ?? $cable->endName('b'), 'port' => $cable->b_port, 'if_index' => null],
                     ],
                 ]);
             });

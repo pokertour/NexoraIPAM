@@ -41,7 +41,7 @@
         @if ($links->isNotEmpty())
             <section class="card mt-4">
                 <div class="table-scroll"><table>
-                    <thead><tr><th>{{ __('Équipement') }}</th><th>{{ __('Port') }}</th><th>{{ __('Relié à') }}</th><th>{{ __('Port') }}</th><th>{{ __('Source') }}</th></tr></thead>
+                    <thead><tr><th>{{ __('Équipement') }}</th><th>{{ __('Port') }}</th><th>{{ __('Relié à') }}</th><th>{{ __('Port') }}</th><th>{{ __('Type') }}</th><th>{{ __('Source') }}</th>@can('edit-inventory')<th><span class="sr-only">{{ __('Actions') }}</span></th>@endcan</tr></thead>
                     <tbody>
                         @foreach ($links as $link)
                             <tr>
@@ -50,14 +50,49 @@
                                 <td><a class="table-link font-semibold" href="{{ route('devices.show', $link['b']) }}" wire:navigate>{{ $link['b']->name }}</a></td>
                                 <td>@if ($link['b_port'])<a class="table-link font-mono text-xs" href="{{ route('devices.show', ['device' => $link['b']->id, 'port' => $link['b_port']->if_index]) }}" wire:navigate>{{ $link['b_port']->name }}</a>@else — @endif</td>
                                 <td>
+                                    @if ($link['cable'])
+                                        <span class="cable-medium" data-medium="{{ $link['cable']->medium }}">{{ __(\App\Models\CableLink::MEDIA[$link['cable']->medium] ?? $link['cable']->medium) }}</span>
+                                        @if ($link['cable']->label)<small class="muted block">{{ $link['cable']->label }}</small>@endif
+                                    @else
+                                        <span class="muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
                                     <span class="link-source" data-source="{{ $link['source'] }}">{{ ['lldp' => 'LLDP', 'mac' => __('Adresses MAC'), 'manual' => __('Manuelle')][$link['source']] }}</span>
                                     @if ($link['confirmed'])<span class="link-confirmed" title="{{ __('Liaison documentée confirmée par la détection') }}"><x-icon name="check" class="size-3"/></span>@endif
                                 </td>
+                                @can('edit-inventory')
+                                    <td class="text-right">
+                                        <button type="button" class="icon-button" aria-label="{{ __('Type de liaison entre :a et :b', ['a' => $link['a']->name, 'b' => $link['b']->name]) }}" title="{{ __('Type de liaison') }}"
+                                            wire:click="editMedium({{ $link['a']->id }}, @js($link['a_port']?->name ?? $link['cable']?->a_port), {{ $link['b']->id }}, @js($link['b_port']?->name ?? $link['cable']?->b_port), {{ $link['cable']?->id ?? 'null' }})"><x-icon name="edit" class="size-4"/></button>
+                                    </td>
+                                @endcan
                             </tr>
                         @endforeach
                     </tbody>
                 </table></div>
             </section>
         @endif
+    @endif
+
+    @if ($ends)
+        @php([$aName, $bName] = [\App\Models\NetworkDevice::find($ends['a'])?->name, \App\Models\NetworkDevice::find($ends['b'])?->name])
+        <x-modal id="link-medium" :title="__('Type de liaison')" :description="($aName.($ends['a_port'] ? ' '.$ends['a_port'] : '')).' ↔ '.($bName.($ends['b_port'] ? ' '.$ends['b_port'] : ''))">
+            <form wire:submit="save" class="mt-6 grid gap-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-field name="form.medium" label="Type" wire:model="form.medium">
+                        @foreach (\App\Models\CableLink::MEDIA as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                    </x-field>
+                    <x-field name="form.label" :label="__('Repère')" wire:model="form.label" maxlength="100" :placeholder="__('ex. fibre F12')"/>
+                </div>
+                <div class="dialog-actions">
+                    @if ($cableId)
+                        <x-button variant="secondary" class="danger-text mr-auto" wire:click="forget" wire:loading.attr="disabled" wire:target="forget">{{ __('Supprimer la liaison documentée') }}</x-button>
+                    @endif
+                    <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
+                    <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
+                </div>
+            </form>
+        </x-modal>
     @endif
 </div>
