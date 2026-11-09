@@ -60,7 +60,7 @@
                     @foreach ($groups as $prefix => $group)
                         <div class="faceplate-group" @if ($group->count() > 1) data-rows="2" @endif>
                             @foreach ($group as $item)
-                                <x-switch-port :port="$item" :selected="$port?->is($item)" :colors="$vlanColors"/>
+                                <x-switch-port :port="$item" :selected="$port?->is($item)" :colors="$vlanColors" :outlet="$outlets[$item->name]?->name ?? null"/>
                             @endforeach
                         </div>
                     @endforeach
@@ -101,6 +101,18 @@
                         <div><dt>{{ __('VLAN non taggés') }}</dt><dd><span class="vlan-list">@foreach ($port->untagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span></dd></div>
                     @endif
                     <div><dt>{{ __('VLAN taggés') }}</dt><dd>@if ($port->isTrunk())<span class="vlan-list">@foreach ($port->tagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span>@else — @endif</dd></div>
+                    @if ($port->physical)
+                        <div><dt>{{ __('Prise murale') }}</dt><dd>
+                            @can('edit-inventory')
+                                <x-select name="outlet" wire:model.live="outlet" class="port-outlet" aria-label="{{ __('Prise murale brassée sur ce port') }}" wire:key="outlet-{{ $port->if_index }}">
+                                    <option value="">{{ __('Aucune') }}</option>
+                                    @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
+                                </x-select>
+                            @else
+                                @if ($outlets->has($port->name))<span class="outlet-name"><x-icon name="outlet" class="size-3.5"/> {{ $outlets[$port->name]->name }}</span>@else — @endif
+                            @endcan
+                        </dd></div>
+                    @endif
                     <div><dt>{{ __('Voisin LLDP') }}</dt><dd>@if ($port->neighbor_name)<span class="font-semibold">{{ $port->neighbor_name }}</span>@if ($port->neighbor_port) · <code>{{ $port->neighbor_port }}</code>@endif @else — @endif</dd></div>
                     <div><dt>{{ __('Erreurs entrée / sortie') }}</dt><dd class="tabular-nums">{{ number_format($port->in_errors ?? 0, 0, ',', ' ') }} / {{ number_format($port->out_errors ?? 0, 0, ',', ' ') }}</dd></div>
                 </dl>
@@ -159,7 +171,7 @@
             <x-empty-state icon="switch" :title="__('Aucun port')" :text="__('Aucun port ne correspond à ces critères.')"/>
         @else
             <div class="table-scroll"><table>
-                <thead><tr><th>{{ __('Port') }}</th><th>{{ __('État') }}</th><th>{{ __('Vitesse') }}</th><th>{{ __('Connecteur') }}</th><th>VLAN</th><th>{{ __('Entrant') }}</th><th>{{ __('Sortant') }}</th><th>MAC</th><th>{{ __('Voisin LLDP') }}</th></tr></thead>
+                <thead><tr><th>{{ __('Port') }}</th><th>{{ __('État') }}</th><th>{{ __('Vitesse') }}</th><th>{{ __('Connecteur') }}</th><th>VLAN</th><th>{{ __('Entrant') }}</th><th>{{ __('Sortant') }}</th><th>MAC</th><th>{{ __('Voisin LLDP') }}</th><th>{{ __('Prise') }}</th></tr></thead>
                 <tbody>
                     @foreach ($listed as $row)
                         <tr wire:key="row-{{ $row->if_index }}" @class(['row-selected' => $port?->is($row)])>
@@ -172,6 +184,7 @@
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->out_bps) }}</td>
                             <td class="tabular-nums">{{ $row->mac_count ?: '—' }}</td>
                             <td>{{ $row->neighbor_name ?? '—' }}@if ($row->neighbor_port)<small class="muted block font-mono">{{ $row->neighbor_port }}</small>@endif</td>
+                            <td>@if ($outlets->has($row->name))<span class="outlet-name"><x-icon name="outlet" class="size-3.5"/> {{ $outlets[$row->name]->name }}</span>@else — @endif</td>
                         </tr>
                     @endforeach
                 </tbody>

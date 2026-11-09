@@ -1,4 +1,4 @@
-@props(['port', 'selected' => false, 'colors' => []])
+@props(['port', 'selected' => false, 'colors' => [], 'outlet' => null])
 @php
     $tier = match (true) {
         ! $port->speed_mbps => 'none',
@@ -15,7 +15,7 @@
     wire:click="select({{ $port->if_index }})" wire:key="port-{{ $port->if_index }}"
     data-vlans="{{ implode(' ', array_unique(array_filter([$port->pvid, ...($port->untagged_vlans ?? []), ...($port->tagged_vlans ?? [])]))) }}"
     :class="{ 'is-dimmed': vlan !== null && ! $el.dataset.vlans.split(' ').includes(String(vlan)) }"
-    title="{{ implode(' · ', array_filter([$port->name, $port->alias, \App\Support\PortMedia::LABELS[$port->connector() ?? 'rj45'] ?? null, $status, $port->speedLabel(), $vlan, $port->isTrunk() ? __('Trunk') : null, $port->neighbor_name])) }}"
+    title="{{ implode(' · ', array_filter([$port->name, $port->alias, \App\Support\PortMedia::LABELS[$port->connector() ?? 'rj45'] ?? null, $status, $port->speedLabel(), $vlan, $port->isTrunk() ? __('Trunk') : null, $port->neighbor_name, $outlet ? __('Prise :name', ['name' => $outlet]) : null])) }}"
     aria-label="{{ implode(', ', array_filter([$port->name, $status, $port->speedLabel(), $vlan])) }}">
     <span class="switch-port-led" aria-hidden="true"></span>
     <span class="switch-port-jack" aria-hidden="true"></span>

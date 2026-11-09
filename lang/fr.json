@@ -85,5 +85,11 @@
     ":count liaison détectée|:count liaisons détectées": ":count liaison détectée|:count liaisons détectées",
     "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours.": "Adresses apparues pour la première fois depuis :count jour.|Adresses apparues pour la première fois depuis :count jours.",
     ":count baie|:count baies": ":count baie|:count baies",
-    ":count liaison entre baies|:count liaisons entre baies": ":count liaison entre baies|:count liaisons entre baies"
+    ":count liaison entre baies|:count liaisons entre baies": ":count liaison entre baies|:count liaisons entre baies",
+    ":count prise sélectionnée|:count prises sélectionnées": ":count prise sélectionnée|:count prises sélectionnées",
+    "Supprimer :count prise ?|Supprimer :count prises ?": "Supprimer :count prise ?|Supprimer :count prises ?",
+    ":count prise créée.|:count prises créées.": ":count prise créée.|:count prises créées.",
+    ":count existait déjà.|:count existaient déjà.": ":count existait déjà.|:count existaient déjà.",
+    ":count prise supprimée.|:count prises supprimées.": ":count prise supprimée.|:count prises supprimées.",
+    ":count prise débrassée.|:count prises débrassées.": ":count prise débrassée.|:count prises débrassées."
 }

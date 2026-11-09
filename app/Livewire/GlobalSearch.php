@@ -10,6 +10,7 @@ use App\Models\NetworkDevice;
 use App\Models\Subnet;
 use App\Models\Tag;
 use App\Models\Vlan;
+use App\Models\WallOutlet;
 use App\Support\IpNetwork;
 use App\Support\MacAddress;
 use Illuminate\Database\Eloquent\Builder;
@@ -95,6 +96,22 @@ class GlobalSearch extends Component
                 'label' => $device->name, 'detail' => $device->host.($device->sys_name ? ' · '.$device->sys_name : ''),
                 'url' => route('devices.show', $device), 'icon' => 'switch',
             ])->all();
+
+        $groups['Prises murales'] = WallOutlet::with(['location.parent.parent', 'device.ports' => fn ($query) => $query->where('physical', true)])
+            ->where(fn (Builder $query) => $query->whereLike('name', $like)->orWhereLike('description', $like))
+            ->orderBy('name')->limit(self::LIMIT)->get()
+            ->map(function (WallOutlet $outlet): array {
+                $port = $outlet->devicePort();
+
+                return [
+                    'label' => $outlet->name,
+                    'detail' => implode(' · ', array_filter([$outlet->location?->path(), $outlet->device ? '→ '.$outlet->device->name.' '.$outlet->port : __('Libre')])),
+                    'url' => $outlet->device
+                        ? route('devices.show', ['device' => $outlet->network_device_id] + ($port ? ['port' => $port->if_index] : []))
+                        : route('outlets', ['search' => $outlet->name]),
+                    'icon' => 'outlet',
+                ];
+            })->all();
 
         $groups['Emplacements'] = Location::with('parent.parent')->whereLike('name', $like)->orderBy('name')->limit(self::LIMIT)->get()
             ->map(fn (Location $location): array => [

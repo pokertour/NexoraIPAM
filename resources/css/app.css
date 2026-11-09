@@ -552,6 +552,17 @@
     .toast p { margin: 0; overflow-wrap: anywhere; }
     .dialog[open] .dialog-content { animation: dialog-enter .2s ease-out both; }
 
+    /* Wall outlets */
+    .outlet-name { display: inline-flex; align-items: center; gap: .4rem; font-weight: 650; font-family: var(--font-mono); }
+    .outlet-name svg { color: var(--highlight); }
+    .outlet-port { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+    .outlet-preview { padding: .65rem .8rem; border-radius: var(--radius-sm); background: var(--surface-soft); border: 1px dashed var(--line-strong); font-size: .85rem; }
+    .bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem 1rem; border-bottom: 1px solid var(--line); background: var(--highlight-bg); font-size: .85rem; font-weight: 600; }
+    .bulk-bar > span { margin-right: auto; }
+    .link-button { color: var(--highlight); font-size: .82rem; font-weight: 600; }
+    .link-button:hover { text-decoration: underline; }
+    .row-check { width: 1rem; height: 1rem; accent-color: var(--highlight); }
+
     /* Profile */
     .profile-hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1.25rem; padding: 1.4rem; margin-bottom: 1rem; overflow: hidden; position: relative; }
     .profile-hero::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--brand-gradient); }
