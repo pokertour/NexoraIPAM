@@ -906,5 +906,9 @@
     "Choisissez la méthode proposée en premier, par exemple le SSO au-dessus du formulaire interne.": "Choose the method offered first, for example SSO above the local form.",
     "Méthode proposée en premier": "Method offered first",
     "Une méthode désactivée n’est pas affichée : la suivante prend sa place. Le formulaire interne reste disponible pour le compte d’installation.": "A disabled method is not shown: the next one takes its place. The local form stays available for the installation account.",
-    "ou": "or"
+    "ou": "or",
+    "Compte supprimé.": "Account deleted.",
+    "Supprimer le compte :name ?": "Delete the account :name?",
+    "Le compte et ses jetons d’API sont supprimés. Ses entrées du journal d’audit sont conservées.": "The account and its API tokens are deleted. Its audit log entries are kept.",
+    "Le compte et ses jetons d’API sont supprimés. Il sera recréé avec le rôle Lecteur à sa prochaine connexion si l’annuaire ou le fournisseur l’autorise encore.": "The account and its API tokens are deleted. It will be created again with the Viewer role at its next sign-in if the directory or provider still allows it."
 }

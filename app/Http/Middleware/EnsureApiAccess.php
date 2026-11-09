@@ -23,7 +23,7 @@ class EnsureApiAccess
             $enabled = $enabled && filled($settings['group_dn'] ?? null);
         }
 
-        if (! $user->active || $user->must_change_password || (! $enabled && $user->email !== InstallAdmin::EMAIL)) {
+        if (! $user->active || $user->must_change_password || (! $enabled && ! InstallAdmin::isInstallAccount($user))) {
             abort(403, __('Ce compte ne peut pas utiliser l’API.'));
         }
 

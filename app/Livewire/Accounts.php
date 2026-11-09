@@ -29,6 +29,9 @@ class Accounts extends Component
     public bool $editing = false;
 
     #[Locked]
+    public ?int $deletingId = null;
+
+    #[Locked]
     public string $provider = 'local';
 
     /** @var array<string, string> */
@@ -81,10 +84,10 @@ class Accounts extends Component
         abort_unless($this->editing, 409);
         $user = $this->recordId === null ? new User : User::findOrFail($this->recordId);
         $this->authorizeAccount($user);
-        $protected = $user->email === InstallAdmin::EMAIL || $user->id === auth()->id();
+        $protected = InstallAdmin::isInstallAccount($user) || $user->id === auth()->id();
         $provider = $user->provider;
         $email = $this->form['email'] ?? null;
-        $this->form['email'] = $user->email === InstallAdmin::EMAIL ? $user->email : (is_string($email) ? strtolower(trim($email)) : $email);
+        $this->form['email'] = is_string($email) ? strtolower(trim($email)) : $email;
         if ($protected) {
             $this->form['role'] = $user->role;
             $this->form['active'] = true;
@@ -92,7 +95,7 @@ class Accounts extends Component
 
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
-            'form.email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user), Rule::notIn($user->email === InstallAdmin::EMAIL ? [] : [InstallAdmin::EMAIL])],
+            'form.email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'form.provider' => ['prohibited'],
             'form.subject' => ['prohibited'],
             'form.external_id' => ['prohibited'],
@@ -116,9 +119,47 @@ class Accounts extends Component
         $this->dispatch('nexora-toast', tone: 'success', message: __('Compte enregistré.'));
     }
 
+    /** Whether the account can be deleted: never yourself, nor the installation account. */
+    public static function deletable(User $user): bool
+    {
+        return $user->id !== auth()->id() && ! InstallAdmin::isInstallAccount($user);
+    }
+
+    public function confirmDelete(int $id): void
+    {
+        Gate::authorize('administer');
+        $this->close();
+        $user = User::findOrFail($id);
+        abort_unless(self::deletable($user), 403);
+        $this->deletingId = $user->id;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->reset('deletingId');
+    }
+
+    /**
+     * Deletes the account and its API tokens. Its audit entries stay, signed
+     * with its name; an LDAP or OpenID Connect account comes back at its next
+     * sign-in if the directory still allows it.
+     */
+    public function delete(): void
+    {
+        Gate::authorize('administer');
+        $user = User::findOrFail($this->deletingId ?? 0);
+        abort_unless(self::deletable($user), 403);
+
+        $user->tokens()->delete();
+        $user->delete();
+
+        $this->reset('deletingId');
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Compte supprimé.'));
+    }
+
     private function authorizeAccount(User $user): void
     {
-        abort_if($user->email === InstallAdmin::EMAIL && $user->id !== auth()->id(), 403);
+        abort_if(InstallAdmin::isInstallAccount($user) && $user->id !== auth()->id(), 403);
     }
 
     public function render(): View

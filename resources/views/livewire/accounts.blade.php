@@ -34,8 +34,11 @@
                             <td>@if ($account->last_login_at)<time datetime="{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->toIso8601String() }}" title="{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->isoFormat('LLL') }}">{{ \Illuminate\Support\Carbon::parse($account->last_login_at)->diffForHumans() }}</time>@else<span class="muted">{{ __('Jamais') }}</span>@endif</td>
                             <td><span @class(['badge', 'tone-cyan' => $account->active, 'tone-amber' => ! $account->active])>{{ $account->active ? __('Actif') : __('Désactivé') }}</span></td>
                             <td class="text-right">
-                                @if ($account->email !== \App\Console\Commands\InstallAdmin::EMAIL || $account->id === auth()->id())
+                                @if (! \App\Console\Commands\InstallAdmin::isInstallAccount($account) || $account->id === auth()->id())
                                 <button type="button" class="icon-button" aria-label="{{ __('Modifier :name', ['name' => $account->name]) }}" wire:click="open({{ $account->id }})"><x-icon name="edit" class="size-4"/></button>
+                                @endif
+                                @if (\App\Livewire\Accounts::deletable($account))
+                                <button type="button" class="icon-button danger-text" aria-label="{{ __('Supprimer :name', ['name' => $account->name]) }}" wire:click="confirmDelete({{ $account->id }})"><x-icon name="trash" class="size-4"/></button>
                                 @endif
                             </td>
                         </tr>
@@ -63,6 +66,16 @@
                     <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
                 </div>
             </form>
+        </x-modal>
+    @endif
+
+    @if ($deletingId)
+        @php($target = \App\Models\User::find($deletingId))
+        <x-modal id="account-delete" :title="__('Supprimer le compte :name ?', ['name' => $target?->name])" :description="$target?->provider === 'local' ? __('Le compte et ses jetons d’API sont supprimés. Ses entrées du journal d’audit sont conservées.') : __('Le compte et ses jetons d’API sont supprimés. Il sera recréé avec le rôle Lecteur à sa prochaine connexion si l’annuaire ou le fournisseur l’autorise encore.')">
+            <div class="dialog-actions mt-6">
+                <x-button variant="secondary" wire:click="cancelDelete">{{ __('Annuler') }}</x-button>
+                <x-button variant="danger" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">{{ __('Supprimer') }}</x-button>
+            </div>
         </x-modal>
     @endif
 </div>

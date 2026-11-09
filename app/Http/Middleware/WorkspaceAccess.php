@@ -24,7 +24,7 @@ class WorkspaceAccess
         $factorRequired = $user->provider === 'local' && $user->two_factor;
         $factorVerified = ! $factorRequired || hash_equals(TwoFactor::fingerprint($user), (string) $request->session()->get('two_factor_verified'));
 
-        if (! $user->active || ! $factorVerified || (! $enabled && $user->email !== InstallAdmin::EMAIL)) {
+        if (! $user->active || ! $factorVerified || (! $enabled && ! InstallAdmin::isInstallAccount($user))) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
