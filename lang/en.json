@@ -720,7 +720,7 @@
     "API": "API",
     "Facultatif. Complète SNMP pour les données que l’équipement n’y publie pas, comme les VLAN des ports.": "Optional. Completes SNMP with data the device does not publish there, such as port VLANs.",
     "Aucune, SNMP seulement": "None, SNMP only",
-    "Activez le service www-ssl et utilisez un utilisateur du groupe read.": "Enable the www-ssl service and use a user in the read group.",
+    "Activez le service www-ssl et créez un utilisateur dont le groupe a les droits read, api et rest-api.": "Enable the www-ssl service and create a user whose group has the read, api and rest-api policies.",
     "Port HTTPS": "HTTPS port",
     "Vérifier le certificat HTTPS": "Verify the HTTPS certificate",
     "VLAN lus en SNMP : :error": "VLANs read over SNMP: :error",

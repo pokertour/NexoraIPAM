@@ -16,7 +16,7 @@ class DeviceApis
             'label' => 'MikroTik RouterOS 7 (REST)',
             'class' => RouterOsRest::class,
             'port' => 443,
-            'hint' => 'Activez le service www-ssl et utilisez un utilisateur du groupe read.',
+            'hint' => 'Activez le service www-ssl et créez un utilisateur dont le groupe a les droits read, api et rest-api.',
         ],
     ];
 
