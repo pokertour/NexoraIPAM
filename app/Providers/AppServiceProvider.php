@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -22,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // With an HTTPS public URL, links stay in HTTPS even if a proxy forgets X-Forwarded-Proto.
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         Gate::define('edit-inventory', fn (User $user): bool => in_array($user->role, ['admin', 'operator'], true));
         Gate::define('administer', fn (User $user): bool => $user->role === 'admin');
 
