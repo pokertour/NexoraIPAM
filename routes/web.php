@@ -43,6 +43,9 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::get('/about', AboutController::class)->name('about');
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile', [ProfileController::class, 'rename'])->name('profile.rename');
+    Route::post('/profile/email', [ProfileController::class, 'requestEmail'])->middleware('throttle:6,1')->name('profile.email');
+    Route::get('/profile/email/verify/{user}', [ProfileController::class, 'verifyEmail'])->middleware('throttle:12,1')->name('profile.email.verify');
+    Route::post('/profile/email/cancel', [ProfileController::class, 'cancelEmail'])->name('profile.email.cancel');
     Route::post('/profile/two-factor/setup', [ProfileController::class, 'setup'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.setup');
     Route::post('/profile/two-factor/enable', [ProfileController::class, 'enable'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.enable');
     Route::post('/profile/two-factor/disable', [ProfileController::class, 'disable'])->middleware('throttle:6,1')->block(10, 5)->name('profile.two-factor.disable');

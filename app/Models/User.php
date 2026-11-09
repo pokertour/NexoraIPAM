@@ -44,7 +44,7 @@ class User extends Authenticatable
     /** @return list<string> */
     public function auditIgnored(): array
     {
-        return ['email_verified_at', 'password', 'two_factor'];
+        return ['email_verified_at', 'password', 'two_factor', 'pending_email'];
     }
 
     public function auditLabel(): string

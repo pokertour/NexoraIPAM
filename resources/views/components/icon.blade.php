@@ -31,6 +31,7 @@
         @case('topology') <rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v3M12 10 5 17m7-7 7 7M8 19.5h8"/> @break
         @case('globe') <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/> @break
         @case('chevron') <path d="m6 9 6 6 6-6"/> @break
+        @case('info') <circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/> @break
         @case('check') <path d="m5 12.5 4.5 4.5L19 7.5"/> @break
         @case('copy') <rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/> @break
         @case('key') <circle cx="8" cy="9" r="4"/><path d="m11 12 8 8m-3-3 3-3m-5 1 2-2"/> @break
