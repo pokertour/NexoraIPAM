@@ -16,6 +16,7 @@ class DeviceResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'role' => $this->role,
             'host' => $this->host,
             'snmp_version' => $this->snmp_version,
             'location_id' => $this->location_id,
@@ -32,6 +33,7 @@ class DeviceResource extends JsonResource
                 'physical' => $port->physical,
                 'media' => $port->connector(),
                 'media_override' => $port->media_override !== null,
+                'wan' => $port->wan ? ['label' => $port->wan_label, 'address' => $port->wan_address, 'reference' => $port->wan_reference] : null,
                 'state' => $port->state(),
                 'speed_mbps' => $port->speed_mbps,
                 'native_vlan' => $port->pvid,

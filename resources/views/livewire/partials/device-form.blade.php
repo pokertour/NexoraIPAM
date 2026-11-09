@@ -6,6 +6,9 @@
                     <x-location-options :locations="$locations"/>
                 </x-field>
             </div>
+            <x-field name="form.role" :label="__('Rôle dans le réseau')" wire:model="form.role" :hint="__('Place l’équipement dans la topologie : la bordure est reliée à Internet, puis viennent le cœur, la distribution et l’accès.')">
+                @foreach (\App\Models\NetworkDevice::ROLES as $value => $role)<option value="{{ $value }}">{{ __($role['label']) }}</option>@endforeach
+            </x-field>
             <div class="grid gap-4 sm:grid-cols-[1fr_8rem]">
                 <x-field name="form.host" :label="__('Adresse IP ou nom d’hôte')" wire:model="form.host" placeholder="192.0.2.2" maxlength="253" required/>
                 <x-field name="form.port" :label="__('Port UDP')" type="number" min="1" max="65535" wire:model="form.port" required/>

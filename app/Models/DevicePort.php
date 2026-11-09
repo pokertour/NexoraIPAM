@@ -19,7 +19,7 @@ class DevicePort extends Model
 
     protected function casts(): array
     {
-        return ['tagged_vlans' => 'array', 'untagged_vlans' => 'array', 'physical' => 'boolean', 'polled_at' => 'datetime'];
+        return ['tagged_vlans' => 'array', 'untagged_vlans' => 'array', 'physical' => 'boolean', 'wan' => 'boolean', 'polled_at' => 'datetime'];
     }
 
     public function device(): BelongsTo

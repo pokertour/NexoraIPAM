@@ -126,12 +126,11 @@ class Topology
     private function withCables(Collection $links, Collection $devices): Collection
     {
         $cables = CableLink::with(['a', 'b'])->get()
-            ->filter(fn (CableLink $cable): bool => $cable->a?->network_device_id && $cable->b?->network_device_id
-                && isset($devices[$cable->a->network_device_id], $devices[$cable->b->network_device_id]));
+            ->filter(fn (CableLink $cable): bool => isset($devices[$cable->deviceId('a') ?? 0], $devices[$cable->deviceId('b') ?? 0]));
 
         foreach ($cables as $cable) {
-            $a = $devices[$cable->a->network_device_id];
-            $b = $devices[$cable->b->network_device_id];
+            $a = $devices[$cable->deviceId('a')];
+            $b = $devices[$cable->deviceId('b')];
             $aPort = $cable->a_port ? $a->ports->first(fn (DevicePort $port): bool => self::samePort($port, $cable->a_port)) : null;
             $bPort = $cable->b_port ? $b->ports->first(fn (DevicePort $port): bool => self::samePort($port, $cable->b_port)) : null;
 
