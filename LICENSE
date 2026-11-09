@@ -1,161 +1,142 @@
 # NexoraIPAM Source Available License
-**Version 1.0 — November 2026**
+**Version 1.1 — November 2026**
 
 Copyright (c) 2026 Guillaume Vaillant. All rights reserved.
 
 ## 1. Definitions
 
-"Software" means NexoraIPAM, including its source code, application components, documentation, configuration files, and original assets distributed by the Licensor.
+"Software" means the NexoraIPAM software made available by the Licensor under this License, including its source code, original documentation, configuration templates, and original assets, but excluding third-party components governed by their own licenses.
 
-"Licensor" means Guillaume Vaillant or any legal entity to which the relevant rights have been validly transferred.
+"Licensor" means Guillaume Vaillant or a successor who validly holds the relevant rights.
 
-"Licensee" means any individual or legal entity exercising rights under this License.
+"Licensee" means any individual or legal entity exercising permissions under this License.
 
-"Commercial Services" means services provided by a third party for direct or indirect financial or commercial benefit in connection with the Software, including installation, deployment, integration, customization, hosting, managed services, maintenance, support, consulting, and training.
+"Internal Use" means using the Software for the Licensee's own purposes, including internal business operations, without offering the Software itself as a product or hosted service to unaffiliated third parties.
 
-"Internal Use" means operating the Software for the Licensee's own organizational purposes, including its internal business activities, without providing the Software or related Commercial Services to third-party customers.
+"Official Release" means a version of the Software published or expressly approved by the Licensor through an official NexoraIPAM distribution channel.
 
-## 2. Grant of License
+"Contribution" means a proposed change submitted to the official NexoraIPAM project for review and possible inclusion by the Licensor.
+
+## 2. License Grant
 
 Subject to compliance with this License, the Licensor grants the Licensee a worldwide, non-exclusive, royalty-free, non-transferable license to:
 
 a. Access, download, and inspect the Software's source code.
 
-b. Install and operate the Software for personal, educational, research, or Internal Use purposes.
+b. Install, execute, and use unmodified Official Releases for personal, educational, research, or Internal Use purposes, including within commercial organizations.
 
-c. Use the Software within commercial organizations for their own internal operational requirements, without paying license fees.
+c. Configure and administer the Software through its intended configuration mechanisms and interfaces, and update an installation to subsequent Official Releases.
 
-d. Modify the Software exclusively for the Licensee's own Internal Use.
+d. Make copies reasonably necessary for permitted installation, execution, updates, backup, and disaster recovery.
 
-e. Create reasonable backup copies necessary for permitted installation, operation, and disaster recovery.
+e. Prepare proposed changes solely for submission as Contributions to the official NexoraIPAM project, subject to Section 5.
 
-No right to redistribute, sublicense, sell, or commercially exploit the Software is granted except as expressly provided in this License or separately authorized in writing by the Licensor.
+No permission to redistribute, sublicense, sell, offer as a hosted service, or independently exploit modified versions is granted except as expressly authorized in writing by the Licensor or required by applicable mandatory law.
 
-## 3. Commercial Services and Prior Authorization
+## 3. Restrictions on Modification and Distribution
 
-Any third party wishing to provide Commercial Services involving NexoraIPAM must obtain the Licensor's prior written authorization.
+Except for Contributions permitted by Section 5, separate prior written authorization from the Licensor, or rights that cannot legally be restricted, the Licensee must not:
 
-This requirement applies, without limitation, to:
+a. Modify, adapt, or create derivative versions of the Software for independent use or deployment.
 
-- Paid installation or deployment services.
-- Integration into a customer's infrastructure.
-- Commercial configuration or customization.
-- Managed hosting or Software-as-a-Service offerings.
-- Maintenance, technical support, and troubleshooting services.
-- Training, consulting, and other professional services specifically involving NexoraIPAM.
+b. Operate or deploy a modified version of the Software.
 
-Authorization must be obtained before providing the relevant Commercial Services.
+c. Redistribute, republish, mirror, sublicense, transfer, sell, rent, or otherwise provide copies of the Software or modified versions to third parties.
 
-Authorization may be granted under a separate written agreement defining its scope, duration, permitted activities, and any applicable fees.
+d. Publish or maintain an independently distributed fork or alternative release of the Software.
 
-The Licensor may approve or refuse requests at their discretion, subject to applicable law.
+e. Incorporate the Software into a product or service distributed or supplied to third parties.
 
-A Licensee's own employees may install, administer, maintain, and modify the Software for that Licensee's Internal Use without separate authorization.
+f. Remove, falsify, or obscure copyright, license, or attribution notices.
 
-## 4. Restrictions
+Ordinary use of documented configuration settings, environment variables, supported extensions, and administrative interfaces does not by itself constitute a prohibited modification of the Software's source code.
 
-Unless the Licensor provides prior written authorization, the Licensee must not:
+Nothing in this License limits permissions independently granted for third-party components or rights that cannot be waived under applicable law.
 
-a. Sell, resell, rent, sublicense, or commercially distribute the Software.
+## 4. Commercial Exploitation and Services
 
-b. Redistribute, republish, mirror, or make available copies of the Software or modified versions to third parties, except where mandatory law expressly permits otherwise.
+Prior written authorization from the Licensor is required to:
 
-c. Publish or distribute modified versions, derivative distributions, or independently maintained forks of the Software.
+a. Sell, resell, license, or commercially distribute the Software.
 
-d. Offer the Software as a hosted, managed, or subscription-based service to third parties.
+b. Offer the Software to third parties as Software-as-a-Service, managed hosting, or another hosted or subscription-based service, whether paid or unpaid.
 
-e. Incorporate the Software into a commercial product or service offered to third-party customers.
+c. Market or provide paid services specifically involving NexoraIPAM, including installation, deployment, integration, customization, maintenance, support, consulting, or training, for third-party customers.
 
-f. Remove or falsify copyright, license, or attribution notices.
+d. Incorporate NexoraIPAM into a commercial product or customer-facing service.
 
-g. Represent itself as the official developer, owner, or authorized commercial distributor of NexoraIPAM without permission.
+An organization may use NexoraIPAM internally in connection with its own commercial activities without paying a license fee. Its employees may install, configure, administer, and update Official Releases for that organization's Internal Use without separate authorization.
 
-These restrictions do not limit rights granted by applicable mandatory law or by separate licenses governing third-party components.
+Authorization may be granted under a separate written agreement specifying its scope, duration, conditions, and any applicable fees. The Licensor may approve or decline requests subject to applicable law.
 
-## 5. Contributions
+## 5. Contributions to the Official Project
 
-The Licensor welcomes contributions through the official NexoraIPAM repository.
+The Licensor welcomes Contributions submitted through the official NexoraIPAM repository or another contribution channel expressly designated by the Licensor.
 
-Contributors retain ownership of their original contributions.
+For the limited purpose of preparing and submitting a Contribution, the Licensee may make and modify working copies of the Software and create repository branches or technical forks where necessary for the contribution workflow. This permission does not authorize deploying a modified version for independent use, publishing an alternative release, or distributing modified builds outside the contribution process.
 
-By submitting a contribution, the contributor grants the Licensor a perpetual, worldwide, non-exclusive, royalty-free license to use, reproduce, modify, distribute, sublicense, and commercially license that contribution as part of NexoraIPAM and related products.
+Contributors retain ownership of their original Contributions. By submitting a Contribution, each contributor grants the Licensor a perpetual, worldwide, non-exclusive, irrevocable, royalty-free license, with the right to sublicense, to use, reproduce, modify, adapt, distribute, publicly make available, and license the Contribution under this License or other licenses, including commercial licenses, as part of NexoraIPAM and related products.
 
-Contributors must have the necessary rights to submit their contributions and must not knowingly introduce code that cannot lawfully be distributed under the project's applicable licensing arrangements.
+Each contributor represents that they have the necessary rights to submit the Contribution and grant these permissions. The Licensor may accept, reject, or request changes to any Contribution and may require a separate Contributor License Agreement before acceptance.
 
-A separate Contributor License Agreement may be required before contributions are accepted.
+## 6. Ownership and Branding
 
-## 6. Ownership and Intellectual Property
+The Software remains the intellectual property of the Licensor and applicable third-party rights holders. This License grants limited permissions and does not transfer ownership of intellectual property.
 
-The Software remains the intellectual property of the Licensor and any applicable third-party rights holders.
-
-This License grants limited permissions to use the Software and does not transfer ownership of any intellectual property.
-
-The NexoraIPAM name, logos, and other original branding remain subject to their respective intellectual property rights.
-
-No trademark license is granted except as necessary for accurate identification of the Software.
+The NexoraIPAM name, logos, and original branding remain protected by applicable intellectual property laws. No trademark license is granted except to accurately identify the Software in a manner permitted by law.
 
 ## 7. Third-Party Components
 
-NexoraIPAM may include or depend on third-party software distributed under separate licenses.
+Third-party software and dependencies included in or used with NexoraIPAM remain governed by their respective licenses. Nothing in this License supersedes those licenses or restricts rights independently granted under them.
 
-Such components remain governed by their respective licenses.
-
-Nothing in this License overrides, replaces, or restricts rights independently granted under those third-party licenses.
-
-Where a third-party license requires additional notices, source availability, or redistribution permissions, those requirements must be respected.
+The Licensor and Licensees must comply with applicable third-party license obligations, including any mandatory notices, source availability, and redistribution requirements.
 
 ## 8. Termination
 
-The rights granted under this License terminate automatically if the Licensee materially violates its terms.
+The rights granted under this License terminate automatically upon a material violation of its terms, subject to applicable law.
 
-Where the violation is capable of remedy, the Licensee may restore its rights by fully correcting the violation within thirty (30) days after receiving written notice from the Licensor.
+Where the violation is capable of remedy, the Licensee may reinstate the rights granted by this License by fully remedying the violation within thirty (30) days after receiving written notice from the Licensor.
 
-Termination does not affect any rights that cannot lawfully be terminated or any independently applicable third-party licenses.
+Termination does not affect rights that cannot legally be terminated or rights independently granted under third-party licenses.
 
 ## 9. Disclaimer of Warranty
 
-To the maximum extent permitted by applicable law, the Software is provided "AS IS" and "AS AVAILABLE", without warranties of any kind, express or implied.
+To the maximum extent permitted by applicable law, the Software is provided "AS IS" and "AS AVAILABLE", without warranties of any kind, express or implied, including warranties of merchantability, fitness for a particular purpose, availability, security, or freedom from defects.
 
-The Licensor does not guarantee uninterrupted operation, fitness for a particular purpose, security, or freedom from defects.
-
-Nothing in this section excludes warranties or rights that cannot legally be excluded.
+Nothing in this section excludes warranties or statutory rights that cannot legally be excluded.
 
 ## 10. Limitation of Liability
 
-To the maximum extent permitted by applicable law, the Licensor shall not be liable for indirect, incidental, consequential, or special damages arising from the use of or inability to use the Software.
+To the maximum extent permitted by applicable law, the Licensor shall not be liable for indirect, incidental, consequential, or special damages, including loss of profits, business interruption, or loss of data, arising from the use of or inability to use the Software.
 
-This limitation does not apply to liabilities that cannot legally be excluded or limited.
+Nothing in this License excludes or limits liability where such exclusion or limitation is prohibited by applicable law.
 
 ## 11. Governing Law
 
-This License shall be governed by the laws of France, subject to any mandatory provisions of applicable law.
+This License is governed by the laws of France, subject to applicable mandatory provisions. Disputes shall be submitted to courts having jurisdiction under applicable procedural law.
 
-Disputes shall be submitted to the competent courts determined under applicable procedural law.
+## 12. Earlier Releases
 
-## 12. Previous Releases
+This License applies only to versions of the Software expressly released under NexoraIPAM Source Available License version 1.1.
 
-This License applies only to Software versions expressly released under it.
+Versions previously and validly distributed under the GNU Affero General Public License version 3.0 remain subject to the terms applicable to those versions. Nothing in this License retroactively revokes permissions already granted under earlier licenses.
 
-Versions previously distributed under the GNU Affero General Public License version 3.0 remain available under the license terms applicable to those versions.
+## 13. Written Authorization
 
-Nothing in this License revokes rights validly granted under earlier licenses.
+Requests for redistribution, commercial services, hosted offerings, modified deployments, or other activities requiring authorization must be submitted through the official NexoraIPAM project repository or another contact channel designated by the Licensor.
 
-## 13. Commercial Authorization
+Authorization is effective only when expressly granted in writing by the Licensor or an authorized representative. Silence or the availability of the source code does not constitute authorization.
 
-Requests for commercial authorization must be submitted to the Licensor through the official NexoraIPAM project repository or another contact method officially designated by the Licensor.
+## 14. Severability and Entire Agreement
 
-Commercial authorization is valid only when expressly confirmed in writing by the Licensor.
+If a provision of this License is held unenforceable, the remaining provisions shall remain effective to the extent permitted by law.
 
-## 14. Entire License
-
-This License constitutes the terms governing use of the Software unless superseded by a separate written agreement with the Licensor.
-
-If any provision is held unenforceable, the remaining provisions shall continue to apply to the extent permitted by law.
+This License governs the permissions granted for the Software unless replaced or supplemented by a separate written agreement with the Licensor.
 
 ---
 
-**NexoraIPAM Source Available License v1.0**
+**NexoraIPAM Source Available License v1.1**
 
-Source code available. Free internal use. Commercial third-party services require prior written authorization.
+Source code available. Free use of unmodified official releases, including internal business use. No unauthorized modifications, redistribution, commercial third-party services, or hosted offerings. Contributions are welcome through the official project.
 
-This is a source-available license, not an Open Source Initiative-approved open-source license.
+**This is a source-available license, not an Open Source Initiative-approved open-source license.**
