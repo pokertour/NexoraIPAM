@@ -53,9 +53,14 @@
                     <div class="grid gap-4 sm:grid-cols-3">
                         <x-field name="form.api_username" :label="__('Utilisateur')" wire:model="form.api_username" maxlength="255" autocomplete="off"/>
                         <x-field name="form.api_password" :label="__('Mot de passe')" type="password" wire:model="form.api_password" autocomplete="new-password" :hint="$hasApiPassword ? __('Laissez vide pour conserver le secret enregistré.') : null"/>
-                        <x-field name="form.api_port" :label="__('Port HTTPS')" type="number" min="1" max="65535" wire:model="form.api_port" :placeholder="$apiDriver['port']"/>
+                        <x-field name="form.api_port" :label="__('Port TCP')" type="number" min="1" max="65535" wire:model="form.api_port" :placeholder="$apiDriver['port']"/>
                     </div>
-                    <label class="checkbox"><input type="checkbox" wire:model="form.api_verify_tls"> {{ __('Vérifier le certificat HTTPS') }}</label>
+                    @if ($apiDriver['tls'])
+                    <label class="checkbox"><input type="checkbox" wire:model="form.api_verify_tls"> {{ __('Vérifier le certificat') }}</label>
+                @endif
+                @if ($apiDriver['warning'] ?? null)
+                    <div class="callout callout-warning" role="note"><x-icon name="info" class="size-4"/> {{ __($apiDriver['warning']) }}</div>
+                @endif
                 @endif
             </fieldset>
             <div class="grid gap-4 sm:grid-cols-2">

@@ -199,10 +199,14 @@ Administrators configure everything from **Settings** in the application. Authen
 - **OpenID Connect**: register a confidential client using HTTPS discovery, the authorization code flow, PKCE S256 and RSA signatures. Declare the callback URL shown in **Settings** (`/auth/openid/callback`) at your provider. Authorized users get a viewer account on first sign-in.
 - **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
 - **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
-- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
+- **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials, then edit it from the list or from its page. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
 - **Device API**: some devices do not publish their VLANs over SNMP. MikroTik RouterOS, for example, leaves the Q-BRIDGE-MIB tables empty. For these, choose an API in the device form; it then provides the native, untagged and tagged VLANs of each port while SNMP keeps providing everything else. If the API fails, the poll still completes with the SNMP data and the device page shows the error.
-  - **MikroTik RouterOS 7 (REST)**: enable the `www-ssl` service (`/ip service enable www-ssl`, with a certificate) and create a read-only user whose group has the `read`, `api` and `rest-api` policies:
-    `/user group add name=nexora-api policy=read,api,rest-api` then `/user add name=nexora group=nexora-api password=…`. Turn off certificate verification only for a self-signed certificate on a trusted network.
+  - **MikroTik RouterOS**: three drivers read the same bridge VLAN table. Each needs a dedicated read-only group and user, for example `/user group add name=nexora-api policy=read,api,rest-api` then `/user add name=nexora group=nexora-api password=…`.
+    - **API-SSL, port 8729** (recommended, RouterOS 6.43 or later): enable the `api-ssl` service with a certificate (`/ip service set api-ssl certificate=… disabled=no`). The `read` and `api` policies are enough.
+    - **REST, HTTPS** (RouterOS 7.1 or later): enable the `www-ssl` service with a certificate. It needs the `rest-api` policy too, and also exposes WebFig.
+    - **API, port 8728**: enable the `api` service. Not encrypted: the password and configuration cross the network in clear text, so keep it to an isolated management network.
+
+    Turn off certificate verification only for a self-signed certificate on a trusted network.
 - **DHCP leases**: enter the Kea control agent URL and credentials, or the path of an ISC `dhcpd.leases` file readable by the worker, and an import interval. Active leases name the addresses they cover and add unknown ones that fall in an inventoried subnet.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 

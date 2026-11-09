@@ -10,13 +10,34 @@ use App\Models\NetworkDevice;
  */
 class DeviceApis
 {
-    /** @var array<string, array{label: string, class: class-string<DeviceApiDriver>, port: int, hint: string}> */
+    /**
+     * tls tells whether the connection is encrypted; warning is shown in the
+     * form when it is not.
+     *
+     * @var array<string, array{label: string, class: class-string<DeviceApiDriver>, port: int, tls: bool, hint: string, warning?: string}>
+     */
     public const DRIVERS = [
+        'routeros-api-ssl' => [
+            'label' => 'MikroTik RouterOS (API-SSL, port 8729)',
+            'class' => RouterOsApi::class,
+            'port' => 8729,
+            'tls' => true,
+            'hint' => 'RouterOS 6.43 ou plus récent. Activez le service api-ssl avec un certificat et créez un utilisateur dont le groupe a les droits read et api.',
+        ],
         'routeros' => [
-            'label' => 'MikroTik RouterOS 7 (REST)',
+            'label' => 'MikroTik RouterOS 7 (REST, HTTPS)',
             'class' => RouterOsRest::class,
             'port' => 443,
-            'hint' => 'Activez le service www-ssl et créez un utilisateur dont le groupe a les droits read, api et rest-api.',
+            'tls' => true,
+            'hint' => 'RouterOS 7.1 ou plus récent. Activez le service www-ssl et créez un utilisateur dont le groupe a les droits read, api et rest-api.',
+        ],
+        'routeros-api' => [
+            'label' => 'MikroTik RouterOS (API, port 8728)',
+            'class' => RouterOsApiPlain::class,
+            'port' => 8728,
+            'tls' => false,
+            'hint' => 'RouterOS 6.43 ou plus récent. Activez le service api et créez un utilisateur dont le groupe a les droits read et api.',
+            'warning' => 'Le port 8728 n’est pas chiffré : l’identifiant, le mot de passe et la configuration passent en clair. Préférez API-SSL, ou réservez-le à un réseau d’administration isolé.',
         ],
     ];
 
