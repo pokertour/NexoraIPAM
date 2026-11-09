@@ -25,6 +25,14 @@ For SNMP issues, the output of `php artisan nexora:snmp-dump <device>` is the mo
 
 4. Keep pull requests focused on one topic and describe what you verified.
 
+## Supporting another device API
+
+When a vendor does not publish some data over SNMP, a driver can read it from the device's own API:
+
+1. Implement `App\Support\DeviceApi\DeviceApiDriver` in `app/Support/DeviceApi`. Return data keyed by interface name, as the device names them in `ifName` or `ifDescr`, and throw a `RuntimeException` with a translated message when the API fails.
+2. Register the class in `DeviceApis::DRIVERS` with its label, default port and a setup hint.
+3. Test it with `Http::fake()` and the simulated SNMP agent in `tests/Support/FakeSnmpAgent.php`, as `RouterOsRest` does in `tests/Feature/NetworkDeviceTest.php`.
+
 ## Contribution terms
 
 Contributions are governed by section 5 of the [NexoraIPAM Source Available License v1.0](LICENSE). That section is authoritative; in summary:

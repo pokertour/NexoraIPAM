@@ -38,7 +38,7 @@ class ScanRun extends Model
     /** @var array<string, string> */
     public const SUMMARY_LABELS = [
         'targets' => 'Adresses sondées', 'responded' => 'Réponses',
-        'ports' => 'Ports', 'up' => 'Ports actifs', 'macs' => 'MAC apprises', 'arp' => 'Entrées ARP', 'addresses' => 'Adresses mises à jour',
+        'ports' => 'Ports', 'up' => 'Ports actifs', 'macs' => 'MAC apprises', 'arp' => 'Entrées ARP', 'addresses' => 'Adresses mises à jour', 'api_ports' => 'Ports lus par API',
         'leases' => 'Baux', 'named' => 'Noms d’hôte', 'created' => 'Adresses créées',
     ];
 

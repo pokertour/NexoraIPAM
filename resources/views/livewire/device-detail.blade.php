@@ -16,6 +16,9 @@
     @if ($device->poll_status === 'failed' && $device->poll_error)
         <div class="callout callout-danger mb-4" role="status"><x-icon name="info" class="size-4"/> {{ $device->poll_error }}</div>
     @endif
+    @if ($device->api_driver && $device->api_error)
+        <div class="callout callout-warning mb-4" role="status"><x-icon name="info" class="size-4"/> {{ __('VLAN lus en SNMP : :error', ['error' => $device->api_error]) }}</div>
+    @endif
 
     <div class="stat-grid mb-4">
         <div class="card stat tone-card-cyan"><div class="stat-top"><span class="stat-icon tone-cyan"><x-icon name="switch" class="size-[18px]"/></span></div><div><p class="stat-value">{{ $summary['up'] }}<span class="stat-unit">/ {{ $summary['physical'] }}</span></p><p class="stat-label mt-1.5">{{ __('Ports actifs') }}</p></div></div>

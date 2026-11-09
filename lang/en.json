@@ -715,5 +715,18 @@
     "La découverte a échoué ou dépassé le délai.": "The discovery failed or timed out.",
     "L’interrogation a été remplacée ou l’équipement supprimé.": "The poll was superseded or the device deleted.",
     "L’import DHCP a échoué ou dépassé le délai.": "The DHCP import failed or timed out.",
-    ":minutes min": ":minutes min"
+    ":minutes min": ":minutes min",
+    "API de l’équipement": "Device API",
+    "API": "API",
+    "Facultatif. Complète SNMP pour les données que l’équipement n’y publie pas, comme les VLAN des ports.": "Optional. Completes SNMP with data the device does not publish there, such as port VLANs.",
+    "Aucune, SNMP seulement": "None, SNMP only",
+    "Activez le service www-ssl et utilisez un utilisateur du groupe read.": "Enable the www-ssl service and use a user in the read group.",
+    "Port HTTPS": "HTTPS port",
+    "Vérifier le certificat HTTPS": "Verify the HTTPS certificate",
+    "VLAN lus en SNMP : :error": "VLANs read over SNMP: :error",
+    "Ports lus par API": "Ports read through the API",
+    "L’API RouterOS a refusé les identifiants.": "The RouterOS API rejected the credentials.",
+    "L’API RouterOS a répondu :status sur :path.": "The RouterOS API answered :status on :path.",
+    "Le certificat HTTPS de l’API RouterOS n’est pas reconnu. Installez un certificat valide ou désactivez la vérification.": "The RouterOS API HTTPS certificate is not trusted. Install a valid certificate or turn off verification.",
+    "L’API RouterOS est injoignable. Vérifiez que le service www-ssl est activé et le port autorisé.": "The RouterOS API is unreachable. Check that the www-ssl service is enabled and the port allowed."
 }

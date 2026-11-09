@@ -26,14 +26,14 @@ class NetworkDevice extends Model
     /** @var list<string> */
     public const PRIVACY_PROTOCOLS = ['AES', 'AES-256', 'DES'];
 
-    protected $fillable = ['name', 'host', 'port', 'snmp_version', 'credentials', 'location_id', 'description', 'poll_interval'];
+    protected $fillable = ['name', 'host', 'port', 'snmp_version', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
 
-    protected $hidden = ['credentials'];
+    protected $hidden = ['credentials', 'api_credentials'];
 
     protected function casts(): array
     {
         return [
-            'credentials' => 'encrypted:array', 'next_poll_at' => 'datetime', 'poll_requested_at' => 'datetime',
+            'credentials' => 'encrypted:array', 'api_credentials' => 'encrypted:array', 'api_verify_tls' => 'boolean', 'api_port' => 'integer', 'next_poll_at' => 'datetime', 'poll_requested_at' => 'datetime',
             'polled_at' => 'datetime', 'port' => 'integer', 'poll_interval' => 'integer',
         ];
     }
@@ -42,7 +42,7 @@ class NetworkDevice extends Model
     public function auditIgnored(): array
     {
         return [
-            'next_poll_at', 'poll_token', 'poll_status', 'poll_error', 'poll_requested_at', 'polled_at',
+            'next_poll_at', 'poll_token', 'poll_status', 'poll_error', 'api_error', 'poll_requested_at', 'polled_at',
             'sys_name', 'sys_descr', 'sys_object_id', 'sys_uptime', 'arp_entries',
         ];
     }

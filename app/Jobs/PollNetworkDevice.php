@@ -49,8 +49,12 @@ class PollNetworkDevice implements ShouldQueue
 
         $device->forceFill(['poll_status' => 'completed', 'poll_error' => null])->save();
         $monitor->resolve('device_unreachable', $device);
-        Audit::record('device.polled', $device, array_map(fn (int $value): array => [null, $value], $summary));
-        ScanRun::finish($this->runId, 'completed', $summary);
+        $changes = array_map(fn (int $value): array => [null, $value], $summary);
+        if ($device->api_error) {
+            $changes['api_error'] = [null, $device->api_error];
+        }
+        Audit::record('device.polled', $device, $changes);
+        ScanRun::finish($this->runId, 'completed', $summary, $device->api_error);
     }
 
     public function failed(?Throwable $exception): void
