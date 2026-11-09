@@ -2,8 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\EditsNetworkDevice;
 use App\Models\DevicePort;
 use App\Models\IpAddress;
+use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\Vlan;
 use App\Support\Audit;
@@ -20,6 +22,8 @@ use Livewire\Component;
 
 class DeviceDetail extends Component
 {
+    use EditsNetworkDevice;
+
     #[Locked]
     public int $deviceId;
 
@@ -35,6 +39,11 @@ class DeviceDetail extends Component
     public function mount(NetworkDevice $device): void
     {
         $this->deviceId = $device->id;
+    }
+
+    public function close(): void
+    {
+        $this->resetDeviceForm();
     }
 
     public function select(int $ifIndex): void
@@ -111,6 +120,7 @@ class DeviceDetail extends Component
 
         return view('livewire.device-detail', [
             'device' => $device,
+            'locations' => $this->editing ? Location::with('parent.parent')->orderBy('name')->get() : collect(),
             'groups' => self::faceplate($ports),
             'listed' => $listed,
             'port' => $selected,

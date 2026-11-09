@@ -15,7 +15,10 @@ use App\Models\ScanRun;
 use App\Models\Subnet;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\DeviceApi\RouterOsApi;
+use App\Support\DeviceApi\RouterOsApiPlain;
 use App\Support\SnmpClient;
+use App\Support\Topology;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -178,6 +181,79 @@ class NetworkDeviceTest extends TestCase
         Livewire::test(DeviceDetail::class, ['device' => $device])->assertSee('VLAN lus en SNMP : L’API RouterOS a refusé les identifiants.');
     }
 
+    public function test_routeros_vlans_are_read_through_the_binary_api(): void
+    {
+        $this->agent->asMikrotik()->withoutVlanTables();
+        [$client, $server] = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        fwrite($server, self::sentence(['!done'])
+            .self::sentence(['!re', '=.id=*1', '=vlan-ids=10', '=current-tagged=bridge,sfp-sfpplus1', '=current-untagged=ether1', '=disabled=false'])
+            .self::sentence(['!re', '=.id=*2', '=vlan-ids=20-21', '=tagged=sfp-sfpplus1', '=untagged=sfp-sfpplus2', '=disabled=false'])
+            .self::sentence(['!done'])
+            .self::sentence(['!re', '=name=mgmt', '=vlan-id=40', '=interface=bridge', '=comment=a=b'])
+            .self::sentence(['!done'])
+            .self::sentence(['!re', '=interface=ether1', '=pvid=10'])
+            .self::sentence(['!re', '=interface=sfp-sfpplus2', '=pvid=20'])
+            .self::sentence(['!done']));
+        $tls = null;
+        $this->app->instance(RouterOsApi::class, new RouterOsApi(function (NetworkDevice $device, bool $encrypted) use ($client, &$tls) {
+            $tls = $encrypted;
+
+            return $client;
+        }));
+        $device = $this->poll(NetworkDevice::factory()->create([
+            'api_driver' => 'routeros-api-ssl', 'api_port' => 8729,
+            'api_credentials' => ['username' => 'nexora', 'password' => 'api-secret'],
+        ]));
+
+        $ports = $device->ports()->get()->keyBy('name');
+        $this->assertTrue($tls);
+        $this->assertNull($device->api_error);
+        $this->assertSame([10, [10], null], [$ports['ether1']->pvid, $ports['ether1']->untagged_vlans, $ports['ether1']->tagged_vlans]);
+        $this->assertSame([10, 20, 21], $ports['sfp-sfpplus1']->tagged_vlans);
+        $this->assertSame([20, [20, 21]], [$ports['sfp-sfpplus2']->pvid, $ports['sfp-sfpplus2']->untagged_vlans]);
+        $this->assertSame([10, 40], $ports['bridge']->tagged_vlans);
+
+        $sent = stream_get_contents($server);
+        $this->assertStringContainsString(self::sentence(['/login', '=name=nexora', '=password=api-secret']), $sent);
+        foreach (['/interface/bridge/vlan/print', '/interface/vlan/print', '/interface/bridge/port/print'] as $command) {
+            $this->assertStringContainsString(self::sentence([$command]), $sent);
+        }
+    }
+
+    public function test_the_binary_api_reports_rejected_credentials_and_old_routeros(): void
+    {
+        $this->agent->asMikrotik()->withoutVlanTables();
+        $replies = [
+            self::sentence(['!trap', '=message=invalid user name or password (6)']).self::sentence(['!done']),
+            self::sentence(['!done', '=ret=ebddd18303a54111e2dea05a92ab46b4']),
+        ];
+        $expected = ['L’API RouterOS a refusé les identifiants.', 'Cette version de RouterOS est trop ancienne pour l’API : la version 6.43 ou plus récente est requise.'];
+        $device = NetworkDevice::factory()->create(['api_driver' => 'routeros-api', 'api_credentials' => ['username' => 'nexora', 'password' => 'wrong']]);
+
+        foreach ($replies as $index => $reply) {
+            [$client, $server] = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+            fwrite($server, $reply);
+            $this->app->instance(RouterOsApiPlain::class, new RouterOsApiPlain(function (NetworkDevice $device, bool $encrypted) use ($client) {
+                $this->assertFalse($encrypted);
+
+                return $client;
+            }));
+            $device = $this->poll($device);
+
+            $this->assertSame(['completed', $expected[$index]], [$device->poll_status, $device->api_error]);
+        }
+    }
+
+    public function test_api_lengths_are_encoded_on_one_to_five_bytes(): void
+    {
+        $this->assertSame("\x7F", RouterOsApi::encodeLength(0x7F));
+        $this->assertSame("\x80\x80", RouterOsApi::encodeLength(0x80));
+        $this->assertSame("\xBF\xFF", RouterOsApi::encodeLength(0x3FFF));
+        $this->assertSame("\xC0\x40\x00", RouterOsApi::encodeLength(0x4000));
+        $this->assertSame("\xE0\x20\x00\x00", RouterOsApi::encodeLength(0x200000));
+        $this->assertSame("\xF0\x10\x00\x00\x00", RouterOsApi::encodeLength(0x10000000));
+    }
+
     public function test_administrators_configure_the_device_api_with_an_encrypted_password(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
@@ -204,6 +280,22 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame([null, null, null], [$device->fresh()->api_driver, $device->fresh()->api_port, $device->fresh()->api_credentials]);
     }
 
+    public function test_lldp_neighbours_land_on_the_local_port_they_name(): void
+    {
+        $this->agent->asMikrotik()->withRouterOsLldp();
+        $device = $this->poll(NetworkDevice::factory()->create());
+        $ports = $device->ports()->get()->keyBy('name');
+
+        $this->assertSame(['B1-Switch-J', 'bridge/sfp-sfpplus1'], [$ports['sfp-sfpplus1']->neighbor_name, $ports['sfp-sfpplus1']->neighbor_port]);
+        $this->assertSame('Switch-Core-02', $ports['sfp-sfpplus2']->neighbor_name);
+        $this->assertNull($ports['ether1']->neighbor_name);
+
+        $core = NetworkDevice::factory()->create(['name' => 'Switch-Core-02']);
+        $uplink = DevicePort::create(['network_device_id' => $core->id, 'if_index' => 22, 'name' => 'sfp-sfpplus22', 'physical' => true]);
+        $link = app(Topology::class)->links()->sole();
+        $this->assertTrue($link['b_port']?->is($uplink) || $link['a_port']->is($uplink));
+    }
+
     public function test_the_snmp_dump_prints_the_tables_without_credentials(): void
     {
         $this->agent->asMikrotik();
@@ -218,6 +310,8 @@ class NetworkDeviceTest extends TestCase
 
     public function test_a_second_poll_computes_the_throughput_of_each_port(): void
     {
+        // The database keeps whole seconds: a frozen whole second keeps the interval exact.
+        $this->freezeSecond();
         $device = $this->poll(NetworkDevice::factory()->create());
         $this->assertNull($device->ports()->where('name', 'GigabitEthernet1/0/1')->value('in_bps'));
 
@@ -294,6 +388,25 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame(2, AuditLog::where('action', 'device.port_media')->count());
     }
 
+    public function test_administrators_edit_a_device_from_its_page(): void
+    {
+        $this->withoutVite();
+        $device = NetworkDevice::factory()->create(['name' => 'sw-rdc', 'credentials' => ['community' => 'r34d-only']]);
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->assertDontSee('Modifier l’équipement')->call('open', $device->id)->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])
+            ->call('open', $device->id)->assertSee('Modifier l’équipement')->assertSet('form.name', 'sw-rdc')
+            ->set('form.name', 'sw-rdc-1')->call('save')->assertHasNoErrors()
+            ->assertDispatched('nexora-toast', tone: 'success')->assertSet('editing', false)
+            ->assertSee('sw-rdc-1');
+
+        $this->assertSame(['sw-rdc-1', ['community' => 'r34d-only']], [$device->fresh()->name, $device->fresh()->credentials]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'updated', 'subject_type' => 'network_device', 'subject_id' => $device->id]);
+    }
+
     public function test_due_devices_are_polled_by_the_scheduler(): void
     {
         $due = NetworkDevice::factory()->create(['poll_interval' => 15, 'next_poll_at' => now()->subMinute()]);
@@ -323,5 +436,11 @@ class NetworkDeviceTest extends TestCase
         app()->call([new PollNetworkDevice($device->id, $token), 'handle']);
 
         return $device->refresh();
+    }
+
+    /** @param  list<string>  $words */
+    private static function sentence(array $words): string
+    {
+        return implode('', array_map(fn (string $word): string => RouterOsApi::encodeLength(strlen($word)).$word, [...$words, '']));
     }
 }

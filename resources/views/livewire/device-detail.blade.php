@@ -9,7 +9,10 @@
             <p class="muted mt-2"><code>{{ $device->host }}:{{ $device->port }}</code> · {{ \App\Models\NetworkDevice::VERSIONS[$device->snmp_version] }}@if ($device->location) · {{ $device->location->path() }}@endif</p>
         </div>
         @can('administer')
-            <x-button icon="radar" wire:click="poll" wire:loading.attr="disabled" wire:target="poll" :disabled="$device->pollPending()">{{ __('Interroger maintenant') }}</x-button>
+            <div class="flex flex-wrap gap-2">
+                <x-button variant="secondary" icon="edit" wire:click="open({{ $device->id }})">{{ __('Modifier') }}</x-button>
+                <x-button icon="radar" wire:click="poll" wire:loading.attr="disabled" wire:target="poll" :disabled="$device->pollPending()">{{ __('Interroger maintenant') }}</x-button>
+            </div>
         @endcan
     </div>
 
@@ -175,4 +178,8 @@
             </table></div>
         @endif
     </section>
+
+    @if ($editing)
+        @include('livewire.partials.device-form')
+    @endif
 </div>
