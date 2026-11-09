@@ -152,6 +152,19 @@ To upgrade, change `NEXORA_VERSION` or run `docker compose pull`, then `docker c
 
 On every start, the container applies database migrations and makes sure the initial account exists. Supervisor then runs three processes: FrankenPHP, the queue worker that performs discoveries and SNMP polls, and the scheduler. Keep the same `APP_KEY` and volume across upgrades: the key decrypts the stored settings and credentials.
 
+### Behind a reverse proxy
+
+Set `APP_URL` to the public HTTPS address: links, scripts and styles are then always served in HTTPS. The container trusts the `X-Forwarded-For`, `-Proto`, `-Host` and `-Port` headers from proxies on private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, loopback and `fc00::/7`), which covers a proxy in the same Docker network or on the LAN. Set `TRUSTED_PROXIES` in `.env` to a comma-separated list of addresses or ranges to narrow it, or to `*` to trust any proxy. Never use `*` if the container port is also reachable directly, as clients could then forge their IP address in the audit log.
+
+```nginx
+location / {
+    proxy_pass http://nexora:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
 The worker probes networks from the container, so the container must be able to reach them. Any other command, for example `docker run --rm <image> php artisan …`, runs without starting the services.
 
 ## Local development
