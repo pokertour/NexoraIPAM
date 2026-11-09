@@ -2,8 +2,8 @@ const NS = 'http://www.w3.org/2000/svg';
 
 /**
  * Draws the cables between racks of a row: each one leaves its item on the
- * right, rises in the rack's cable gutter to a tray above the row, runs
- * along it and comes down the gutter of the other rack.
+ * right, rises in the rack's cable gutter to a tray that runs under the
+ * rack headers, along the row, and comes down the gutter of the other rack.
  */
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('rackRoom', () => ({
@@ -57,6 +57,10 @@ document.addEventListener('alpine:init', () => {
                 };
             };
 
+            // The tray sits in the free band between the rack headers and the frames.
+            const bodies = [...this.$el.querySelectorAll('.rack-body')].map(body => body.getBoundingClientRect().top - box.top);
+            const trayTop = (bodies.length ? Math.max(...bodies) : 0) + 8;
+
             cables.forEach((cable, index) => {
                 const a = this.$el.querySelector(`[data-item="${cable.a}"]`);
                 const b = this.$el.querySelector(`[data-item="${cable.b}"]`);
@@ -64,7 +68,7 @@ document.addEventListener('alpine:init', () => {
                 const ends = [point(a, a.closest('.rack-frame')), point(b, b.closest('.rack-frame'))]
                     .sort((left, right) => left.gutter - right.gutter);
                 const lane = index % 8;
-                const tray = 10 + lane * 5;
+                const tray = trayTop + lane * 5;
                 const radius = 6;
                 const [first, second] = ends.map((end, side) => ({ ...end, x: end.gutter + 8 + ((lane + side) % 4) * 9 }));
 

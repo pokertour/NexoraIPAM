@@ -393,7 +393,7 @@
     .rack-room-head span { font-size: .8rem; }
     .rack-room-scroll { overflow-x: auto; padding-bottom: .4rem; scroll-snap-type: x proximity; }
     .rack-row { position: relative; display: flex; align-items: flex-start; gap: 1rem; width: max-content; min-width: 100%; }
-    .rack-row.has-cables { padding-top: 3.25rem; }
+    .rack-row.has-cables .rack-body { padding-top: 3.25rem; }
     .rack-row > .rack-card { width: min(24rem, calc(100vw - 3rem)); flex-shrink: 0; scroll-snap-align: start; }
     .rack-room-cables { position: absolute; inset: 0 auto auto 0; z-index: 2; overflow: visible; pointer-events: none; }
     .rack-room-cables path { fill: none; stroke-width: 2; stroke: #22d3ee; stroke-linejoin: round; filter: drop-shadow(0 0 3px #22d3ee88); pointer-events: stroke; cursor: pointer; transition: opacity .15s, stroke-width .15s; }
@@ -401,7 +401,6 @@
     .rack-room-cables path[data-source=manual] { stroke: #f59e0b; stroke-dasharray: 2 4; stroke-linecap: round; filter: drop-shadow(0 0 3px #f59e0b88); }
     .rack-row.is-tracing .rack-room-cables path:not(.is-hot) { opacity: .2; }
     .rack-room-cables path.is-hot, .rack-links path.is-hot { stroke-width: 3.5; opacity: 1; }
-    .rack-row.has-cables::before { content: ''; position: absolute; inset: .3rem 0 auto; height: 2.5rem; border-radius: .5rem; border: 1px dashed var(--line-strong); background: color-mix(in srgb, var(--surface-hover) 70%, transparent); }
     .rack-item.is-hot { outline: 2px solid #22d3ee; outline-offset: 1px; z-index: 1; }
     .rack-item.is-flash { animation: rack-flash 1.6s ease-out; }
     @keyframes rack-flash { 0%, 30% { box-shadow: 0 0 0 3px #22d3ee, 0 0 18px #22d3ee; } 100% { box-shadow: none; } }
