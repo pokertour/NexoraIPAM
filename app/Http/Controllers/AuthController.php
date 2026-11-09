@@ -51,7 +51,7 @@ class AuthController extends Controller
         } else {
             $user = User::where('email', $email)->where('provider', 'local')->where('active', true)->first();
             $local = Setting::read('local')['enabled'] ?? true;
-            $valid = ($local || $email === InstallAdmin::EMAIL) && $user
+            $valid = ($local || InstallAdmin::isInstallAccount($user)) && $user
                 && Auth::getProvider()->validateCredentials($user, ['password' => $input['password']]);
         }
 
@@ -108,7 +108,7 @@ class AuthController extends Controller
         $user = DB::transaction(function () use ($pending, $input, $twoFactor): ?User {
             $user = User::where('provider', 'local')->where('active', true)->lockForUpdate()->find($pending['id']);
             $localEnabled = Setting::read('local')['enabled'] ?? true;
-            if (! $user?->two_factor || (! $localEnabled && $user->email !== InstallAdmin::EMAIL)
+            if (! $user?->two_factor || (! $localEnabled && ! InstallAdmin::isInstallAccount($user))
                 || ! hash_equals($pending['password'], hash('sha256', $user->password))
                 || ! hash_equals($pending['factor'], TwoFactor::fingerprint($user))) {
                 return null;

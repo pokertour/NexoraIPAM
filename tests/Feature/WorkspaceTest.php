@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Tests\TestCase;
@@ -72,6 +73,47 @@ class WorkspaceTest extends TestCase
         $this->assertSame(0, Artisan::call('nexora:install'));
         $this->assertStringContainsString('Mot de passe temporaire : '.$password, Artisan::output());
         $this->assertTrue(Hash::check($password, User::whereEmail(InstallAdmin::EMAIL)->sole()->password));
+    }
+
+    public function test_a_renamed_installation_account_is_not_created_again_and_accounts_can_be_deleted(): void
+    {
+        $this->withoutVite();
+        $this->assertSame(0, Artisan::call('nexora:install'));
+        $install = User::whereEmail(InstallAdmin::EMAIL)->sole();
+        $install->forceFill(['email' => 'systeme@example.test', 'must_change_password' => false])->save();
+
+        $this->artisan('nexora:install')->expectsOutput('Le compte initial existe déjà.')->assertSuccessful();
+        $this->assertSame(1, User::count(), 'Renaming the e-mail must not create a second installation account.');
+        $this->assertTrue(InstallAdmin::isInstallAccount($install->fresh()));
+
+        $other = User::factory()->create(['role' => 'admin', 'name' => 'Doublon']);
+        $other->createToken('script');
+        $this->actingAs($install);
+        Livewire::test(Accounts::class)
+            ->assertSeeHtml('wire:click="confirmDelete('.$other->id.')"')->assertDontSeeHtml('wire:click="confirmDelete('.$install->id.')"')
+            ->call('confirmDelete', $install->id)->assertForbidden();
+        Livewire::test(Accounts::class)->call('confirmDelete', $other->id)->assertSee('Supprimer le compte Doublon ?')
+            ->call('delete')->assertDispatched('nexora-toast', tone: 'success');
+
+        $this->assertModelMissing($other);
+        $this->assertSame(0, PersonalAccessToken::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'deleted', 'subject_type' => 'user', 'subject_id' => $other->id]);
+
+        $this->actingAs($other2 = User::factory()->create(['role' => 'admin']));
+        Livewire::test(Accounts::class)->call('confirmDelete', $install->id)->assertForbidden();
+        Livewire::test(Accounts::class)->call('confirmDelete', $other2->id)->assertForbidden();
+    }
+
+    public function test_the_upgrade_recognises_a_renamed_installation_account(): void
+    {
+        $renamed = User::factory()->create(['role' => 'admin', 'email' => 'systeme@example.test']);
+        $recreated = User::factory()->create(['role' => 'admin', 'email' => InstallAdmin::EMAIL]);
+        Setting::where('key', 'installation')->delete();
+
+        (require database_path('migrations/2026_11_09_150445_record_installation_account.php'))->up();
+
+        $this->assertTrue(InstallAdmin::isInstallAccount($renamed));
+        $this->assertFalse(InstallAdmin::isInstallAccount($recreated));
     }
 
     public function test_a_reader_cannot_modify_inventory_or_access_admin_pages(): void
