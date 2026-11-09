@@ -892,5 +892,19 @@
     "Bordure": "Edge",
     "Sans chiffrement": "No encryption",
     "Sans chiffrement, les messages et l’identifiant éventuel passent en clair : réservez-le à un relais local ou sur un réseau de confiance, en général sur le port 25.": "Without encryption, messages and any credentials cross the network in clear text: keep it to a local relay or a trusted network, usually on port 25.",
-    "Séparés par des espaces. openid est toujours demandé ; le compte est créé à partir de l’e-mail vérifié et du nom, gardez donc email et profile, ou leurs équivalents chez votre fournisseur.": "Separated by spaces. openid is always requested; accounts are created from the verified e-mail and the name, so keep email and profile, or their equivalents at your provider."
+    "Séparés par des espaces. openid est toujours demandé ; le compte est créé à partir de l’e-mail vérifié et du nom, gardez donc email et profile, ou leurs équivalents chez votre fournisseur.": "Separated by spaces. openid is always requested; accounts are created from the verified e-mail and the name, so keep email and profile, or their equivalents at your provider.",
+    "Texte du bouton": "Button text",
+    "Affiché sur la page de connexion. Laissez vide pour le texte par défaut.": "Shown on the sign-in page. Leave empty for the default text.",
+    "Icône": "Icon",
+    "Clé": "Key",
+    "Bouclier": "Shield",
+    "Bâtiment": "Building",
+    "Nuage": "Cloud",
+    "Globe": "Globe",
+    "Microsoft": "Microsoft",
+    "Page de connexion": "Sign-in page",
+    "Choisissez la méthode proposée en premier, par exemple le SSO au-dessus du formulaire interne.": "Choose the method offered first, for example SSO above the local form.",
+    "Méthode proposée en premier": "Method offered first",
+    "Une méthode désactivée n’est pas affichée : la suivante prend sa place. Le formulaire interne reste disponible pour le compte d’installation.": "A disabled method is not shown: the next one takes its place. The local form stays available for the installation account.",
+    "ou": "or"
 }

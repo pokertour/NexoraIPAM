@@ -581,6 +581,18 @@
     .toast p { margin: 0; overflow-wrap: anywhere; }
     .dialog[open] .dialog-content { animation: dialog-enter .2s ease-out both; }
 
+    /* Sign-in methods */
+    .login-methods-stack { display: grid; gap: 1.1rem; }
+    .sso-button { gap: .6rem; padding-block: .8rem; font-size: .95rem; }
+    .login-divider { display: flex; align-items: center; gap: .8rem; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; }
+    .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+    .login-switch { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .25rem; margin: 0; padding: .25rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft); }
+    .login-switch-option { position: relative; cursor: pointer; }
+    .login-switch-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .login-switch-option span { display: flex; align-items: center; justify-content: center; gap: .45rem; padding: .5rem .6rem; border-radius: .45rem; color: var(--muted); font-size: .84rem; font-weight: 600; text-align: center; transition: background .15s, color .15s; }
+    .login-switch-option input:checked + span { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+    .login-switch-option input:focus-visible + span { outline: 2px solid var(--highlight); outline-offset: 2px; }
+
     /* Wall outlets */
     .outlet-name { display: inline-flex; align-items: center; gap: .4rem; font-weight: 650; font-family: var(--font-mono); }
     .outlet-name svg { color: var(--highlight); }

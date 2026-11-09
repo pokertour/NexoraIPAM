@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Support\AlertMonitor;
 use App\Support\Audit;
 use App\Support\DhcpLeases;
+use App\Support\LoginMethods;
 use App\Support\OpenIdClient;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Gate;
@@ -30,12 +31,16 @@ class Preferences extends Component
 
     public array $dhcp = [];
 
+    public array $login = [];
+
     public function mount(): void
     {
         Gate::authorize('administer');
+        $this->login = Setting::read('login') + ['primary' => 'local'];
         $this->local = Setting::read('local') + ['enabled' => true];
-        $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''], 'password');
-        $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => '', 'scopes' => OpenIdClient::DEFAULT_SCOPES], 'secret');
+        $button = fn (string $method): array => ['button_label' => '', 'button_icon' => LoginMethods::DEFAULTS[$method]['icon']];
+        $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''] + $button('ldap'), 'password');
+        $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => '', 'scopes' => OpenIdClient::DEFAULT_SCOPES] + $button('oidc'), 'secret');
         $this->alerts = AlertMonitor::settings();
         $this->dhcp = $this->display('dhcp', ['kea_url' => '', 'kea_username' => '', 'kea_password' => '', 'leases_file' => '', 'interval' => 15], 'kea_password');
         $this->smtp = $this->display('smtp', ['scheme' => 'smtps', 'host' => '', 'port' => 465, 'username' => '', 'password' => '', 'from' => ''], 'password');
@@ -47,22 +52,27 @@ class Preferences extends Component
         $this->resetValidation();
 
         $required = Rule::requiredIf(fn (): bool => (bool) ($this->{$section}['enabled'] ?? false));
+        $button = [
+            'button_label' => ['nullable', 'string', 'max:60'],
+            'button_icon' => ['nullable', Rule::in(array_keys(LoginMethods::ICONS))],
+        ];
         $rules = match ($section) {
             'local' => [],
+            'login' => ['primary' => ['required', Rule::in(['local', 'ldap', 'oidc'])]],
             'ldap' => [
                 'uri' => [$required, 'nullable', 'max:255', 'regex:~^ldaps://(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::[0-9]{1,5})?$~iD'],
                 'base_dn' => [$required, 'nullable', 'string', 'max:255'],
                 'group_dn' => [$required, 'nullable', 'string', 'max:1024'],
                 'bind_dn' => [$required, 'nullable', 'string', 'max:255'],
                 'password' => [$required, 'nullable', 'string', 'max:1024'],
-            ],
+            ] + $button,
             'oidc' => [
                 'issuer' => [$required, 'nullable', 'url:https', 'max:255', 'not_regex:/[?#]/'],
                 'client_id' => [$required, 'nullable', 'string', 'max:255'],
                 'secret' => [$required, 'nullable', 'string', 'max:1024'],
                 // Scope tokens as defined by OAuth 2.0 (RFC 6749), separated by spaces or commas.
                 'scopes' => ['nullable', 'string', 'max:500', 'regex:/^[\x21\x23-\x5B\x5D-\x7E\s,]*$/'],
-            ],
+            ] + $button,
             'smtp' => [
                 'scheme' => ['required', 'in:smtp,smtps,none'],
                 'host' => [$required, 'nullable', 'string', 'max:253', 'regex:/^[a-zA-Z0-9.-]+$/D'],
@@ -105,7 +115,7 @@ class Preferences extends Component
             $this->{$section}[$secret] = '';
         }
 
-        $rules = collect(['enabled' => ['required', 'boolean']] + $rules)
+        $rules = collect(($section === 'login' ? [] : ['enabled' => ['required', 'boolean']]) + $rules)
             ->mapWithKeys(fn (array $rule, string $key): array => [$section.'.'.$key => $rule])->all();
         $data = Validator::make([$section => $input], $rules)->validate()[$section];
         if ($section === 'ldap' && $data['enabled'] && ! extension_loaded('ldap')) {
@@ -114,6 +124,9 @@ class Preferences extends Component
             return;
         }
 
+        if (isset($data['button_label'])) {
+            $data['button_label'] = trim($data['button_label']) ?: null;
+        }
         if ($section === 'oidc') {
             // Stored as typed by the provider documentation: openid first, separated by spaces.
             $data['scopes'] = implode(' ', ['openid', ...OpenIdClient::scopes($data['scopes'] ?? null)]);

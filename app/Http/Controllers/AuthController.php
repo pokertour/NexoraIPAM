@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\ExternalAccounts;
 use App\Support\LdapLogin;
+use App\Support\LoginMethods;
 use App\Support\TwoFactor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,10 +24,7 @@ class AuthController extends Controller
 {
     public function show(): View
     {
-        return view('auth.login', [
-            'ldap' => Setting::read('ldap')['enabled'] ?? false,
-            'oidc' => Setting::read('oidc')['enabled'] ?? false,
-        ]);
+        return view('auth.login', ['methods' => LoginMethods::available()]);
     }
 
     public function login(Request $request, LdapLogin $ldap, ExternalAccounts $accounts): RedirectResponse

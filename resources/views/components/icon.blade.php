@@ -32,6 +32,10 @@
         @case('topology') <rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v3M12 10 5 17m7-7 7 7M8 19.5h8"/> @break
         @case('globe') <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/> @break
         @case('chevron') <path d="m6 9 6 6 6-6"/> @break
+        @case('shield') <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/> @break
+        @case('building') <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M3 21h18M8 7h4M8 11h4M8 15h4"/> @break
+        @case('cloud') <path d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9a3.5 3.5 0 0 1 .5 6.97V18H7Z"/> @break
+        @case('microsoft') <rect x="3" y="3" width="8.5" height="8.5" fill="#f25022" stroke="none"/><rect x="12.5" y="3" width="8.5" height="8.5" fill="#7fba00" stroke="none"/><rect x="3" y="12.5" width="8.5" height="8.5" fill="#00a4ef" stroke="none"/><rect x="12.5" y="12.5" width="8.5" height="8.5" fill="#ffb900" stroke="none"/> @break
         @case('link') <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/> @break
         @case('info') <circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/> @break
         @case('check') <path d="m5 12.5 4.5 4.5L19 7.5"/> @break
