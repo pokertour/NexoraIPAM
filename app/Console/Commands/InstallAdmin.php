@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class InstallAdmin extends Command
 {
@@ -22,7 +23,7 @@ class InstallAdmin extends Command
             return self::FAILURE;
         }
 
-        $password = Str::password(28);
+        $password = $this->temporaryPassword();
         $user = User::firstOrCreate(['email' => self::EMAIL], [
             'name' => 'Administration',
             'password' => $password,
@@ -37,9 +38,16 @@ class InstallAdmin extends Command
             return self::SUCCESS;
         }
 
-        $this->line('Identifiant : '.$user->email);
-        $this->line('Mot de passe temporaire : '.$password);
+        // Raw output: the console would read <…> and \ in the password as formatting and print another one.
+        $this->output->writeln('Identifiant : '.$user->email, OutputInterface::OUTPUT_RAW);
+        $this->output->writeln('Mot de passe temporaire : '.$password, OutputInterface::OUTPUT_RAW);
 
         return self::SUCCESS;
+    }
+
+    /** Letters, digits and symbols: any of them can be printed, see handle(). */
+    protected function temporaryPassword(): string
+    {
+        return Str::password(28);
     }
 }
