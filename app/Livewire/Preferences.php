@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Support\AlertMonitor;
 use App\Support\Audit;
 use App\Support\DhcpLeases;
+use App\Support\OpenIdClient;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +35,7 @@ class Preferences extends Component
         Gate::authorize('administer');
         $this->local = Setting::read('local') + ['enabled' => true];
         $this->ldap = $this->display('ldap', ['uri' => '', 'base_dn' => '', 'group_dn' => '', 'bind_dn' => '', 'password' => ''], 'password');
-        $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => ''], 'secret');
+        $this->oidc = $this->display('oidc', ['issuer' => '', 'client_id' => '', 'secret' => '', 'scopes' => OpenIdClient::DEFAULT_SCOPES], 'secret');
         $this->alerts = AlertMonitor::settings();
         $this->dhcp = $this->display('dhcp', ['kea_url' => '', 'kea_username' => '', 'kea_password' => '', 'leases_file' => '', 'interval' => 15], 'kea_password');
         $this->smtp = $this->display('smtp', ['scheme' => 'smtps', 'host' => '', 'port' => 465, 'username' => '', 'password' => '', 'from' => ''], 'password');
@@ -59,6 +60,8 @@ class Preferences extends Component
                 'issuer' => [$required, 'nullable', 'url:https', 'max:255', 'not_regex:/[?#]/'],
                 'client_id' => [$required, 'nullable', 'string', 'max:255'],
                 'secret' => [$required, 'nullable', 'string', 'max:1024'],
+                // Scope tokens as defined by OAuth 2.0 (RFC 6749), separated by spaces or commas.
+                'scopes' => ['nullable', 'string', 'max:500', 'regex:/^[\x21\x23-\x5B\x5D-\x7E\s,]*$/'],
             ],
             'smtp' => [
                 'scheme' => ['required', 'in:smtp,smtps,none'],
@@ -109,6 +112,12 @@ class Preferences extends Component
             $this->addError('ldap.enabled', __('Activez l’extension PHP LDAP sur le serveur.'));
 
             return;
+        }
+
+        if ($section === 'oidc') {
+            // Stored as typed by the provider documentation: openid first, separated by spaces.
+            $data['scopes'] = implode(' ', ['openid', ...OpenIdClient::scopes($data['scopes'] ?? null)]);
+            $this->oidc['scopes'] = $data['scopes'];
         }
 
         $previous = Setting::read($section);

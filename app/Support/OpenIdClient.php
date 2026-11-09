@@ -9,6 +9,22 @@ use Jumbojett\OpenIDConnectClientException;
 
 class OpenIdClient extends OpenIDConnectClient
 {
+    /** Scopes asked when the settings name none: openid is always added. */
+    public const DEFAULT_SCOPES = 'openid profile email';
+
+    /**
+     * Scopes to request besides openid, which the library always adds, from a
+     * list separated by spaces or commas.
+     *
+     * @return list<string>
+     */
+    public static function scopes(?string $configured): array
+    {
+        $scopes = preg_split('/[\s,]+/', trim((string) ($configured ?: self::DEFAULT_SCOPES)), -1, PREG_SPLIT_NO_EMPTY);
+
+        return array_values(array_diff(array_unique($scopes), ['openid']));
+    }
+
     public function authenticateRequest(array $query): bool
     {
         $original = $_REQUEST;

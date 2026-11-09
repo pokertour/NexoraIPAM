@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\OpenIdController;
+use App\Livewire\Preferences;
+use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -37,6 +40,7 @@ class OpenIdTest extends TestCase
         $redirect = $this->get(route('oidc.start'))->assertRedirect();
         parse_str(parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $query);
         $this->assertSame('S256', $query['code_challenge_method']);
+        $this->assertSame('profile email openid', $query['scope'], 'Without configured scopes, profile and email are asked.');
         $this->assertNotEmpty($query['code_challenge']);
 
         $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
@@ -63,6 +67,29 @@ class OpenIdTest extends TestCase
         $this->assertSame($existing ? $user->id : 'viewer', $existing ? $account->id : $account->role);
         $this->assertNotSame($internal->id, $account->id);
         $this->assertSame('admin', $internal->fresh()->role);
+    }
+
+    public function test_administrators_choose_the_scopes_sent_to_the_provider(): void
+    {
+        $this->withoutVite();
+        $issuer = 'https://sso.example.com';
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        Livewire::test(Preferences::class)->assertSet('oidc.scopes', 'openid profile email')
+            ->set('oidc.enabled', true)->set('oidc.issuer', $issuer)->set('oidc.client_id', 'nexora')->set('oidc.secret', 'secret')
+            ->set('oidc.scopes', 'profile "email"')->call('save', 'oidc')->assertHasErrors('oidc.scopes')
+            ->set('oidc.secret', 'secret')->set('oidc.scopes', ' email, profile groups  offline_access email ')->call('save', 'oidc')->assertHasNoErrors()
+            ->assertSet('oidc.scopes', 'openid email profile groups offline_access');
+        $this->assertSame('openid email profile groups offline_access', Setting::read('oidc')['scopes']);
+        $this->assertSame([null, 'openid email profile groups offline_access'], AuditLog::where('action', 'settings.updated')->latest('id')->first()->changes['scopes']);
+
+        auth()->logout();
+        Http::fake([$issuer.'/.well-known/openid-configuration' => Http::response([
+            'issuer' => $issuer, 'authorization_endpoint' => $issuer.'/authorize', 'token_endpoint' => $issuer.'/token',
+            'jwks_uri' => $issuer.'/jwks', 'code_challenge_methods_supported' => ['S256'],
+        ])]);
+        parse_str(parse_url($this->get(route('oidc.start'))->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame('email profile groups offline_access openid', $query['scope']);
     }
 
     public function test_the_callback_rejects_missing_state_before_exchanging_the_code(): void

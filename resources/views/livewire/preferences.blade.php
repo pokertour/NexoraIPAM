@@ -28,6 +28,7 @@
             @error('oidc.enabled')<p class="field-error">{{ $message }}</p>@enderror
             <x-field name="oidc.issuer" :label="__('URL de l’émetteur')" wire:model="oidc.issuer" placeholder="https://sso.exemple.fr/realms/reseau"/>
             <x-field name="oidc.client_id" :label="__('Identifiant du client')" wire:model="oidc.client_id"/>
+            <x-field name="oidc.scopes" label="Scopes" wire:model="oidc.scopes" :placeholder="\App\Support\OpenIdClient::DEFAULT_SCOPES" :hint="__('Séparés par des espaces. openid est toujours demandé ; le compte est créé à partir de l’e-mail vérifié et du nom, gardez donc email et profile, ou leurs équivalents chez votre fournisseur.')"/>
             <x-field name="oidc.secret" :label="__('Secret du client')" type="password" wire:model="oidc.secret" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
             <x-field name="oidc.callback" :label="__('URL de retour à déclarer chez le fournisseur')" :value="route('oidc.callback')" readonly/>
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>

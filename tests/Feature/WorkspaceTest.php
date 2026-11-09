@@ -122,7 +122,7 @@ class WorkspaceTest extends TestCase
         Livewire::test(Preferences::class)->set('oidc', $settings)->call('save', 'oidc')
             ->assertHasNoErrors()->assertSet('oidc.secret', '');
 
-        $this->assertSame($settings, Setting::read('oidc'));
+        $this->assertSame($settings + ['scopes' => 'openid profile email'], Setting::read('oidc'));
         $this->assertStringNotContainsString($settings['secret'], Setting::findOrFail('oidc')->getRawOriginal('value'));
         $this->get(route('preferences'))->assertOk()->assertDontSee($settings['secret']);
     }
