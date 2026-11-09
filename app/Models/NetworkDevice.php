@@ -14,6 +14,21 @@ class NetworkDevice extends Model
 {
     use Auditable, HasFactory;
 
+    /**
+     * Place in the network, from the Internet down. The level orders the
+     * layers of the topology; other devices take the level of their distance
+     * to the edge.
+     *
+     * @var array<string, array{label: string, short: string, level: ?int}>
+     */
+    public const ROLES = [
+        'edge' => ['label' => 'Routeur de bordure / pare-feu', 'short' => 'Bordure', 'level' => 1],
+        'core' => ['label' => 'Cœur', 'short' => 'Cœur', 'level' => 2],
+        'distribution' => ['label' => 'Distribution', 'short' => 'Distribution', 'level' => 3],
+        'access' => ['label' => 'Accès', 'short' => 'Accès', 'level' => 4],
+        'other' => ['label' => 'Autre', 'short' => 'Autre', 'level' => null],
+    ];
+
     /** @var array<string, string> */
     public const VERSIONS = ['2c' => 'SNMP v2c', '3' => 'SNMP v3'];
 
@@ -26,7 +41,7 @@ class NetworkDevice extends Model
     /** @var list<string> */
     public const PRIVACY_PROTOCOLS = ['AES', 'AES-256', 'DES'];
 
-    protected $fillable = ['name', 'host', 'port', 'snmp_version', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
+    protected $fillable = ['name', 'role', 'host', 'port', 'snmp_version', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
 
     protected $hidden = ['credentials', 'api_credentials'];
 

@@ -36,7 +36,7 @@ trait EditsNetworkDevice
         $credentials = $device?->credentials ?? [];
         $this->recordId = $device?->id;
         $this->form = [
-            'name' => $device?->name ?? '', 'host' => $device?->host ?? '', 'port' => $device?->port ?? 161,
+            'name' => $device?->name ?? '', 'role' => $device?->role ?? 'other', 'host' => $device?->host ?? '', 'port' => $device?->port ?? 161,
             'snmp_version' => $device?->snmp_version ?? '2c', 'location_id' => $device?->location_id, 'description' => $device?->description ?? '',
             'poll_interval' => $device?->poll_interval ?? 15,
             'community' => '', 'username' => $credentials['username'] ?? '', 'security_level' => $credentials['security_level'] ?? 'authPriv',
@@ -82,6 +82,7 @@ trait EditsNetworkDevice
 
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
+            'form.role' => ['required', Rule::in(array_keys(NetworkDevice::ROLES))],
             'form.host' => ['required', 'string', 'max:253', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! IpNetwork::address((string) $value) && ! filter_var($value, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
                     $fail(__('Saisissez une adresse IP ou un nom d’hôte valide.'));
@@ -114,7 +115,7 @@ trait EditsNetworkDevice
 
         $intervalChanged = $device->poll_interval !== ($data['poll_interval'] === null ? null : (int) $data['poll_interval']);
         $device->fill([
-            'name' => $data['name'], 'host' => $data['host'], 'port' => (int) $data['port'], 'snmp_version' => $data['snmp_version'],
+            'name' => $data['name'], 'role' => $data['role'], 'host' => $data['host'], 'port' => (int) $data['port'], 'snmp_version' => $data['snmp_version'],
             'location_id' => $data['location_id'], 'description' => $data['description'] ?: null,
             'poll_interval' => $data['poll_interval'] === null ? null : (int) $data['poll_interval'],
             'api_driver' => $data['api_driver'],

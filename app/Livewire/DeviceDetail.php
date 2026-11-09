@@ -11,6 +11,7 @@ use App\Models\Vlan;
 use App\Models\WallOutlet;
 use App\Support\Audit;
 use App\Support\DevicePollQueue;
+use App\Support\IpNetwork;
 use App\Support\MacAddress;
 use App\Support\PortMedia;
 use App\Support\VlanColor;
@@ -37,6 +38,12 @@ class DeviceDetail extends Component
 
     #[Url(except: false)]
     public bool $logical = false;
+
+    /** Interface index of the port whose WAN settings are being edited. */
+    #[Locked]
+    public ?int $wanPort = null;
+
+    public array $wan = [];
 
     /** Wall outlet patched to the selected port, as chosen in its panel. */
     public string $outlet = '';
@@ -87,6 +94,59 @@ class DeviceDetail extends Component
         $this->dispatch('nexora-toast', tone: 'success', message: $this->outlet !== ''
             ? __('Prise brassée sur :port.', ['port' => $port->name])
             : __('Prise débrassée de :port.', ['port' => $port->name]));
+    }
+
+    public function openWan(int $ifIndex): void
+    {
+        Gate::authorize('edit-inventory');
+        $port = DevicePort::where('network_device_id', $this->deviceId)->where('if_index', $ifIndex)->firstOrFail();
+        $this->resetValidation();
+        $this->wanPort = $port->if_index;
+        $this->wan = ['enabled' => $port->wan, 'label' => $port->wan_label ?? '', 'address' => $port->wan_address ?? '', 'reference' => $port->wan_reference ?? ''];
+    }
+
+    public function closeWan(): void
+    {
+        $this->reset('wanPort', 'wan');
+        $this->resetValidation();
+    }
+
+    /** Marks a port as a way out to the Internet, shown in the topology. */
+    public function saveWan(): void
+    {
+        Gate::authorize('edit-inventory');
+        abort_unless($this->wanPort !== null, 409);
+        $port = DevicePort::where('network_device_id', $this->deviceId)->where('if_index', $this->wanPort)->firstOrFail();
+        foreach (['label', 'address', 'reference'] as $key) {
+            $this->wan[$key] = trim((string) ($this->wan[$key] ?? ''));
+        }
+        $data = $this->validate([
+            'wan.enabled' => ['boolean'],
+            'wan.label' => ['nullable', 'string', 'max:100'],
+            'wan.address' => ['nullable', 'ip'],
+            'wan.reference' => ['nullable', 'string', 'max:100'],
+        ], ['wan.address.ip' => __('Saisissez une adresse IPv4 ou IPv6 valide.')])['wan'];
+
+        $enabled = (bool) ($data['enabled'] ?? false);
+        $values = [
+            'wan' => $enabled,
+            'wan_label' => $enabled ? ($data['label'] ?: null) : null,
+            'wan_address' => $enabled && $data['address'] ? IpNetwork::address($data['address']) : null,
+            'wan_reference' => $enabled ? ($data['reference'] ?: null) : null,
+        ];
+        $changes = [];
+        foreach ($values as $key => $value) {
+            if ($port->{$key} !== $value) {
+                $changes[$key] = [$port->{$key}, $value];
+            }
+        }
+        if ($changes !== []) {
+            $port->forceFill($values)->save();
+            Audit::record('device.port_wan', NetworkDevice::findOrFail($this->deviceId), ['port' => [null, $port->name]] + $changes);
+        }
+
+        $this->closeWan();
+        $this->dispatch('nexora-toast', tone: 'success', message: $enabled ? __('Sortie WAN enregistrée.') : __('Le port n’est plus une sortie WAN.'));
     }
 
     private function selectedPort(): ?DevicePort

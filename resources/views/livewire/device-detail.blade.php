@@ -5,7 +5,7 @@
     <div class="page-heading">
         <div class="min-w-0">
             <p class="eyebrow"><a href="{{ route('devices') }}" wire:navigate class="hover:underline">{{ __('ÉQUIPEMENTS') }}</a></p>
-            <h1 class="page-title mt-2 flex flex-wrap items-center gap-3">{{ $device->name }} <x-device-status :device="$device"/></h1>
+            <h1 class="page-title mt-2 flex flex-wrap items-center gap-3">{{ $device->name }} <x-device-status :device="$device"/> <x-device-role :device="$device"/></h1>
             <p class="muted mt-2"><code>{{ $device->host }}:{{ $device->port }}</code> · {{ \App\Models\NetworkDevice::VERSIONS[$device->snmp_version] }}@if ($device->location) · {{ $device->location->path() }}@endif</p>
         </div>
         @can('administer')
@@ -101,6 +101,18 @@
                         <div><dt>{{ __('VLAN non taggés') }}</dt><dd><span class="vlan-list">@foreach ($port->untagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span></dd></div>
                     @endif
                     <div><dt>{{ __('VLAN taggés') }}</dt><dd>@if ($port->isTrunk())<span class="vlan-list">@foreach ($port->tagged_vlans as $vlan)<x-vlan-chip :number="$vlan" :color="$vlanColors[$vlan] ?? null" :title="$vlans->get($vlan)?->first()?->name"/>@endforeach</span>@else — @endif</dd></div>
+                    <div><dt>WAN</dt><dd class="flex flex-wrap items-center gap-2">
+                        @if ($port->wan)
+                            <span class="wan-badge"><x-icon name="globe" class="size-3.5"/> {{ $port->wan_label ?: __('Sortie Internet') }}</span>
+                            @if ($port->wan_address)<code class="text-xs">{{ $port->wan_address }}</code>@endif
+                            @if ($port->wan_reference)<small class="muted">{{ $port->wan_reference }}</small>@endif
+                        @else
+                            <span class="muted">—</span>
+                        @endif
+                        @can('edit-inventory')
+                            <button type="button" class="icon-button" aria-label="{{ __('Définir la sortie WAN de :port', ['port' => $port->name]) }}" title="{{ __('Sortie WAN') }}" wire:click="openWan({{ $port->if_index }})"><x-icon name="edit" class="size-3.5"/></button>
+                        @endcan
+                    </dd></div>
                     @if ($port->physical)
                         <div><dt>{{ __('Prise murale') }}</dt><dd>
                             @can('edit-inventory')
@@ -191,6 +203,25 @@
             </table></div>
         @endif
     </section>
+
+    @if ($wanPort)
+        <x-modal id="port-wan" :title="__('Sortie WAN')" :description="__('Un port WAN mène à Internet ou à un opérateur. La topologie le relie au nuage Internet.')">
+            <form wire:submit="saveWan" class="mt-6 grid gap-4">
+                <label class="checkbox"><input type="checkbox" wire:model.live="wan.enabled"> {{ __('Ce port est une sortie WAN') }}</label>
+                @if ($wan['enabled'] ?? false)
+                    <x-field name="wan.label" :label="__('Lien')" wire:model="wan.label" maxlength="100" :placeholder="__('ex. Orange Fibre 1 Gb/s')"/>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-field name="wan.address" :label="__('Adresse IP publique')" wire:model="wan.address" maxlength="45" placeholder="203.0.113.10"/>
+                        <x-field name="wan.reference" :label="__('Référence du circuit')" wire:model="wan.reference" maxlength="100"/>
+                    </div>
+                @endif
+                <div class="dialog-actions">
+                    <x-button variant="secondary" wire:click="closeWan">{{ __('Annuler') }}</x-button>
+                    <x-button type="submit" wire:loading.attr="disabled" wire:target="saveWan">{{ __('Enregistrer') }}</x-button>
+                </div>
+            </form>
+        </x-modal>
+    @endif
 
     @if ($editing)
         @include('livewire.partials.device-form')

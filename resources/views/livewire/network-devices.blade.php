@@ -31,6 +31,7 @@
                             </span>
                         </a>
                         <x-device-status :device="$device"/>
+                        <x-device-role :device="$device"/>
                     </div>
                     @if ($ports->isNotEmpty())
                         <div class="led-strip" aria-label="{{ __(':up ports actifs sur :total', ['up' => $ports->where('oper_status', 1)->count(), 'total' => $ports->count()]) }}">

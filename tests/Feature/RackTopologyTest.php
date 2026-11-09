@@ -234,6 +234,38 @@ class RackTopologyTest extends TestCase
         $this->assertSame(2, CableLink::count(), 'A second cable for the same link is listed as manual, not merged.');
     }
 
+    public function test_the_topology_is_laid_out_in_layers_from_the_internet_down(): void
+    {
+        $this->withoutVite();
+        $firewall = NetworkDevice::factory()->create(['name' => 'fw', 'sys_name' => 'fw']);
+        $core = NetworkDevice::factory()->create(['name' => 'core', 'sys_name' => 'core']);
+        $access = NetworkDevice::factory()->create(['name' => 'access', 'sys_name' => 'access']);
+        $printer = NetworkDevice::factory()->create(['name' => 'lonely']);
+        $this->port($firewall, 1, 'out', ['wan' => true, 'wan_label' => 'Fibre opérateur']);
+        $this->port($firewall, 2, 'in', ['neighbor_name' => 'core', 'neighbor_port' => 'ether1']);
+        $this->port($core, 1, 'ether1');
+        $this->port($core, 2, 'ether2', ['neighbor_name' => 'access', 'neighbor_port' => 'ether24']);
+        $this->port($access, 24, 'ether24');
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+
+        $view = Livewire::test(NetworkTopology::class);
+        $nodes = $view->viewData('nodes');
+        $this->assertNotNull($view->viewData('internet'));
+        $this->assertSame([1, 2, 3, 0], [$nodes[$firewall->id]['level'], $nodes[$core->id]['level'], $nodes[$access->id]['level'], $nodes[$printer->id]['level']]);
+        $this->assertTrue($nodes[$firewall->id]['y'] < $nodes[$core->id]['y'] && $nodes[$core->id]['y'] < $nodes[$access->id]['y'] && $nodes[$access->id]['y'] < $nodes[$printer->id]['y']);
+        $this->assertSame(['out'], array_map(fn (array $wan): string => $wan['port']->name, $view->viewData('wans')));
+        $view->assertSee('Internet')->assertSee('Fibre opérateur')->assertSee('Sans liaison connue');
+
+        $access->update(['role' => 'core']);
+        $this->assertSame(2, Livewire::test(NetworkTopology::class)->viewData('nodes')[$access->id]['level'], 'A role sets the layer.');
+
+        DevicePort::query()->update(['wan' => false]);
+        $without = Livewire::test(NetworkTopology::class);
+        $this->assertNull($without->viewData('internet'));
+        $without->assertSee('Marquez le port de sortie');
+        $this->assertSame(1, $without->viewData('nodes')[$core->id]['level'], 'Without an edge, the best connected device leads.');
+    }
+
     /** @param array<string, mixed> $attributes */
     private function port(NetworkDevice $device, int $index, string $name, array $attributes = []): DevicePort
     {

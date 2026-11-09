@@ -438,6 +438,40 @@ class NetworkDeviceTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'updated', 'subject_type' => 'network_device', 'subject_id' => $device->id]);
     }
 
+    public function test_a_device_role_and_its_wan_ports_are_set_and_audited(): void
+    {
+        $this->withoutVite();
+        $device = $this->poll(NetworkDevice::factory()->create(['name' => 'fw-sns']));
+        $port = $device->ports()->where('name', 'GigabitEthernet1/0/1')->sole();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(NetworkDevices::class)->call('open', $device->id)->assertSet('form.role', 'other')
+            ->set('form.role', 'cloud')->call('save')->assertHasErrors('form.role')
+            ->set('form.role', 'edge')->call('save')->assertHasNoErrors();
+        $this->assertSame('edge', $device->fresh()->role);
+        $this->assertSame(['other', 'edge'], AuditLog::where('action', 'updated')->where('subject_type', 'network_device')->latest('id')->first()->changes['role']);
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->assertSee('Routeur de bordure / pare-feu')->call('openWan', $port->if_index)->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])
+            ->call('openWan', $port->if_index)->set('wan.enabled', true)->set('wan.label', 'Fibre opérateur')
+            ->set('wan.address', 'not-an-ip')->call('saveWan')->assertHasErrors('wan.address')
+            ->set('wan.address', '203.0.113.10')->call('saveWan')->assertHasNoErrors()->assertDispatched('nexora-toast', tone: 'success')
+            ->call('select', $port->if_index)->assertSee('Fibre opérateur')->assertSeeHtml('data-wan');
+
+        $this->assertSame([true, 'Fibre opérateur', '203.0.113.10'], [$port->fresh()->wan, $port->fresh()->wan_label, $port->fresh()->wan_address]);
+        $this->assertSame(['port' => [null, 'GigabitEthernet1/0/1'], 'wan' => [false, true], 'wan_label' => [null, 'Fibre opérateur'], 'wan_address' => [null, '203.0.113.10']],
+            AuditLog::where('action', 'device.port_wan')->sole()->changes);
+
+        $this->poll($device);
+        $this->assertTrue($port->fresh()->wan, 'A poll keeps the WAN marking.');
+
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('openWan', $port->if_index)->set('wan.enabled', false)->call('saveWan');
+        $this->assertSame([false, null, null], [$port->fresh()->wan, $port->fresh()->wan_label, $port->fresh()->wan_address]);
+    }
+
     public function test_due_devices_are_polled_by_the_scheduler(): void
     {
         $due = NetworkDevice::factory()->create(['poll_interval' => 15, 'next_poll_at' => now()->subMinute()]);
