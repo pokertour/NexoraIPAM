@@ -143,7 +143,7 @@ class DevicePoller
 
         DB::transaction(function () use ($device, $system, $interfaces, $pvids, $membership, $apiVlans, $inventory, $physicalMacs, $macs, $neighbors, $ipByMac, $ifToBridge, $now, &$summary, $arp): void {
             $previous = $device->ports()->get()->keyBy('if_index');
-            $seconds = $device->polled_at ? max(1, $device->polled_at->diffInSeconds($now)) : null;
+            $seconds = $device->polled_at ? max(1, (int) round($device->polled_at->diffInSeconds($now, true))) : null;
 
             foreach ($interfaces as $index => $values) {
                 $type = isset($values['type']) ? (int) $values['type'] : null;

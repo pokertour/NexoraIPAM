@@ -218,6 +218,8 @@ class NetworkDeviceTest extends TestCase
 
     public function test_a_second_poll_computes_the_throughput_of_each_port(): void
     {
+        // The database keeps whole seconds: a frozen whole second keeps the interval exact.
+        $this->freezeSecond();
         $device = $this->poll(NetworkDevice::factory()->create());
         $this->assertNull($device->ports()->where('name', 'GigabitEthernet1/0/1')->value('in_bps'));
 
