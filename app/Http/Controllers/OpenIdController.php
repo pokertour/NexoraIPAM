@@ -47,7 +47,7 @@ class OpenIdController extends Controller
             $client->setIssuerValidator(fn ($issuer): bool => $issuer === $settings['issuer']);
             $client->setRedirectURL(route('oidc.callback'));
             $client->setCodeChallengeMethod('S256');
-            $client->addScope(['profile', 'email']);
+            $client->addScope(OpenIdClient::scopes($settings['scopes'] ?? null));
 
             if ($client->authenticateRequest($callback ? $request->only('code', 'state', 'error') : []) && $callback) {
                 $subject = $client->getVerifiedClaims('sub');

@@ -13,7 +13,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Tests\TestCase;
 
 class WorkspaceTest extends TestCase
@@ -120,9 +122,33 @@ class WorkspaceTest extends TestCase
         Livewire::test(Preferences::class)->set('oidc', $settings)->call('save', 'oidc')
             ->assertHasNoErrors()->assertSet('oidc.secret', '');
 
-        $this->assertSame($settings, Setting::read('oidc'));
+        $this->assertSame($settings + ['scopes' => 'openid profile email'], Setting::read('oidc'));
         $this->assertStringNotContainsString($settings['secret'], Setting::findOrFail('oidc')->getRawOriginal('value'));
         $this->get(route('preferences'))->assertOk()->assertDontSee($settings['secret']);
+    }
+
+    public function test_smtp_can_run_without_encryption_for_a_local_relay(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(Preferences::class)
+            ->set('smtp.enabled', true)->set('smtp.host', 'relay.local')->set('smtp.port', 25)->set('smtp.from', 'ipam@example.test')
+            ->set('smtp.scheme', 'ssl')->call('save', 'smtp')->assertHasErrors('smtp.scheme')
+            ->set('smtp.scheme', 'none')->assertSee('Sans chiffrement, les messages')->call('save', 'smtp')->assertHasNoErrors();
+        $this->assertSame('none', Setting::read('smtp')['scheme']);
+
+        $transport = function (): EsmtpTransport {
+            $this->app->forgetInstance('mail.manager');
+            Mail::clearResolvedInstances();
+
+            return Mail::mailer('smtp')->getSymfonyTransport();
+        };
+        $plain = $transport();
+        $this->assertSame([false, false, 'relay.local', 25], [$plain->isAutoTls(), $plain->isTlsRequired(), $plain->getStream()->getHost(), $plain->getStream()->getPort()]);
+
+        Setting::write('smtp', ['scheme' => 'smtp'] + Setting::read('smtp'));
+        $starttls = $transport();
+        $this->assertSame([true, true], [$starttls->isAutoTls(), $starttls->isTlsRequired()]);
     }
 
     public function test_about_compares_the_installed_version_and_caches_the_latest_release(): void

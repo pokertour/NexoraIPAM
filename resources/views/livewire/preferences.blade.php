@@ -28,6 +28,7 @@
             @error('oidc.enabled')<p class="field-error">{{ $message }}</p>@enderror
             <x-field name="oidc.issuer" :label="__('URL de l’émetteur')" wire:model="oidc.issuer" placeholder="https://sso.exemple.fr/realms/reseau"/>
             <x-field name="oidc.client_id" :label="__('Identifiant du client')" wire:model="oidc.client_id"/>
+            <x-field name="oidc.scopes" label="Scopes" wire:model="oidc.scopes" :placeholder="\App\Support\OpenIdClient::DEFAULT_SCOPES" :hint="__('Séparés par des espaces. openid est toujours demandé ; le compte est créé à partir de l’e-mail vérifié et du nom, gardez donc email et profile, ou leurs équivalents chez votre fournisseur.')"/>
             <x-field name="oidc.secret" :label="__('Secret du client')" type="password" wire:model="oidc.secret" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
             <x-field name="oidc.callback" :label="__('URL de retour à déclarer chez le fournisseur')" :value="route('oidc.callback')" readonly/>
             <x-button type="submit" class="justify-self-start">{{ __('Enregistrer') }}</x-button>
@@ -73,11 +74,14 @@
             <label class="checkbox"><input type="checkbox" wire:model="smtp.enabled"> {{ __('Activer l’envoi via SMTP') }}</label>
             @error('smtp.enabled')<p class="field-error" role="alert">{{ $message }}</p>@enderror
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-field name="smtp.scheme" :label="__('Chiffrement')" wire:model="smtp.scheme">
-                    <option value="smtps">{{ __('TLS implicite') }}</option><option value="smtp">STARTTLS</option>
+                <x-field name="smtp.scheme" :label="__('Chiffrement')" wire:model.live="smtp.scheme">
+                    <option value="smtps">{{ __('TLS implicite') }}</option><option value="smtp">STARTTLS</option><option value="none">{{ __('Sans chiffrement') }}</option>
                 </x-field>
                 <x-field name="smtp.port" label="Port" type="number" wire:model="smtp.port" min="1" max="65535"/>
             </div>
+            @if (($smtp['scheme'] ?? null) === 'none')
+                <div class="callout callout-warning" role="note"><x-icon name="info" class="size-4"/> {{ __('Sans chiffrement, les messages et l’identifiant éventuel passent en clair : réservez-le à un relais local ou sur un réseau de confiance, en général sur le port 25.') }}</div>
+            @endif
             <x-field name="smtp.host" label="Serveur" wire:model="smtp.host" placeholder="smtp.exemple.fr"/>
             <x-field name="smtp.username" :label="__('Identifiant (si requis)')" wire:model="smtp.username"/>
             <x-field name="smtp.password" :label="__('Mot de passe (si requis)')" type="password" wire:model="smtp.password" autocomplete="new-password" :hint="__('Laissez vide pour conserver le secret enregistré.')"/>
