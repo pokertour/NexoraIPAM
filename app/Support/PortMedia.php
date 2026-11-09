@@ -5,7 +5,9 @@ namespace App\Support;
 /**
  * Guesses the physical connector of a switch port. SNMP reports almost every
  * port as Ethernet, so the port name comes first, then the hardware inventory
- * text, then the speed.
+ * text, then the speed. A generic name such as eth1/0/25 (D-Link) says
+ * nothing about the connector. Administrators can override the result per
+ * port (DevicePort::$media_override).
  */
 final class PortMedia
 {
@@ -28,7 +30,7 @@ final class PortMedia
         if (preg_match('/sfp|xfp|^(tengig|twentyfivegig|(te|twe)\d|xe-\d)/', $label)) {
             return self::SFP;
         }
-        if (preg_match('/^(ether\d|eth\d|gigabitethernet|fastethernet|(gi|fa)\d|ge-\d)/', $label)
+        if (preg_match('/^(ether\d|gigabitethernet|fastethernet|(gi|fa)\d|ge-\d)/', $label)
             && ($inventory === null || self::fromInventory($inventory) === null)) {
             return self::RJ45;
         }

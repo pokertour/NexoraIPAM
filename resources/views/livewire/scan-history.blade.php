@@ -62,15 +62,16 @@
                                 @endif
                             </td>
                             <td>
-                                @if ($run->error)
-                                    <span class="scan-error">{{ $run->error }}</span>
-                                @elseif ($run->summary)
+                                @if ($run->summary)
                                     <dl class="scan-summary">
                                         @foreach ($run->summary as $key => $value)
                                             <div><dt>{{ __(\App\Models\ScanRun::SUMMARY_LABELS[$key] ?? $key) }}</dt><dd>{{ $value }}</dd></div>
                                         @endforeach
                                     </dl>
-                                @else
+                                @endif
+                                @if ($run->error)
+                                    <span class="scan-error">{{ $run->error }}</span>
+                                @elseif (! $run->summary)
                                     <span class="muted">—</span>
                                 @endif
                             </td>

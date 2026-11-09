@@ -104,6 +104,22 @@
                         <x-field name="form.community" :label="__('Communauté')" type="password" wire:model="form.community" autocomplete="new-password" :hint="$recordId ? __('Laissez vide pour conserver le secret enregistré.') : __('Accès en lecture seule recommandé.')"/>
                     @endif
                 </fieldset>
+                <fieldset class="form-section">
+                    <legend>{{ __('API de l’équipement') }}</legend>
+                    @php($apiDriver = \App\Support\DeviceApi\DeviceApis::DRIVERS[$form['api_driver'] ?? ''] ?? null)
+                    <x-field name="form.api_driver" :label="__('API')" wire:model.live="form.api_driver" :hint="$apiDriver ? __($apiDriver['hint']) : __('Facultatif. Complète SNMP pour les données que l’équipement n’y publie pas, comme les VLAN des ports.')">
+                        <option value="">{{ __('Aucune, SNMP seulement') }}</option>
+                        @foreach (\App\Support\DeviceApi\DeviceApis::DRIVERS as $value => $driver)<option value="{{ $value }}">{{ $driver['label'] }}</option>@endforeach
+                    </x-field>
+                    @if ($apiDriver)
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <x-field name="form.api_username" :label="__('Utilisateur')" wire:model="form.api_username" maxlength="255" autocomplete="off"/>
+                            <x-field name="form.api_password" :label="__('Mot de passe')" type="password" wire:model="form.api_password" autocomplete="new-password" :hint="$hasApiPassword ? __('Laissez vide pour conserver le secret enregistré.') : null"/>
+                            <x-field name="form.api_port" :label="__('Port HTTPS')" type="number" min="1" max="65535" wire:model="form.api_port" :placeholder="$apiDriver['port']"/>
+                        </div>
+                        <label class="checkbox"><input type="checkbox" wire:model="form.api_verify_tls"> {{ __('Vérifier le certificat HTTPS') }}</label>
+                    @endif
+                </fieldset>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-field name="form.poll_interval" :label="__('Interrogation automatique (minutes)')" type="number" min="5" max="10080" wire:model="form.poll_interval" :hint="__('Laissez vide pour interroger uniquement à la demande.')"/>
                     <x-field name="form.description" label="Description" wire:model="form.description" maxlength="255"/>

@@ -27,6 +27,8 @@ class PortMediaTest extends TestCase
             'Juniper 10G' => ['xe-0/1/0', 10000, null, 'sfp'],
             'Juniper 40G' => ['et-0/0/48', 40000, null, 'qsfp'],
             'D-Link copper by speed' => ['1/0/1', 1000, null, 'rj45'],
+            'D-Link generic eth copper' => ['eth1/0/1', 1000, null, 'rj45'],
+            'D-Link generic eth SFP+ by speed' => ['eth1/0/25', 10000, null, 'sfp'],
             'D-Link uplink by speed' => ['1/0/25', 10000, null, 'sfp'],
             'D-Link fibre from inventory' => ['1/0/27', 1000, 'Port 27 1000BASE-SX', 'sfp'],
             'Unknown copper from inventory' => ['Port 3', 10000, '10GBASE-T RJ45', 'rj45'],

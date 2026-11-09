@@ -120,6 +120,21 @@ class FakeSnmpAgent
         return $this;
     }
 
+    /**
+     * Matches what a real RouterOS publishes: no Q-BRIDGE VLAN table and a
+     * PVID of 1 on every port, whatever the configuration.
+     */
+    public function withoutVlanTables(): self
+    {
+        $this->values = array_filter($this->values, fn (string $oid): bool => ! str_starts_with($oid, '1.3.6.1.2.1.17.7.1.4.'), ARRAY_FILTER_USE_KEY);
+        foreach (range(1, 5) as $index) {
+            $this->set('1.3.6.1.2.1.17.7.1.4.5.1.1.'.$index, 'Gauge32', 1);
+        }
+        uksort($this->values, fn (string $left, string $right): int => version_compare($left, $right));
+
+        return $this;
+    }
+
     /** @param list<string> $command */
     public function respond(array $command): string
     {

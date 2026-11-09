@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Port state read from a device by SNMP. Rows are refreshed on every poll;
- * the poll itself is recorded in the audit trail.
+ * the poll itself is recorded in the audit trail. media_override is set by
+ * an administrator and never touched by the poll.
  */
 class DevicePort extends Model
 {
@@ -29,6 +30,12 @@ class DevicePort extends Model
     public function macs(): HasMany
     {
         return $this->hasMany(DevicePortMac::class);
+    }
+
+    /** Connector shown for the port: the administrator's choice, else the detected one. */
+    public function connector(): ?string
+    {
+        return $this->media_override ?? $this->media;
     }
 
     public function isUp(): bool

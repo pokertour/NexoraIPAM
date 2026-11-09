@@ -6,8 +6,10 @@ use App\Models\DevicePort;
 use App\Models\IpAddress;
 use App\Models\NetworkDevice;
 use App\Models\Vlan;
+use App\Support\Audit;
 use App\Support\DevicePollQueue;
 use App\Support\MacAddress;
+use App\Support\PortMedia;
 use App\Support\VlanColor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -45,6 +47,30 @@ class DeviceDetail extends Component
         Gate::authorize('administer');
         $message = $queue->enqueue($this->deviceId);
         $this->dispatch('nexora-toast', message: $message ?? __('Interrogation mise en file d’attente.'), tone: $message ? 'info' : 'success');
+    }
+
+    /**
+     * Forces the connector of a port when detection gets it wrong, or goes
+     * back to detection with an empty value. The choice survives polls.
+     */
+    public function setMedia(int $ifIndex, string $media): void
+    {
+        Gate::authorize('administer');
+        abort_unless($media === '' || isset(PortMedia::LABELS[$media]), 422);
+        $device = NetworkDevice::findOrFail($this->deviceId);
+        $port = $device->ports()->where('if_index', $ifIndex)->where('physical', true)->firstOrFail();
+        $override = $media === '' ? null : $media;
+        if ($port->media_override === $override) {
+            return;
+        }
+
+        $previous = $port->media_override;
+        $port->forceFill(['media_override' => $override])->save();
+        Audit::record('device.port_media', $device, [
+            'port' => [null, $port->name],
+            'media' => [$previous ?? 'auto', $override ?? 'auto'],
+        ]);
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Connecteur du port :port enregistré.', ['port' => $port->name]));
     }
 
     /**

@@ -5,13 +5,16 @@ namespace App\Support;
 use App\Models\IpAddress;
 use App\Models\NetworkDevice;
 use App\Models\Subnet;
+use App\Support\DeviceApi\DeviceApis;
 use Brick\Math\BigInteger;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Reads the state of a switch or router through the standard IF-MIB,
- * BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB and IP-MIB tables.
+ * BRIDGE-MIB, Q-BRIDGE-MIB, LLDP-MIB and IP-MIB tables, completed by the
+ * device management API (App\Support\DeviceApi) when one is configured.
  */
 class DevicePoller
 {
@@ -93,7 +96,7 @@ class DevicePoller
     {
         $system = $this->snmp->get($device, array_values(self::SYSTEM));
         if ($system === []) {
-            throw new \RuntimeException(__('L’équipement a répondu sans données système.'));
+            throw new RuntimeException(__('L’équipement a répondu sans données système.'));
         }
 
         $interfaces = [];
@@ -117,6 +120,7 @@ class DevicePoller
         }
         $pvids = $this->snmp->walk($device, self::Q_PVID);
         $membership = $this->vlanMembership($device, $bridgeToIf);
+        $apiVlans = $this->apiVlans($device, $interfaces);
         $inventory = $this->inventory($device);
         $physicalMacs = [];
         foreach ($this->snmp->walk($device, self::IF_PHYS_ADDRESS, true) as $index => $hex) {
@@ -133,8 +137,11 @@ class DevicePoller
         $now = now();
         $ifToBridge = array_flip($bridgeToIf);
         $summary = ['ports' => 0, 'up' => 0, 'macs' => 0, 'arp' => count($arp), 'addresses' => 0];
+        if ($apiVlans !== null) {
+            $summary['api_ports'] = count($apiVlans);
+        }
 
-        DB::transaction(function () use ($device, $system, $interfaces, $pvids, $membership, $inventory, $physicalMacs, $macs, $neighbors, $ipByMac, $ifToBridge, $now, &$summary, $arp): void {
+        DB::transaction(function () use ($device, $system, $interfaces, $pvids, $membership, $apiVlans, $inventory, $physicalMacs, $macs, $neighbors, $ipByMac, $ifToBridge, $now, &$summary, $arp): void {
             $previous = $device->ports()->get()->keyBy('if_index');
             $seconds = $device->polled_at ? max(1, $device->polled_at->diffInSeconds($now)) : null;
 
@@ -164,6 +171,12 @@ class DevicePoller
                     'neighbor_name' => $neighbors[$index]['name'] ?? null, 'neighbor_port' => $neighbors[$index]['port'] ?? null,
                     'polled_at' => $now,
                 ];
+                if ($apiVlans !== null) {
+                    // The device API is authoritative for VLANs when it answers.
+                    $attributes['pvid'] = $apiVlans[$index]['pvid'] ?? null;
+                    $attributes['tagged_vlans'] = ($apiVlans[$index]['tagged'] ?? []) ?: null;
+                    $attributes['untagged_vlans'] = ($apiVlans[$index]['untagged'] ?? []) ?: null;
+                }
                 $port = $device->ports()->updateOrCreate(['if_index' => $index], $attributes);
 
                 $port->macs()->delete();
@@ -192,6 +205,45 @@ class DevicePoller
         $this->nameAddresses($device, $system[self::SYSTEM['name']] ?? null);
 
         return $summary;
+    }
+
+    /**
+     * Reads VLAN membership through the device management API, when one is
+     * configured, and keys it by SNMP interface index. Returns null when no API
+     * is configured or when it fails; the failure is kept on the device.
+     *
+     * @param  array<int, array<string, string>>  $interfaces
+     * @return array<int, array{pvid: ?int, tagged: list<int>, untagged: list<int>}>|null
+     */
+    private function apiVlans(NetworkDevice $device, array $interfaces): ?array
+    {
+        $driver = DeviceApis::for($device);
+        if (! $driver) {
+            $device->api_error = null;
+
+            return null;
+        }
+
+        try {
+            $byName = $driver->vlanMembership($device);
+        } catch (RuntimeException $exception) {
+            $device->api_error = mb_substr($exception->getMessage(), 0, 255);
+
+            return null;
+        }
+        $device->api_error = null;
+
+        $byIndex = [];
+        foreach ($interfaces as $index => $values) {
+            foreach ([$values['name'] ?? null, $values['descr'] ?? null] as $name) {
+                if ($name !== null && isset($byName[$name])) {
+                    $byIndex[$index] = $byName[$name];
+                    break;
+                }
+            }
+        }
+
+        return $byIndex;
     }
 
     /**

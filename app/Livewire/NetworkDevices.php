@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Location;
 use App\Models\NetworkDevice;
+use App\Support\DeviceApi\DeviceApis;
 use App\Support\DevicePollQueue;
 use App\Support\IpNetwork;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,6 +26,9 @@ class NetworkDevices extends Component
     #[Locked]
     public bool $deleting = false;
 
+    #[Locked]
+    public bool $hasApiPassword = false;
+
     #[Url(except: '')]
     public string $search = '';
 
@@ -44,13 +48,16 @@ class NetworkDevices extends Component
             'community' => '', 'username' => $credentials['username'] ?? '', 'security_level' => $credentials['security_level'] ?? 'authPriv',
             'auth_protocol' => $credentials['auth_protocol'] ?? 'SHA', 'auth_password' => '',
             'privacy_protocol' => $credentials['privacy_protocol'] ?? 'AES', 'privacy_password' => '',
+            'api_driver' => $device?->api_driver ?? '', 'api_port' => $device?->api_port, 'api_verify_tls' => $device?->api_verify_tls ?? true,
+            'api_username' => $device?->api_credentials['username'] ?? '', 'api_password' => '',
         ];
+        $this->hasApiPassword = filled($device?->api_credentials['password'] ?? null);
         $this->editing = true;
     }
 
     public function close(): void
     {
-        $this->reset('editing', 'deleting', 'recordId', 'form');
+        $this->reset('editing', 'deleting', 'recordId', 'form', 'hasApiPassword');
         $this->resetValidation();
     }
 
@@ -66,6 +73,11 @@ class NetworkDevices extends Component
         $v3 = ($this->form['snmp_version'] ?? null) === '3';
         $level = $this->form['security_level'] ?? 'authPriv';
         $keep = fn (string $key): bool => blank($this->form[$key] ?? null) && filled($stored[$key] ?? null);
+        $this->form['api_driver'] = filled($this->form['api_driver'] ?? null) ? $this->form['api_driver'] : null;
+        $this->form['api_port'] = filled($this->form['api_port'] ?? null) ? $this->form['api_port'] : null;
+        $api = $this->form['api_driver'] !== null;
+        $storedApi = $device->api_credentials ?? [];
+        $keepApiPassword = blank($this->form['api_password'] ?? null) && filled($storedApi['password'] ?? null) && $device->api_driver === $this->form['api_driver'];
 
         $data = $this->validate([
             'form.name' => ['required', 'string', 'max:100'],
@@ -86,6 +98,11 @@ class NetworkDevices extends Component
             'form.auth_password' => [Rule::requiredIf($v3 && $level !== 'noAuthNoPriv' && ! $keep('auth_password')), 'nullable', 'string', 'min:8', 'max:255'],
             'form.privacy_protocol' => [Rule::in(NetworkDevice::PRIVACY_PROTOCOLS)],
             'form.privacy_password' => [Rule::requiredIf($v3 && $level === 'authPriv' && ! $keep('privacy_password')), 'nullable', 'string', 'min:8', 'max:255'],
+            'form.api_driver' => ['nullable', Rule::in(array_keys(DeviceApis::DRIVERS))],
+            'form.api_port' => ['nullable', 'integer', 'between:1,65535'],
+            'form.api_verify_tls' => ['boolean'],
+            'form.api_username' => [Rule::requiredIf($api), 'nullable', 'string', 'max:255'],
+            'form.api_password' => [Rule::requiredIf($api && ! $keepApiPassword), 'nullable', 'string', 'max:255'],
         ])['form'];
 
         $credentials = $v3 ? [
@@ -99,7 +116,17 @@ class NetworkDevices extends Component
             'name' => $data['name'], 'host' => $data['host'], 'port' => (int) $data['port'], 'snmp_version' => $data['snmp_version'],
             'location_id' => $data['location_id'], 'description' => $data['description'] ?: null,
             'poll_interval' => $data['poll_interval'] === null ? null : (int) $data['poll_interval'],
+            'api_driver' => $data['api_driver'],
+            'api_port' => $api ? (int) ($data['api_port'] ?? DeviceApis::DRIVERS[$data['api_driver']]['port']) : null,
+            'api_verify_tls' => (bool) ($data['api_verify_tls'] ?? true),
         ]);
+        $apiCredentials = $api ? ['username' => $data['api_username'], 'password' => $data['api_password'] ?: ($storedApi['password'] ?? null)] : null;
+        if ($apiCredentials != ($device->api_credentials ?: null)) {
+            $device->api_credentials = $apiCredentials;
+        }
+        if (! $api) {
+            $device->api_error = null;
+        }
         if ($credentials != $stored) {
             $device->credentials = $credentials;
         }

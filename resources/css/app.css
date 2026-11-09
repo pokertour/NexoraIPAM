@@ -290,6 +290,7 @@
     .segmented button { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: .45rem; color: var(--muted); font-weight: 600; font-size: .8rem; }
     .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
     .segmented .count-pill { padding: 0 .4rem; font-size: .68rem; }
+    .segmented-sm button { padding: .15rem .5rem; font-size: .72rem; }
 
     /* Devices */
     .device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
@@ -305,6 +306,7 @@
     .device-actions { display: flex; align-items: center; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--line); }
     .stat-unit { margin-left: .3rem; color: var(--muted); font-size: .55em; font-weight: 600; letter-spacing: 0; }
     .callout { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: var(--radius-sm); font-size: .84rem; }
+    .callout-warning { background: var(--warning-bg); color: var(--warning); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 25%, transparent); }
     .callout-danger { background: var(--danger-bg); color: var(--danger); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 25%, transparent); }
 
     .faceplate-wrap { overflow-x: auto; padding: 1.25rem; }

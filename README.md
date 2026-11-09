@@ -49,7 +49,7 @@ NexoraIPAM keeps track of your subnets, IP addresses, VLANs and network devices 
 
 ### 🔌 Switches and routers over SNMP
 - SNMP v2c and v3, with credentials encrypted at rest.
-- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
+- A **live front panel** of each switch, with RJ45, SFP and QSFP ports drawn as such. When a vendor's port names give no clue, administrators can set the connector of a port by hand; polls keep that choice. For every port: link state, speed, native, untagged and tagged VLANs, throughput, learned MAC addresses and LLDP neighbour.
 - **VLAN colours**: every VLAN gets a stable colour, or one you choose, shown on ports and lists. Click a VLAN to highlight its ports.
 - **Racks and topology**: place devices and passive items in racks unit by unit. Links between switches are drawn automatically from LLDP, or from the MAC addresses each switch learns from the other.
 - The router **ARP table** fills in MAC addresses and adds unknown hosts to the inventory.
@@ -200,6 +200,8 @@ Administrators configure everything from **Settings** in the application. Authen
 - **SMTP**: set the sender, server and credentials, then use **Send a test**. Implicit TLS and STARTTLS are supported.
 - **Alerts**: set the IPv4 usage threshold, choose which conflicts to report and whether new alerts are sent by e-mail.
 - **SNMP devices**: add each device in **Devices** with its address, UDP port and v2c community or v3 credentials. Read-only access is enough. Set an interval to poll it automatically. Throughput appears from the second poll. If a model reports ports or VLANs incorrectly, `php artisan nexora:snmp-dump <device>` prints the SNMP tables NexoraIPAM reads, without the credentials.
+- **Device API**: some devices do not publish their VLANs over SNMP. MikroTik RouterOS, for example, leaves the Q-BRIDGE-MIB tables empty. For these, choose an API in the device form; it then provides the native, untagged and tagged VLANs of each port while SNMP keeps providing everything else. If the API fails, the poll still completes with the SNMP data and the device page shows the error.
+  - **MikroTik RouterOS 7 (REST)**: enable the `www-ssl` service (`/ip service enable www-ssl`, with a certificate) and create a user in the `read` group. Turn off certificate verification only for a self-signed certificate on a trusted network.
 - **DHCP leases**: enter the Kea control agent URL and credentials, or the path of an ISC `dhcpd.leases` file readable by the worker, and an import interval. Active leases name the addresses they cover and add unknown ones that fall in an inventoried subnet.
 - **Automatic discovery**: set an interval in minutes on a location. It applies to the subnets attached directly to that location.
 

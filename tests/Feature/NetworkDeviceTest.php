@@ -11,11 +11,14 @@ use App\Models\AuditLog;
 use App\Models\DevicePort;
 use App\Models\IpAddress;
 use App\Models\NetworkDevice;
+use App\Models\ScanRun;
 use App\Models\Subnet;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\SnmpClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -121,6 +124,86 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame([10, 20], $ports['qsfpplus1-1']->tagged_vlans);
     }
 
+    public function test_routeros_vlans_are_read_through_the_rest_api(): void
+    {
+        $this->agent->asMikrotik()->withoutVlanTables();
+        Http::preventStrayRequests();
+        $unauthorized = false;
+        $responses = [
+            'https://192.0.2.2:8443/rest/interface/bridge/vlan' => [
+                ['bridge' => 'bridge', 'vlan-ids' => '10', 'tagged' => 'bridge,sfp-sfpplus1', 'untagged' => '', 'current-tagged' => 'bridge,sfp-sfpplus1,qsfpplus1-1', 'current-untagged' => 'ether1', 'disabled' => 'false'],
+                ['bridge' => 'bridge', 'vlan-ids' => '20', 'tagged' => 'bridge,sfp-sfpplus1,qsfpplus1-1', 'untagged' => 'sfp-sfpplus2', 'disabled' => 'false'],
+                ['bridge' => 'bridge', 'vlan-ids' => '30-31', 'tagged' => 'bridge,sfp-sfpplus1', 'untagged' => '', 'disabled' => 'false'],
+                ['bridge' => 'bridge', 'vlan-ids' => '99', 'tagged' => 'ether1', 'disabled' => 'true'],
+            ],
+            'https://192.0.2.2:8443/rest/interface/vlan' => [['name' => 'mgmt', 'vlan-id' => '40', 'interface' => 'bridge', 'disabled' => 'false']],
+            'https://192.0.2.2:8443/rest/interface/bridge/port' => [
+                ['interface' => 'ether1', 'pvid' => '10', 'bridge' => 'bridge'], ['interface' => 'sfp-sfpplus2', 'pvid' => '20', 'bridge' => 'bridge'],
+                ['interface' => 'sfp-sfpplus1', 'pvid' => '1', 'bridge' => 'bridge'], ['interface' => 'qsfpplus1-1', 'pvid' => '1', 'bridge' => 'bridge'],
+            ],
+        ];
+        Http::fake(function (Request $request) use (&$unauthorized, $responses) {
+            return $unauthorized ? Http::response(status: 401) : Http::response($responses[$request->url()] ?? null, isset($responses[$request->url()]) ? 200 : 404);
+        });
+        $device = NetworkDevice::factory()->create([
+            'host' => '192.0.2.2', 'api_driver' => 'routeros', 'api_port' => 8443, 'api_verify_tls' => false,
+            'api_credentials' => ['username' => 'nexora', 'password' => 'api-secret'],
+        ]);
+        $run = ScanRun::queue('snmp', $device);
+        $token = (string) Str::uuid();
+        $device->forceFill(['poll_token' => $token, 'poll_status' => 'queued'])->save();
+        app()->call([new PollNetworkDevice($device->id, $token, $run->id), 'handle']);
+
+        $ports = $device->ports()->get()->keyBy('name');
+        $this->assertSame([10, [10], null], [$ports['ether1']->pvid, $ports['ether1']->untagged_vlans, $ports['ether1']->tagged_vlans]);
+        $this->assertSame([1, [10, 20, 30, 31]], [$ports['sfp-sfpplus1']->pvid, $ports['sfp-sfpplus1']->tagged_vlans]);
+        $this->assertSame([20, [20]], [$ports['sfp-sfpplus2']->pvid, $ports['sfp-sfpplus2']->untagged_vlans]);
+        $this->assertSame([10, 20, 30, 31, 40], $ports['bridge']->tagged_vlans);
+        $this->assertNull($device->fresh()->api_error);
+        $this->assertSame(5, $run->fresh()->summary['api_ports']);
+        Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Basic '.base64_encode('nexora:api-secret')));
+
+        $unauthorized = true;
+        $token = (string) Str::uuid();
+        $device->refresh()->forceFill(['poll_token' => $token, 'poll_status' => 'queued'])->save();
+        app()->call([new PollNetworkDevice($device->id, $token), 'handle']);
+
+        $device->refresh();
+        $this->assertSame(['completed', 'L’API RouterOS a refusé les identifiants.'], [$device->poll_status, $device->api_error]);
+        $this->assertSame([1, null], [$device->ports()->where('name', 'ether1')->value('pvid'), $device->ports()->where('name', 'ether1')->value('untagged_vlans')]);
+        $this->assertSame([null, 'L’API RouterOS a refusé les identifiants.'], AuditLog::where('action', 'device.polled')->latest('id')->first()->changes['api_error']);
+
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->assertSee('VLAN lus en SNMP : L’API RouterOS a refusé les identifiants.');
+    }
+
+    public function test_administrators_configure_the_device_api_with_an_encrypted_password(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $device = NetworkDevice::factory()->create();
+
+        $component = Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->set('form.api_driver', 'routeros')->call('save')->assertHasErrors(['form.api_username', 'form.api_password'])
+            ->set('form.api_driver', 'unknown')->call('save')->assertHasErrors('form.api_driver')
+            ->set('form.api_driver', 'routeros')->set('form.api_username', 'nexora')->set('form.api_password', 'api-secret')
+            ->set('form.api_verify_tls', false)->call('save')->assertHasNoErrors();
+
+        $device->refresh();
+        $this->assertSame(['routeros', 443, false], [$device->api_driver, $device->api_port, $device->api_verify_tls]);
+        $this->assertSame(['username' => 'nexora', 'password' => 'api-secret'], $device->api_credentials);
+        $this->assertStringNotContainsString('api-secret', (string) $device->getRawOriginal('api_credentials'));
+        $this->assertSame([null, Audit::MASK], AuditLog::where('action', 'updated')->where('subject_type', 'network_device')->latest('id')->first()->changes['api_credentials']);
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->assertSet('form.api_password', '')->assertSet('form.api_username', 'nexora')->call('save')->assertHasNoErrors();
+        $this->assertSame('api-secret', $device->fresh()->api_credentials['password']);
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->set('form.api_driver', '')->call('save')->assertHasNoErrors();
+        $this->assertSame([null, null, null], [$device->fresh()->api_driver, $device->fresh()->api_port, $device->fresh()->api_credentials]);
+    }
+
     public function test_the_snmp_dump_prints_the_tables_without_credentials(): void
     {
         $this->agent->asMikrotik();
@@ -181,6 +264,34 @@ class NetworkDeviceTest extends TestCase
         Livewire::test(Inventory::class, ['section' => 'addresses'])
             ->call('showHistory', IpAddress::where('address', '192.0.2.50')->value('id'))
             ->assertSee('sw-rdc · GigabitEthernet1/0/13')->assertSee('VLAN 20');
+    }
+
+    public function test_administrators_override_a_wrongly_detected_connector(): void
+    {
+        $this->withoutVite();
+        $device = $this->poll(NetworkDevice::factory()->create(['name' => 'sw-dlink']));
+        $port = $device->ports()->where('name', 'GigabitEthernet1/0/13')->sole();
+        $this->assertSame('rj45', $port->connector());
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, 'sfp')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, 'usb')->assertStatus(422);
+        Livewire::test(DeviceDetail::class, ['device' => $device])
+            ->call('select', $port->if_index)->assertSee('Type de connecteur')
+            ->call('setMedia', $port->if_index, 'sfp')->assertDispatched('nexora-toast', tone: 'success')
+            ->assertSeeHtml('data-media="sfp"');
+
+        $this->assertSame(['rj45', 'sfp', 'sfp'], [$port->fresh()->media, $port->fresh()->media_override, $port->fresh()->connector()]);
+        $this->assertSame(['port' => [null, 'GigabitEthernet1/0/13'], 'media' => ['auto', 'sfp']], AuditLog::where('action', 'device.port_media')->sole()->changes);
+
+        $this->poll($device);
+        $this->assertSame('sfp', $port->fresh()->connector(), 'A poll keeps the manual choice.');
+
+        Livewire::test(DeviceDetail::class, ['device' => $device])->call('setMedia', $port->if_index, '');
+        $this->assertSame([null, 'rj45'], [$port->fresh()->media_override, $port->fresh()->connector()]);
+        $this->assertSame(2, AuditLog::where('action', 'device.port_media')->count());
     }
 
     public function test_due_devices_are_polled_by_the_scheduler(): void
