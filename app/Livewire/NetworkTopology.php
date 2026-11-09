@@ -157,7 +157,7 @@ class NetworkTopology extends Component
         }
         ksort($levels);
 
-        $column = 190;
+        $column = 210;
         $rowHeight = 135;
         $widest = max(1, count($isolated), ...array_map('count', $levels ?: [[]]));
         $width = max(900, $widest * $column + 60);
@@ -202,7 +202,9 @@ class NetworkTopology extends Component
         foreach ($wanPorts->filter(fn (DevicePort $port): bool => $nodes->has($port->network_device_id))->groupBy('network_device_id') as $deviceId => $ports) {
             foreach ($ports->values() as $index => $port) {
                 $shift = (int) round(($index - ($ports->count() - 1) / 2) * 44);
-                $wans[] = ['port' => $port, 'x' => $nodes[$deviceId]['x'] + $shift, 'y' => $nodes[$deviceId]['y'], 'from' => $internet['x'] + (int) round($shift / 2), 'index' => $index];
+                // Labels go outwards: the left link of a pair is labelled on its left, the right one on its right.
+                $side = $shift !== 0 ? ($shift < 0 ? 'left' : 'right') : ($nodes[$deviceId]['x'] >= $internet['x'] ? 'right' : 'left');
+                $wans[] = ['port' => $port, 'x' => $nodes[$deviceId]['x'] + $shift, 'y' => $nodes[$deviceId]['y'], 'from' => $internet['x'] + (int) round($shift / 2), 'index' => $index, 'side' => $side];
             }
         }
 

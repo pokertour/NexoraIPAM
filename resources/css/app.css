@@ -295,6 +295,7 @@
     /* Devices */
     .device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
     .device-card { display: grid; gap: .85rem; padding: 1.05rem; transition: border-color .2s, box-shadow .2s, transform .2s; }
+    .device-badges { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; flex-shrink: 0; }
     .device-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-raised); }
     .led-strip { display: flex; flex-wrap: wrap; gap: 3px; padding: .55rem .6rem; border-radius: .55rem; background: linear-gradient(180deg, #1a2131, #0d121d); box-shadow: inset 0 1px 0 #ffffff12, inset 0 0 0 1px #000; }
     .led-strip i { width: 7px; height: 7px; border-radius: 2px; background: #2a3346; }
@@ -468,7 +469,8 @@
     .topology-hint { margin-left: auto; color: var(--muted); font-style: italic; }
     .topology-legend i[data-source=manual] { background: repeating-linear-gradient(90deg, #f59e0b 0 2px, transparent 2px 5px); }
     .topology-legend i[data-source=wan] { height: 3px; background: linear-gradient(90deg, #0ea5e9, #22d3ee); }
-    .topology-link text.topology-wan-label { fill: #0369a1; font-family: inherit; font-weight: 650; }
+    .topology-link text.topology-wan-label { fill: #0369a1; font-family: inherit; font-weight: 650; text-anchor: end; }
+    .topology-link text.topology-wan-label[data-side=right] { text-anchor: start; }
     [data-theme=dark] .topology-link text.topology-wan-label { fill: #7dd3fc; }
     .topology-link[data-source=wan] path { fill: none; stroke: #0ea5e9; stroke-width: 3; filter: drop-shadow(0 0 5px #0ea5e999); }
     .topology-internet path { fill: color-mix(in srgb, #0ea5e9 14%, var(--surface)); stroke: #0ea5e9; stroke-width: 2; }
@@ -479,7 +481,7 @@
     .topology-node[data-role=edge] rect { stroke: #0ea5e9; stroke-width: 2; }
     .topology-node[data-role=core] rect { stroke: #7c3aed; stroke-width: 2; }
     .topology-node[data-role=distribution] rect { stroke: #a78bfa; }
-    .role-badge { display: inline-flex; align-items: center; padding: .1rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 650; letter-spacing: .01em; background: var(--surface-hover); color: var(--text-soft); box-shadow: inset 0 0 0 1px var(--line); vertical-align: middle; }
+    .role-badge { display: inline-flex; align-items: center; white-space: nowrap; padding: .1rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 650; letter-spacing: .01em; background: var(--surface-hover); color: var(--text-soft); box-shadow: inset 0 0 0 1px var(--line); vertical-align: middle; }
     .role-badge[data-role=edge] { background: #0ea5e91f; color: #0369a1; box-shadow: inset 0 0 0 1px #0ea5e955; }
     .role-badge[data-role=core] { background: var(--highlight-bg); color: var(--highlight); box-shadow: none; }
     [data-theme=dark] .role-badge[data-role=edge] { color: #7dd3fc; }

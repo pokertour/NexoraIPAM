@@ -31,7 +31,7 @@
                 @foreach ($wans as $wan)
                     <g class="topology-link" data-source="wan">
                         <path d="M{{ $wan['from'] }} {{ $internet['y'] + 22 }} C{{ $wan['from'] }} {{ $internet['y'] + 70 }}, {{ $wan['x'] }} {{ $wan['y'] - 80 }}, {{ $wan['x'] }} {{ $wan['y'] - 22 }}"/>
-                        <text class="topology-wan-label" x="{{ $wan['x'] + ($wan['x'] >= $internet['x'] ? 8 : -8) }}" y="{{ $wan['y'] - 40 - $wan['index'] * 14 }}" text-anchor="{{ $wan['x'] >= $internet['x'] ? 'start' : 'end' }}">{{ \Illuminate\Support\Str::limit($wan['port']->wan_label ?: $wan['port']->name, 26) }}</text>
+                        <text class="topology-wan-label" data-side="{{ $wan['side'] }}" x="{{ $wan['x'] + ($wan['side'] === 'right' ? 10 : -10) }}" y="{{ $wan['y'] - 48 }}">{{ \Illuminate\Support\Str::limit($wan['port']->wan_label ?: $wan['port']->name, 26) }}</text>
                     </g>
                 @endforeach
                 @foreach ($links as $link)
@@ -52,11 +52,13 @@
                 @foreach ($nodes as $node)
                     @php($device = $node['device'])
                     <a href="{{ route('devices.show', $device) }}" wire:navigate class="topology-node" data-role="{{ $device->role }}" data-state="{{ $device->poll_status === 'failed' ? 'down' : ($device->polled_at ? 'up' : 'unknown') }}">
-                        <circle cx="{{ $node['x'] }}" cy="{{ $node['y'] }}" r="46" fill="url(#node-glow)"/>
-                        <rect x="{{ $node['x'] - 70 }}" y="{{ $node['y'] - 22 }}" width="140" height="44" rx="10"/>
-                        <circle class="topology-led" cx="{{ $node['x'] - 56 }}" cy="{{ $node['y'] - 8 }}" r="4"/>
-                        <text class="topology-name" x="{{ $node['x'] - 46 }}" y="{{ $node['y'] - 4 }}">{{ \Illuminate\Support\Str::limit($device->name, 16) }}</text>
-                        <text class="topology-host" x="{{ $node['x'] - 46 }}" y="{{ $node['y'] + 12 }}">{{ $device->role !== 'other' ? __(\App\Models\NetworkDevice::ROLES[$device->role]['short']).' · '.\Illuminate\Support\Str::limit($device->host, 15) : $device->host }}</text>
+                        @php($detail = $device->role !== 'other' ? __(\App\Models\NetworkDevice::ROLES[$device->role]['short']).' · '.$device->host : $device->host)
+                        <title>{{ $device->name }} · {{ $detail }}</title>
+                        <circle cx="{{ $node['x'] }}" cy="{{ $node['y'] }}" r="50" fill="url(#node-glow)"/>
+                        <rect x="{{ $node['x'] - 85 }}" y="{{ $node['y'] - 22 }}" width="170" height="44" rx="10"/>
+                        <circle class="topology-led" cx="{{ $node['x'] - 71 }}" cy="{{ $node['y'] - 8 }}" r="4"/>
+                        <text class="topology-name" x="{{ $node['x'] - 61 }}" y="{{ $node['y'] - 4 }}">{{ \Illuminate\Support\Str::limit($device->name, 16, '…') }}</text>
+                        <text class="topology-host" x="{{ $node['x'] - 61 }}" y="{{ $node['y'] + 12 }}">{{ \Illuminate\Support\Str::limit($detail, 21, '…') }}</text>
                     </a>
                 @endforeach
             </svg>
