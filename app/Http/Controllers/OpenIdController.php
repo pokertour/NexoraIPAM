@@ -51,14 +51,8 @@ class OpenIdController extends Controller
 
             if ($client->authenticateRequest($callback ? $request->only('code', 'state', 'error') : []) && $callback) {
                 $subject = $client->getVerifiedClaims('sub');
-                $email = $client->getVerifiedClaims('email');
-                $name = $client->getVerifiedClaims('name');
-                $user = $accounts->resolve(
-                    'oidc',
-                    self::identifier($settings['issuer'], $subject),
-                    is_string($email) && $client->getVerifiedClaims('email_verified') === true ? $email : null,
-                    is_string($name) ? $name : null,
-                );
+                [$email, $name] = self::profile($client);
+                $user = $accounts->resolve('oidc', self::identifier($settings['issuer'], $subject), $email, $name);
 
                 if ($user) {
                     Auth::login($user);
@@ -88,5 +82,34 @@ class OpenIdController extends Controller
     private function failed(): RedirectResponse
     {
         return redirect()->route('login')->withErrors(['login' => __('Connexion OpenID Connect refusée ou compte non autorisé.')]);
+    }
+
+    /**
+     * Verified e-mail address and display name, from the ID token or, when it
+     * lacks them, from the userinfo endpoint.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    public static function profile(OpenIdClient $client): array
+    {
+        $claims = [];
+        foreach (['email', 'email_verified', 'name', 'given_name', 'family_name', 'preferred_username'] as $claim) {
+            $claims[$claim] = $client->getVerifiedClaims($claim);
+        }
+        if (! is_string($claims['email']) || (! is_string($claims['name']) && ! is_string($claims['given_name']))) {
+            $info = $client->userInfo();
+            foreach ($claims as $claim => $value) {
+                $claims[$claim] = $value ?? ($info[$claim] ?? null);
+            }
+        }
+
+        $verified = $claims['email_verified'] === true || $claims['email_verified'] === 'true';
+        $name = is_string($claims['name']) && trim($claims['name']) !== '' ? $claims['name']
+            : trim(implode(' ', array_filter([$claims['given_name'], $claims['family_name']], 'is_string')));
+
+        return [
+            is_string($claims['email']) && $verified ? $claims['email'] : null,
+            $name !== '' ? $name : (is_string($claims['preferred_username']) ? $claims['preferred_username'] : null),
+        ];
     }
 }

@@ -91,6 +91,30 @@ class OpenIdClient extends OpenIDConnectClient
         return $response->body();
     }
 
+    /**
+     * Claims of the userinfo endpoint, for providers that leave the profile
+     * out of the ID token (Zitadel by default). They only count when they
+     * describe the same subject as the verified ID token.
+     *
+     * @return array<string, mixed>
+     */
+    public function userInfo(): array
+    {
+        try {
+            $endpoint = $this->getProviderConfigValue('userinfo_endpoint');
+        } catch (OpenIDConnectClientException) {
+            return [];
+        }
+        $token = $this->getAccessToken();
+        if (! is_string($endpoint) || ! is_string($token) || $token === '') {
+            return [];
+        }
+
+        $claims = json_decode($this->fetchURL($endpoint, null, ['Authorization: Bearer '.$token, 'Accept: application/json']), true);
+
+        return is_array($claims) && is_string($claims['sub'] ?? null) && $claims['sub'] === $this->getVerifiedClaims('sub') ? $claims : [];
+    }
+
     public function verifyJWTSignature(string $jwt): bool
     {
         $header = $this->decodeJWT($jwt);

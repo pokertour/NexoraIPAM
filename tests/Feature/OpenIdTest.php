@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -126,6 +127,71 @@ class OpenIdTest extends TestCase
         $this->assertSame(['primary' => 'oidc'], Setting::read('login'));
         $this->assertSame(['Portail SSO', 'shield'], [Setting::read('oidc')['button_label'], Setting::read('oidc')['button_icon']]);
         $this->assertSame([null, 'oidc'], AuditLog::where('subject_label', 'login')->sole()->changes['primary']);
+    }
+
+    public function test_the_profile_comes_from_userinfo_when_the_id_token_lacks_it(): void
+    {
+        $issuer = 'https://zitadel.example.com';
+        $identifier = OpenIdController::identifier($issuer, 'zitadel-user');
+        $placeholder = User::factory()->create(['provider' => 'oidc', 'external_id' => $identifier, 'name' => 'Compte OIDC', 'email' => 'oidc-0ba354@accounts.invalid']);
+
+        $this->signInWithZitadel($issuer, 'zitadel-user', ['sub' => 'zitadel-user', 'email' => 'Alice@Example.test', 'email_verified' => true, 'given_name' => 'Alice', 'family_name' => 'Martin']);
+
+        $this->assertAuthenticatedAs($placeholder);
+        $this->assertSame(['Alice Martin', 'alice@example.test'], [$placeholder->fresh()->name, $placeholder->fresh()->email]);
+    }
+
+    public function test_userinfo_about_another_subject_is_ignored(): void
+    {
+        $issuer = 'https://zitadel.example.com';
+        $this->signInWithZitadel($issuer, 'zitadel-user', ['sub' => 'someone-else', 'email' => 'mallory@example.test', 'email_verified' => true, 'name' => 'Mallory']);
+        $account = User::where('external_id', OpenIdController::identifier($issuer, 'zitadel-user'))->sole();
+        $this->assertSame('Compte OIDC', $account->name);
+        $this->assertStringEndsWith('@accounts.invalid', $account->email);
+    }
+
+    public function test_an_unverified_email_from_userinfo_is_not_used(): void
+    {
+        $this->signInWithZitadel('https://zitadel.example.com', 'zitadel-user', ['sub' => 'zitadel-user', 'email' => 'bob@example.test', 'email_verified' => false, 'name' => 'Bob']);
+        $account = User::where('provider', 'oidc')->sole();
+        $this->assertSame('Bob', $account->name);
+        $this->assertStringEndsWith('@accounts.invalid', $account->email);
+    }
+
+    /**
+     * Signs in like Zitadel by default: the ID token carries no profile, the
+     * userinfo endpoint does.
+     *
+     * @param  array<string, mixed>  $userinfo
+     */
+    private function signInWithZitadel(string $issuer, string $subject, array $userinfo): void
+    {
+        Setting::write('oidc', ['enabled' => true, 'issuer' => $issuer, 'client_id' => 'nexora', 'secret' => 'secret']);
+        $discovery = [
+            'issuer' => $issuer, 'authorization_endpoint' => $issuer.'/authorize', 'token_endpoint' => $issuer.'/token',
+            'jwks_uri' => $issuer.'/jwks', 'userinfo_endpoint' => $issuer.'/userinfo', 'code_challenge_methods_supported' => ['S256'],
+        ];
+        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $details = openssl_pkey_get_details($key);
+        $nonce = null;
+        Http::fake(function (Request $request) use ($issuer, $discovery, $key, $details, $subject, $userinfo, &$nonce) {
+            return match (strtok($request->url(), '?')) {
+                $issuer.'/.well-known/openid-configuration' => Http::response($discovery),
+                $issuer.'/jwks' => Http::response(['keys' => [['kid' => 'k', 'kty' => 'RSA', 'use' => 'sig', 'n' => $this->encode($details['rsa']['n']), 'e' => $this->encode($details['rsa']['e'])]]]),
+                $issuer.'/token' => Http::response(['access_token' => 'access-token', 'id_token' => (function () use ($issuer, $key, $subject, &$nonce): string {
+                    $jwt = $this->encode(json_encode(['alg' => 'RS256', 'kid' => 'k'])).'.'.$this->encode(json_encode(['iss' => $issuer, 'aud' => 'nexora', 'sub' => $subject, 'nonce' => $nonce, 'iat' => time(), 'exp' => time() + 120]));
+                    openssl_sign($jwt, $signature, $key, OPENSSL_ALGO_SHA256);
+
+                    return $jwt.'.'.$this->encode($signature);
+                })()]),
+                $issuer.'/userinfo' => $request->hasHeader('Authorization', 'Bearer access-token') ? Http::response($userinfo) : Http::response([], 401),
+                default => Http::response([], 404),
+            };
+        });
+
+        parse_str(parse_url($this->get(route('oidc.start'))->headers->get('Location'), PHP_URL_QUERY), $query);
+        $nonce = $query['nonce'];
+        $this->get(route('oidc.callback', ['code' => 'valid-code', 'state' => $query['state']]))->assertRedirectToRoute('dashboard');
     }
 
     public function test_the_callback_rejects_missing_state_before_exchanging_the_code(): void
