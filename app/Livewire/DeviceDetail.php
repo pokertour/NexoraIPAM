@@ -16,7 +16,6 @@ use App\Support\MacAddress;
 use App\Support\PortMedia;
 use App\Support\VlanColor;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -81,15 +80,7 @@ class DeviceDetail extends Component
         $port = $this->selectedPort();
         abort_unless($port?->physical, 409);
 
-        DB::transaction(function () use ($port): void {
-            $current = WallOutlet::where('network_device_id', $this->deviceId)->where('port', $port->name)->lockForUpdate()->first();
-            $chosen = ctype_digit($this->outlet) ? WallOutlet::lockForUpdate()->findOrFail((int) $this->outlet) : null;
-            if ($current?->is($chosen)) {
-                return;
-            }
-            $current?->update(['network_device_id' => null, 'port' => null]);
-            $chosen?->update(['network_device_id' => $this->deviceId, 'port' => $port->name]);
-        }, attempts: 3);
+        WallOutlet::patch($this->deviceId, $port->name, ctype_digit($this->outlet) ? (int) $this->outlet : null);
 
         $this->dispatch('nexora-toast', tone: 'success', message: $this->outlet !== ''
             ? __('Prise brassée sur :port.', ['port' => $port->name])

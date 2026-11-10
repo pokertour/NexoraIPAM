@@ -189,6 +189,26 @@ class RackTopologyTest extends TestCase
             ->assertSee('Baie P2')->assertSee('Baie L1')->assertSeeHtml('@click="jump('.$accessItem->id.', ');
     }
 
+    public function test_rooms_with_several_racks_get_a_rack_navigation_and_a_compact_view(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        $paris = Location::factory()->create(['name' => 'Paris']);
+        $lyon = Location::factory()->create(['name' => 'Lyon']);
+        $first = Rack::factory()->create(['name' => 'Baie P1', 'location_id' => $paris->id, 'sort_order' => 1]);
+        $second = Rack::factory()->create(['name' => 'Baie P2', 'location_id' => $paris->id, 'sort_order' => 2]);
+        $alone = Rack::factory()->create(['name' => 'Baie L1', 'location_id' => $lyon->id]);
+
+        Livewire::test(Racks::class)
+            ->assertSeeHtml('x-data="rackRooms"')
+            ->assertSee('Vue compacte')
+            ->assertSeeHtml('aria-label="Baies de Paris"')
+            ->assertSeeHtml('@click="go('.$first->id.')"')
+            ->assertSeeHtml('@click="go('.$second->id.')"')
+            ->assertDontSeeHtml('@click="go('.$alone->id.')"')
+            ->assertDontSeeHtml('aria-label="Baies de Lyon"');
+    }
+
     public function test_the_medium_of_a_detected_link_is_set_from_the_topology_or_the_racks(): void
     {
         $this->withoutVite();
