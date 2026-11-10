@@ -8,25 +8,41 @@
         </div>
     </div>
 
-    @if ($locations->isNotEmpty())
-        <div class="table-toolbar card mb-4">
+    <div x-data="rackRooms" :class="{ 'racks-compact': compact }">
+    <div class="table-toolbar card mb-4">
+        @if ($locations->isNotEmpty())
             <x-select class="location-filter" name="location" wire:model.live="location" aria-label="{{ __('Filtrer par emplacement') }}">
                 <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
             </x-select>
-            <span class="count-pill ml-auto">{{ $racks->count() }} {{ $racks->count() === 1 ? __('baie') : __('baies') }}</span>
-        </div>
-    @endif
+        @endif
+        <span class="count-pill ml-auto">{{ $racks->count() }} {{ $racks->count() === 1 ? __('baie') : __('baies') }}</span>
+        <label class="switch-toggle" title="{{ __('Baies plus étroites, sans les listes de liaisons, pour en voir davantage à l’écran.') }}">
+            <input type="checkbox" x-model="compact" @change="remember()"> <span>{{ __('Vue compacte') }}</span>
+        </label>
+    </div>
 
     @if ($racks->isEmpty())
         <section class="card"><x-empty-state icon="rack" :title="__('Aucune baie')" :text="__('Créez une baie puis placez-y vos équipements unité par unité.')"/></section>
     @else
-        <div class="rack-rooms" x-data="{ hot: null, jump(item, key) { const target = document.querySelector('[data-item=&quot;' + item + '&quot;]'); if (! target) return; this.hot = key; target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); target.classList.remove('is-flash'); void target.offsetWidth; target.classList.add('is-flash'); } }">
+        <div class="rack-rooms">
             @foreach ($rows as $row)
-                <section class="rack-room" wire:key="room-{{ $row['location']?->id ?? 'none' }}">
+                <section class="rack-room" x-data="rackRoomNav" wire:key="room-{{ $row['location']?->id ?? 'none' }}">
                     <header class="rack-room-head">
                         <h2>{{ $row['location']?->path() ?? __('Sans emplacement') }}</h2>
                         <span class="muted">{{ trans_choice(':count baie|:count baies', $row['racks']->count()) }}@if ($row['cables'] !== []) · {{ trans_choice(':count liaison entre baies|:count liaisons entre baies', count($row['cables'])) }}@endif</span>
                     </header>
+                    @if ($row['racks']->count() > 1)
+                        <nav class="rack-room-nav" aria-label="{{ __('Baies de :location', ['location' => $row['location']?->name ?? __('Sans emplacement')]) }}" x-show="overflowing" x-cloak>
+                            <button type="button" class="icon-button" @click="step(-1)" :disabled="atStart" aria-label="{{ __('Baies précédentes') }}"><x-icon name="chevron" class="size-4 rotate-90"/></button>
+                            <div class="rack-room-chips">
+                                @foreach ($row['racks'] as $rack)
+                                    <button type="button" class="rack-chip" data-chip="{{ $rack->id }}" :class="{ 'is-visible': visible.includes('{{ $rack->id }}') }" @click="go({{ $rack->id }})">{{ $rack->name }}</button>
+                                @endforeach
+                            </div>
+                            <button type="button" class="icon-button" @click="step(1)" :disabled="atEnd" aria-label="{{ __('Baies suivantes') }}"><x-icon name="chevron" class="size-4 -rotate-90"/></button>
+                        </nav>
+                        <div class="rack-room-topbar" x-show="overflowing" x-cloak aria-hidden="true"><div></div></div>
+                    @endif
                     <div class="rack-room-scroll">
                         <div class="rack-row" x-data="rackRoom" data-cables="{{ json_encode($row['cables']) }}" @class(['has-cables' => $row['cables'] !== []])>
                             <svg class="rack-room-cables" data-room-cables wire:ignore aria-hidden="true"></svg>
@@ -39,6 +55,7 @@
             @endforeach
         </div>
     @endif
+    </div>
 
     @if ($editing === 'rack')
         <x-modal id="rack-edit" :title="__($recordId ? 'Modifier la baie' : 'Ajouter une baie')">

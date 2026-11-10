@@ -389,10 +389,33 @@
 
     /* Racks */
     .rack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: 1rem; align-items: start; }
-    .rack-rooms { display: grid; gap: 1.5rem; }
+    .rack-rooms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+    .rack-room { min-width: 0; }
     .rack-room-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .6rem; }
     .rack-room-head h2 { font-size: .95rem; font-weight: 650; letter-spacing: -.015em; }
     .rack-room-head span { font-size: .8rem; }
+    .rack-room-nav { display: flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+    .rack-room-chips { display: flex; gap: .35rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .rack-room-chips::-webkit-scrollbar { display: none; }
+    .rack-chip { flex-shrink: 0; padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: .78rem; font-weight: 600; transition: color .15s, border-color .15s, background .15s; }
+    .rack-chip:hover { color: var(--text); border-color: var(--line-strong); }
+    .rack-chip.is-visible { color: var(--highlight); border-color: color-mix(in srgb, var(--highlight) 45%, var(--line)); background: var(--highlight-bg); }
+    .rack-room-nav .icon-button:disabled { opacity: .35; cursor: default; }
+    .rack-room-topbar { overflow-x: auto; overflow-y: hidden; height: 12px; margin-bottom: .4rem; scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--muted) 55%, transparent) transparent; }
+    .rack-room-topbar > div { height: 1px; }
+    .switch-toggle { display: inline-flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 600; color: var(--text-soft); cursor: pointer; white-space: nowrap; }
+    .switch-toggle input { appearance: none; position: relative; width: 2.1rem; height: 1.2rem; margin: 0; border-radius: 999px; background: var(--line-strong); cursor: pointer; transition: background .15s; }
+    .switch-toggle input::after { content: ''; position: absolute; top: 2px; left: 2px; width: calc(1.2rem - 4px); height: calc(1.2rem - 4px); border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0004; transition: transform .15s; }
+    .switch-toggle input:checked { background: var(--highlight); }
+    .switch-toggle input:checked::after { transform: translateX(.9rem); }
+    .switch-toggle input:focus-visible { outline: 2px solid var(--highlight); outline-offset: 2px; }
+    /* Compact view: narrow racks without link lists, so more of them fit on screen. */
+    .racks-compact .rack-row > .rack-card { width: 17rem; }
+    .racks-compact .rack-link-groups, .racks-compact .rack-ports, .racks-compact .rack-item-kind, .racks-compact .rack-card .section-heading p { display: none; }
+    .racks-compact .rack-card .section-heading { padding: .7rem .9rem; }
+    .racks-compact .rack-body { padding-inline: .6rem; grid-template-columns: 1.2rem minmax(0, 1fr) 64px; }
+    .racks-compact .rack-exit span { display: none; }
+    .racks-compact .rack-item-actions .icon-button:not(:first-child) { display: none; }
     .rack-room-scroll { overflow-x: auto; padding-bottom: .4rem; scroll-snap-type: x proximity; }
     .rack-row { position: relative; display: flex; align-items: flex-start; gap: 1rem; width: max-content; min-width: 100%; }
     .rack-row.has-cables .rack-body { padding-top: var(--tray, 3.25rem); }

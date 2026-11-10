@@ -910,5 +910,10 @@
     "Compte supprimé.": "Account deleted.",
     "Supprimer le compte :name ?": "Delete the account :name?",
     "Le compte et ses jetons d’API sont supprimés. Ses entrées du journal d’audit sont conservées.": "The account and its API tokens are deleted. Its audit log entries are kept.",
-    "Le compte et ses jetons d’API sont supprimés. Il sera recréé avec le rôle Lecteur à sa prochaine connexion si l’annuaire ou le fournisseur l’autorise encore.": "The account and its API tokens are deleted. It will be created again with the Viewer role at its next sign-in if the directory or provider still allows it."
+    "Le compte et ses jetons d’API sont supprimés. Il sera recréé avec le rôle Lecteur à sa prochaine connexion si l’annuaire ou le fournisseur l’autorise encore.": "The account and its API tokens are deleted. It will be created again with the Viewer role at its next sign-in if the directory or provider still allows it.",
+    "Vue compacte": "Compact view",
+    "Baies plus étroites, sans les listes de liaisons, pour en voir davantage à l’écran.": "Narrower racks without link lists, to see more of them on screen.",
+    "Baies de :location": "Racks of :location",
+    "Baies précédentes": "Previous racks",
+    "Baies suivantes": "Next racks"
 }

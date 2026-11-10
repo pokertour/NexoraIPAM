@@ -7,6 +7,92 @@ const NS = 'http://www.w3.org/2000/svg';
  * short stub. Tracing a cable or a bundle draws the exact route on top.
  */
 document.addEventListener('alpine:init', () => {
+    /** Page state: the traced cable, jumps between racks and the compact view, remembered per viewer. */
+    window.Alpine.data('rackRooms', () => ({
+        hot: null,
+        compact: false,
+
+        init() {
+            try { this.compact = localStorage.getItem('nexora-racks-compact') === '1'; } catch {}
+        },
+
+        remember() {
+            try { localStorage.setItem('nexora-racks-compact', this.compact ? '1' : '0'); } catch {}
+        },
+
+        jump(item, key) {
+            const target = document.querySelector(`[data-item="${item}"]`);
+            if (!target) return;
+            this.hot = key;
+            target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            target.classList.remove('is-flash');
+            void target.offsetWidth;
+            target.classList.add('is-flash');
+        },
+    }));
+
+    /**
+     * Navigation of a row wider than the screen: a button per rack, arrows,
+     * and a scroll bar above the racks, kept in step with the row.
+     */
+    window.Alpine.data('rackRoomNav', () => ({
+        overflowing: false,
+        atStart: true,
+        atEnd: true,
+        visible: [],
+        mirrored: null,
+
+        init() {
+            this.scroller = this.$el.querySelector('.rack-room-scroll');
+            this.topbar = this.$el.querySelector('.rack-room-topbar');
+            if (!this.scroller) return;
+            this.update = () => {
+                const { scrollLeft, scrollWidth, clientWidth } = this.scroller;
+                this.overflowing = scrollWidth > clientWidth + 2;
+                this.atStart = scrollLeft <= 2;
+                this.atEnd = scrollLeft + clientWidth >= scrollWidth - 2;
+                this.visible = [...this.scroller.querySelectorAll('[data-rack]')]
+                    .filter(card => card.offsetLeft + card.offsetWidth > scrollLeft + 24 && card.offsetLeft < scrollLeft + clientWidth - 24)
+                    .map(card => card.dataset.rack);
+                if (this.topbar) {
+                    this.topbar.firstElementChild.style.width = `${scrollWidth}px`;
+                    if (Math.abs(this.topbar.scrollLeft - scrollLeft) > 1) {
+                        this.mirrored = scrollLeft;
+                        this.topbar.scrollLeft = scrollLeft;
+                    }
+                }
+            };
+            this.scroller.addEventListener('scroll', this.update, { passive: true });
+            // Only a scroll made by the person on the top bar drives the row:
+            // echoes of the row's own scroll must not pull it back mid-animation.
+            this.topbar?.addEventListener('scroll', () => {
+                const left = this.topbar.scrollLeft;
+                if (this.mirrored !== null && Math.abs(left - this.mirrored) <= 1) return;
+                this.mirrored = null;
+                if (Math.abs(this.scroller.scrollLeft - left) > 1) this.scroller.scrollLeft = left;
+            }, { passive: true });
+            this.observer = new ResizeObserver(() => this.update());
+            this.observer.observe(this.scroller);
+            const row = this.scroller.firstElementChild;
+            if (row) this.observer.observe(row);
+            this.update();
+        },
+
+        destroy() {
+            this.observer?.disconnect();
+        },
+
+        go(rack) {
+            const card = this.scroller.querySelector(`[data-rack="${rack}"]`);
+            if (card) this.scroller.scrollTo({ left: Math.max(0, card.offsetLeft - 12), behavior: 'smooth' });
+        },
+
+        step(direction) {
+            const card = this.scroller.querySelector('[data-rack]');
+            this.scroller.scrollBy({ left: direction * ((card?.offsetWidth ?? 300) + 16), behavior: 'smooth' });
+        },
+    }));
+
     window.Alpine.data('rackRoom', () => ({
         frame: null,
         resize: null,
