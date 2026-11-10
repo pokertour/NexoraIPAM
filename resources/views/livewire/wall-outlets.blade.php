@@ -8,6 +8,7 @@
             </div>
         @endcan
     </div>
+    <x-page-tabs current="outlets"/>
 
     <section class="card">
         <div class="table-toolbar">

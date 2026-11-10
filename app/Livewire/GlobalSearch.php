@@ -13,6 +13,7 @@ use App\Models\Vlan;
 use App\Models\WallOutlet;
 use App\Support\IpNetwork;
 use App\Support\MacAddress;
+use App\Support\Navigation;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -36,7 +37,7 @@ class GlobalSearch extends Component
         $like = '%'.$term.'%';
         $mac = MacAddress::normalize($term);
         $ip = IpNetwork::address($term);
-        $groups = [];
+        $groups = ['Pages' => array_slice(Navigation::search($term), 0, self::LIMIT)];
 
         $subnets = Subnet::with('location.parent.parent')
             ->where(fn (Builder $query) => $query->whereLike('name', $like)->orWhereLike('cidr', $like)->orWhereLike('description', $like)

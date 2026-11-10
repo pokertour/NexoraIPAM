@@ -8,5 +8,8 @@
         <a href="{{ route('profile') }}" class="nav-link">
             <x-icon name="accounts" class="size-4"/> {{ __('Mon profil') }}
         </a>
+        <a href="{{ route('about') }}" wire:navigate class="nav-link">
+            <x-icon name="info" class="size-4"/> {{ __('À propos') }}
+        </a>
     </div>
 </details>

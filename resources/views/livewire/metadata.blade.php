@@ -2,6 +2,7 @@
     <div class="page-heading">
         <div><p class="eyebrow">{{ __('ADMINISTRATION') }}</p><h1 class="page-title mt-2">{{ __('Étiquettes et champs') }}</h1><p class="muted mt-2">{{ __('Classez l’inventaire avec des étiquettes et ajoutez vos propres champs aux sous-réseaux, adresses et VLAN.') }}</p></div>
     </div>
+    <x-page-tabs current="metadata"/>
 
     <div class="settings-grid">
         <section class="card">

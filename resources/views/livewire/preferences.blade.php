@@ -2,6 +2,7 @@
     <div class="page-heading">
         <div><p class="eyebrow">{{ __('ADMINISTRATION') }}</p><h1 class="page-title mt-2">{{ __('Paramètres') }}</h1><p class="muted mt-2">{{ __('Configurez les méthodes de connexion et l’envoi d’e-mails.') }}</p></div>
     </div>
+    <x-page-tabs current="preferences"/>
     <div class="settings-grid">
         <form wire:submit="save('local')" class="card settings-card">
             <div><h2>{{ __('Authentification interne') }}</h2><p>{{ __('Le compte d’installation garde un accès local de secours.') }}</p></div>

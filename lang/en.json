@@ -940,5 +940,13 @@
     "Trouver un équipement…": "Find a device…",
     "Voisins directs": "Direct neighbours",
     "Zoom": "Zoom",
-    "Zoomer": "Zoom in"
+    "Zoomer": "Zoom in",
+    "Adressage": "Addressing",
+    "Infrastructure": "Infrastructure",
+    "Diagnostic": "Diagnostics",
+    "Connexion et e-mails": "Sign-in and e-mail",
+    "Réduire ou agrandir le menu": "Collapse or expand the menu",
+    "Sections de la page": "Page sections",
+    "À propos de NexoraIPAM :version": "About NexoraIPAM :version",
+    "Pages": "Pages"
 }
