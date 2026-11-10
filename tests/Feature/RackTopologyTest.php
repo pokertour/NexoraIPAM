@@ -286,6 +286,43 @@ class RackTopologyTest extends TestCase
         $this->assertSame(1, $without->viewData('nodes')[$core->id]['level'], 'Without an edge, the best connected device leads.');
     }
 
+    public function test_branches_are_drawn_as_trees_and_many_leaves_wrap_under_their_parent(): void
+    {
+        $this->withoutVite();
+        $paris = Location::factory()->create(['name' => 'Paris']);
+        $lyon = Location::factory()->create(['name' => 'Lyon']);
+        $core = NetworkDevice::factory()->create(['name' => 'core', 'sys_name' => 'core', 'role' => 'core', 'location_id' => $paris->id]);
+        $distributions = [];
+        foreach (['dist-a', 'dist-b'] as $index => $name) {
+            $distributions[$name] = NetworkDevice::factory()->create(['name' => $name, 'sys_name' => $name, 'role' => 'distribution', 'location_id' => $paris->id]);
+            $this->port($distributions[$name], 1, 'up', ['neighbor_name' => 'core', 'neighbor_port' => 'ether'.($index + 1)]);
+        }
+        $access = [];
+        foreach (range(1, 10) as $number) {
+            $parent = $number <= 8 ? 'dist-a' : 'dist-b';
+            $access[$number] = NetworkDevice::factory()->create(['name' => sprintf('acc-%02d', $number), 'role' => 'access', 'location_id' => $number === 10 ? $lyon->id : $paris->id]);
+            $this->port($access[$number], 1, 'ge1', ['neighbor_name' => $parent, 'neighbor_port' => 'p'.$number]);
+        }
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+
+        $view = Livewire::test(NetworkTopology::class);
+        $nodes = $view->viewData('nodes');
+        $underA = collect(range(1, 8))->map(fn (int $number): array => $nodes[$access[$number]->id]);
+        $this->assertSame(NetworkTopology::WRAP, $underA->where('y', $underA->min('y'))->count(), 'Leaves wrap after WRAP columns.');
+        $this->assertSame(2, $underA->pluck('y')->unique()->count());
+        $this->assertTrue($nodes[$distributions['dist-a']->id]['x'] > $underA->min('x') && $nodes[$distributions['dist-a']->id]['x'] < $underA->max('x'), 'A parent sits above its leaves.');
+        $this->assertGreaterThan($underA->max('x'), $nodes[$access[9]->id]['x'], 'Each branch keeps its own columns.');
+        $this->assertSame(4, $nodes[$access[1]->id]['level']);
+        $this->assertLessThan(10 * 210, $view->viewData('width'), 'Wrapping keeps the drawing narrower than one row per layer.');
+        $view->assertSeeHtml('x-data="topologyView(')->assertSeeHtml('@click="select($event, '.$core->id.')"')->assertSee('Tout afficher');
+
+        $filtered = Livewire::test(NetworkTopology::class)->set('location', (string) $paris->id);
+        $this->assertFalse($filtered->viewData('nodes')->has($access[10]->id));
+        $this->assertTrue($filtered->viewData('nodes')->has($access[9]->id));
+        $this->assertSame(11, $filtered->viewData('links')->count(), 'Links to devices of other locations are left out.');
+        $this->assertSame(12, $view->viewData('links')->count());
+    }
+
     /** @param array<string, mixed> $attributes */
     private function port(NetworkDevice $device, int $index, string $name, array $attributes = []): DevicePort
     {

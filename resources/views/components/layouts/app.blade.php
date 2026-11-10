@@ -1,5 +1,7 @@
 @props(['title' => __('Vue d’ensemble'), 'standalone' => false])
-@php($workspace = auth()->check() && ! $standalone)
+@php
+    $workspace = auth()->check() && ! $standalone;
+@endphp
 <!doctype html>
 <html lang="{{ app()->getLocale() }}">
 <head>
@@ -30,6 +32,20 @@
             },
         };
         window.NexoraTheme.apply();
+        window.NexoraSidebar ??= {
+            apply() {
+                let narrow = false;
+                try { narrow = localStorage.getItem('nexora-sidebar') === 'narrow'; } catch {}
+                if (narrow) document.documentElement.dataset.sidebar = 'narrow';
+                else delete document.documentElement.dataset.sidebar;
+            },
+            toggle() {
+                const narrow = document.documentElement.dataset.sidebar !== 'narrow';
+                try { localStorage.setItem('nexora-sidebar', narrow ? 'narrow' : 'wide'); } catch {}
+                this.apply();
+            },
+        };
+        window.NexoraSidebar.apply();
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -37,32 +53,33 @@
 <body>
     <div @class(['workspace' => $workspace, 'guest-workspace' => ! $workspace]) x-data="{ menu: false }" @keydown.escape.window="menu = false">
         @if ($workspace)
+            @php
+                $activeAlerts = \App\Models\Alert::active()->count();
+            @endphp
             <aside class="sidebar" :class="{ 'sidebar-open': menu }">
-                <a href="{{ route('dashboard') }}" wire:navigate class="sidebar-brand" aria-label="{{ __('NexoraIPAM, accueil') }}"><x-logo/></a>
+                <div class="sidebar-top">
+                    <a href="{{ route('dashboard') }}" wire:navigate class="sidebar-brand" aria-label="{{ __('NexoraIPAM, accueil') }}"><x-logo/><span class="sidebar-mark" aria-hidden="true"><img class="brand-light" src="{{ asset('brand/nexora-icon-light.svg') }}" alt=""><img class="brand-dark" src="{{ asset('brand/nexora-icon-dark.svg') }}" alt=""></span></a>
+                    <button type="button" class="icon-button sidebar-collapse" onclick="window.NexoraSidebar.toggle()" aria-label="{{ __('Réduire ou agrandir le menu') }}" title="{{ __('Réduire ou agrandir le menu') }}"><x-icon name="chevron" class="size-4"/></button>
+                </div>
                 <nav aria-label="{{ __('Navigation principale') }}">
-                    <p class="nav-label">{{ __('Espace réseau') }}</p>
-                    <x-nav-link name="dashboard" icon="dashboard">{{ __('Vue d’ensemble') }}</x-nav-link>
-                    <x-nav-link name="locations" icon="locations">{{ __('Emplacements') }}</x-nav-link>
-                    <x-nav-link name="subnets" icon="subnets">{{ __('Sous-réseaux') }}</x-nav-link>
-                    <x-nav-link name="addresses" icon="addresses">{{ __('Adresses IP') }}</x-nav-link>
-                    <x-nav-link name="vlans" icon="vlans">VLAN</x-nav-link>
-                    <x-nav-link name="devices" icon="switch">{{ __('Équipements') }}</x-nav-link>
-                    <x-nav-link name="racks" icon="rack">{{ __('Baies') }}</x-nav-link>
-                    <x-nav-link name="outlets" icon="outlet">{{ __('Prises murales') }}</x-nav-link>
-                    <x-nav-link name="patch-plan" icon="patch">{{ __('Plan de brassage') }}</x-nav-link>
-                    <x-nav-link name="topology" icon="topology">{{ __('Topologie') }}</x-nav-link>
-                    <x-nav-link name="alerts" icon="bell">{{ __('Alertes') }}</x-nav-link>
-                    <x-nav-link name="scans" icon="history">{{ __('Historique des scans') }}</x-nav-link>
-                    <x-nav-link name="tools" icon="tools">{{ __('Outils') }}</x-nav-link>
-                    <x-nav-link name="about" icon="info">{{ __('À propos') }}</x-nav-link>
-                    @can('administer')
-                        <p class="nav-label mt-6">{{ __('Administration') }}</p>
-                        <x-nav-link name="accounts" icon="accounts">{{ __('Utilisateurs') }}</x-nav-link>
-                        <x-nav-link name="metadata" icon="tag">{{ __('Étiquettes et champs') }}</x-nav-link>
-                        <x-nav-link name="api-tokens" icon="key">{{ __('Jetons d’API') }}</x-nav-link>
-                        <x-nav-link name="audit" icon="audit">{{ __('Journal d’audit') }}</x-nav-link>
-                        <x-nav-link name="preferences" icon="preferences">{{ __('Paramètres') }}</x-nav-link>
-                    @endcan
+                    @foreach (\App\Support\Navigation::visibleGroups() as $group)
+                        @php
+                            $groupActive = collect($group['items'])->contains(fn (array $item): bool => request()->routeIs(...collect($item['routes'])->flatMap(fn (string $route): array => [$route, $route.'.*'])->all()));
+                        @endphp
+                        <div class="nav-group" x-data="{ open: $persist({{ $group['folded'] ? 'false' : 'true' }}).as('nexora-nav-{{ $group['key'] }}') }">
+                            @if ($group['label'])
+                                <button type="button" class="nav-label nav-group-toggle" @click="open = ! open" :aria-expanded="(open || {{ $groupActive ? 'true' : 'false' }}).toString()" aria-controls="nav-group-{{ $group['key'] }}" @if ($groupActive) disabled @endif>
+                                    <span>{{ __($group['label']) }}</span>
+                                    @unless ($groupActive)<x-icon name="chevron" class="nav-group-chevron size-3"/>@endunless
+                                </button>
+                            @endif
+                            <div class="nav-group-items" id="nav-group-{{ $group['key'] }}" x-show="open || {{ $groupActive ? 'true' : 'false' }}" @if ($group['folded'] && ! $groupActive) x-cloak @endif>
+                                @foreach ($group['items'] as $item)
+                                    <x-nav-link :name="$item['route']" :icon="$item['icon']" :routes="$item['routes']" :badge="$item['route'] === 'alerts' ? $activeAlerts : null">{{ __($item['label']) }}</x-nav-link>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
                 </nav>
                 <div class="sidebar-footer">
                     <a href="{{ route('profile') }}" class="sidebar-account" aria-label="{{ __('Ouvrir mon profil') }}">
@@ -88,12 +105,11 @@
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
                     <livewire:global-search/>
-                    @php($activeAlerts = \App\Models\Alert::active()->count())
                     <a href="{{ route('alerts') }}" wire:navigate class="icon-button bell-button" aria-label="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}" title="{{ trans_choice(':count alerte active|:count alertes actives', $activeAlerts) }}">
                         <x-icon name="bell" class="size-[18px]"/>
                         @if ($activeAlerts)<span class="bell-count">{{ $activeAlerts > 99 ? '99+' : $activeAlerts }}</span>@endif
                     </a>
-                    <span class="topbar-status" title="NexoraIPAM {{ config('app.version') }}"><span class="pulse-dot"></span><span class="font-mono">{{ config('app.version') }}</span></span>
+                    <a href="{{ route('about') }}" wire:navigate class="topbar-status" title="{{ __('À propos de NexoraIPAM :version', ['version' => config('app.version')]) }}"><span class="pulse-dot"></span><span class="font-mono">{{ config('app.version') }}</span></a>
                     <x-language-select/>
                     <x-account-menu/>
                     <x-theme-switch/>

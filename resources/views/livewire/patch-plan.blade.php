@@ -2,10 +2,10 @@
     <div class="page-heading">
         <div><p class="eyebrow">{{ __('INFRASTRUCTURE') }}</p><h1 class="page-title mt-2">{{ __('Plan de brassage') }}</h1><p class="muted mt-2">{{ __('Les ports de chaque switch, colorés selon leur VLAN natif, avec la prise murale brassée sur chacun.') }}</p></div>
         <div class="flex flex-wrap gap-2 print-hidden">
-            <a class="button button-secondary" href="{{ route('outlets') }}" wire:navigate><x-icon name="outlet" class="size-4"/> {{ __('Prises murales') }}</a>
             <x-button variant="secondary" icon="print" x-on:click="window.print()">{{ __('Imprimer') }}</x-button>
         </div>
     </div>
+    <x-page-tabs current="patch-plan"/>
 
     <div class="table-toolbar card mb-4 print-hidden">
         @if ($locations->isNotEmpty())

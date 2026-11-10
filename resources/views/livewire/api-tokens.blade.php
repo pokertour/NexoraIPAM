@@ -3,6 +3,7 @@
         <div><p class="eyebrow">{{ __('ADMINISTRATION') }}</p><h1 class="page-title mt-2">{{ __('Jetons d’API') }}</h1><p class="muted mt-2">{{ __('Créez les jetons des comptes autorisés à utiliser l’API, révoquez-les et suivez ce que chacun a modifié.') }}</p></div>
         <x-button icon="key" wire:click="open">{{ __('Créer un jeton') }}</x-button>
     </div>
+    <x-page-tabs current="api-tokens"/>
 
     @if ($plainToken)
         <section class="card settings-card mb-4" data-profile-secret wire:key="plain-token">
