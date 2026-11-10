@@ -1,7 +1,7 @@
 @php($used = $rack->items->sum('height'))
 @php($rackLinks = \App\Livewire\Racks::rackLinks($rack, $cables))
 @php($rackCables = $rack->items->flatMap(fn ($item) => \App\Support\RackCabling::of($item, $cables))->unique('key')->values())
-<section class="card rack-card" wire:key="rack-{{ $rack->id }}">
+<section class="card rack-card" data-rack="{{ $rack->id }}" wire:key="rack-{{ $rack->id }}">
     <div class="section-heading">
         <div class="min-w-0">
             <h2 class="truncate">{{ $rack->name }}</h2>
@@ -73,8 +73,16 @@
         </svg>
     </div>
     @if ($rackCables->isNotEmpty())
-        <ul class="rack-link-list">
-            @foreach ($rackCables->sortBy(fn ($cable) => ($cable['far']['item']?->rack_id === $rack->id ? '0' : '1').($cable['far']['item']?->rack->name ?? '~')) as $cable)
+        @php($groups = $rackCables->groupBy(fn ($cable) => $cable['far']['item']?->rack_id === $rack->id ? '' : ($cable['far']['item']?->rack->name ?? '~'))->sortKeys())
+        <div class="rack-link-groups">
+            @foreach ($groups as $destination => $groupCables)
+                @php($folded = $destination !== '' && $groupCables->count() > 3)
+                @if ($folded)
+                    <details class="rack-link-group" wire:key="group-{{ $rack->id }}-{{ md5($destination) }}">
+                        <summary><x-icon name="link" class="size-3.5"/> {{ $destination === '~' ? __('Hors baie') : '→ '.$destination }} <span class="count-pill">{{ $groupCables->count() }}</span></summary>
+                @endif
+                <ul class="rack-link-list">
+                    @foreach ($groupCables as $cable)
                 @php($inside = $cable['far']['item']?->rack_id === $rack->id)
                 <li wire:key="cable-{{ $rack->id }}-{{ $cable['key'] }}" @mouseenter="hot = '{{ $cable['key'] }}'" @mouseleave="hot = null" :class="{ 'is-hot': hot === '{{ $cable['key'] }}' }">
                     <span class="link-source" data-source="{{ $cable['source'] }}">{{ ['lldp' => 'LLDP', 'mac' => 'MAC', 'manual' => __('MANUEL')][$cable['source']] }}</span>
@@ -112,7 +120,12 @@
                         @endcan
                     @endif
                 </li>
+                    @endforeach
+                </ul>
+                @if ($folded)
+                    </details>
+                @endif
             @endforeach
-        </ul>
+        </div>
     @endif
 </section>

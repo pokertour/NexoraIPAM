@@ -395,13 +395,25 @@
     .rack-room-head span { font-size: .8rem; }
     .rack-room-scroll { overflow-x: auto; padding-bottom: .4rem; scroll-snap-type: x proximity; }
     .rack-row { position: relative; display: flex; align-items: flex-start; gap: 1rem; width: max-content; min-width: 100%; }
-    .rack-row.has-cables .rack-body { padding-top: 3.25rem; }
+    .rack-row.has-cables .rack-body { padding-top: var(--tray, 3.25rem); }
     .rack-row > .rack-card { width: min(24rem, calc(100vw - 3rem)); flex-shrink: 0; scroll-snap-align: start; }
-    .rack-room-cables { position: absolute; inset: 0 auto auto 0; z-index: 2; overflow: visible; pointer-events: none; }
-    .rack-room-cables path { fill: none; stroke-width: 2; stroke: #22d3ee; stroke-linejoin: round; filter: drop-shadow(0 0 3px #22d3ee88); pointer-events: stroke; cursor: pointer; transition: opacity .15s, stroke-width .15s; }
-    .rack-room-cables path[data-source=mac] { stroke: #a78bfa; stroke-dasharray: 5 4; filter: drop-shadow(0 0 3px #a78bfa88); }
-    .rack-room-cables path[data-source=manual] { stroke: #f59e0b; stroke-dasharray: 2 4; stroke-linecap: round; filter: drop-shadow(0 0 3px #f59e0b88); }
-    .rack-row.is-tracing .rack-room-cables path:not(.is-hot) { opacity: .2; }
+    .rack-room-cables { position: absolute; inset: 0 auto auto 0; z-index: 2; overflow: hidden; pointer-events: none; }
+    .rack-room-cables g { --cable: #22d3ee; pointer-events: stroke; cursor: pointer; transition: opacity .15s; }
+    .rack-room-cables g[data-source=mac] { --cable: #a78bfa; }
+    .rack-room-cables g[data-source=manual] { --cable: #f59e0b; }
+    .rack-room-cables path { fill: none; stroke: var(--cable, #22d3ee); stroke-linejoin: round; }
+    .rack-room-cables .cable-trunk { stroke-width: 3.5; opacity: .85; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cable) 55%, transparent)); }
+    .rack-room-cables .cable-stub { stroke-width: 1.5; opacity: .55; }
+    .rack-room-cables g[data-source=mac] .cable-trunk { stroke-dasharray: 6 4; }
+    .rack-room-cables g[data-source=manual] .cable-trunk { stroke-dasharray: 2 4; stroke-linecap: round; }
+    .rack-room-cables .cable-badge { pointer-events: all; }
+    .rack-room-cables .cable-badge rect { fill: var(--surface); stroke: var(--cable); stroke-width: 1.5; }
+    .rack-room-cables .cable-badge text { fill: var(--text); font-size: 10px; font-weight: 700; text-anchor: middle; }
+    .rack-room-cables .cable-detail { stroke: #f8fafc; stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--cable, #22d3ee)) drop-shadow(0 0 2px var(--cable, #22d3ee)); }
+    [data-theme=light] .rack-room-cables .cable-detail { stroke: #0f172a; }
+    .rack-room-cables .cable-detail[data-source=lldp] { --cable: #22d3ee; } .rack-room-cables .cable-detail[data-source=mac] { --cable: #a78bfa; } .rack-room-cables .cable-detail[data-source=manual] { --cable: #f59e0b; }
+    .rack-row.is-tracing .rack-room-cables g { opacity: .25; }
+    .rack-item.is-bundle-hot { outline: 2px solid #22d3ee; outline-offset: 1px; z-index: 1; }
     .rack-room-cables path.is-hot, .rack-links path.is-hot { stroke-width: 3.5; opacity: 1; }
     .rack-item.is-hot { outline: 2px solid #22d3ee; outline-offset: 1px; z-index: 1; }
     .rack-item.is-flash { animation: rack-flash 1.6s ease-out; }
@@ -412,6 +424,15 @@
     .rack-exit[data-source=manual] { background: #f59e0b26; color: #fcd34d; }
     .rack-exit:hover { filter: brightness(1.25); }
     .rack-item:hover .rack-exit + .rack-item-actions { margin-left: .1rem; }
+    .rack-link-groups { border-top: 1px solid var(--line); }
+    .rack-link-groups > .rack-link-list, .rack-link-group > .rack-link-list { border-top: 0; }
+    .rack-link-groups > .rack-link-list:empty { display: none; }
+    .rack-link-group { border-top: 1px solid var(--line); }
+    .rack-link-group summary { display: flex; align-items: center; gap: .45rem; padding: .7rem 1.1rem; cursor: pointer; font-size: .8rem; font-weight: 650; list-style: none; }
+    .rack-link-group summary::-webkit-details-marker { display: none; }
+    .rack-link-group summary::after { content: ''; width: .45rem; height: .45rem; margin-left: auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+    .rack-link-group[open] summary::after { transform: rotate(225deg); }
+    .rack-link-group > .rack-link-list { padding-top: 0; }
     .rack-link-list li { display: flex; align-items: center; gap: .4rem; padding: .25rem .35rem; border-radius: .4rem; transition: background .12s; }
     .rack-link-list li.is-hot { background: var(--surface-hover); }
     .rack-link-ends { min-width: 0; flex: 1; }
