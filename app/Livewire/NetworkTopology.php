@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\CableLink;
 use App\Models\DevicePort;
+use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\RackItem;
 use App\Support\Topology;
@@ -12,10 +13,14 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class NetworkTopology extends Component
 {
+    /** Leaves of one parent drawn side by side before wrapping to a new sub-row. */
+    public const WRAP = 6;
+
     /** @var array{a: int, a_port: ?string, b: int, b_port: ?string}|null */
     #[Locked]
     public ?array $ends = null;
@@ -24,6 +29,9 @@ class NetworkTopology extends Component
     public ?int $cableId = null;
 
     public array $form = [];
+
+    #[Url(except: '')]
+    public string $location = '';
 
     /**
      * Opens the medium of a link: the documented cable when there is one,
@@ -86,12 +94,16 @@ class NetworkTopology extends Component
 
     public function render(Topology $topology): View
     {
-        $devices = NetworkDevice::with('location')->orderBy('name')->get();
-        $links = $topology->links();
+        $devices = NetworkDevice::with('location')
+            ->when(ctype_digit($this->location), fn ($query) => $query->whereIn('location_id', Location::findOrFail($this->location)->descendantsAndSelf()))
+            ->orderBy('name')->get();
+        $shown = array_flip($devices->modelKeys());
+        $links = $topology->links()->filter(fn (array $link): bool => isset($shown[$link['a']->id], $shown[$link['b']->id]))->values();
         $wanPorts = DevicePort::where('wan', true)->whereIn('network_device_id', $devices->modelKeys())->orderBy('name')->get();
 
         return view('livewire.network-topology', self::layout($devices, $links, $wanPorts) + [
             'links' => $links,
+            'locations' => Location::with('parent.parent')->orderBy('name')->get(),
         ])->layout('components.layouts.app', ['title' => __('Topologie')]);
     }
 
@@ -159,41 +171,108 @@ class NetworkTopology extends Component
 
         $column = 210;
         $rowHeight = 135;
-        $widest = max(1, count($isolated), ...array_map('count', $levels ?: [[]]));
-        $width = max(900, $widest * $column + 60);
+        $subRow = 72;
         $top = $wanPorts->isNotEmpty() ? 175 : 70;
-        $placed = [];
+
+        // Each device hangs from its neighbour in the closest layer above, so a
+        // branch of the network is drawn as a tree under its uplink.
+        $levelOf = [];
+        foreach ($levels as $level => $devicesOfLevel) {
+            foreach ($devicesOfLevel as $device) {
+                $levelOf[$device->id] = $level;
+            }
+        }
+        $names = $devices->pluck('name', 'id')->all();
+        $children = [];
+        $roots = [];
+        foreach ($levels as $level => $devicesOfLevel) {
+            foreach ($devicesOfLevel as $device) {
+                $parents = array_values(array_unique(array_filter($neighbours[$device->id] ?? [], fn (int $id): bool => isset($levelOf[$id]) && $levelOf[$id] < $level)));
+                usort($parents, fn (int $left, int $right): int => [-$levelOf[$left], $names[$left]] <=> [-$levelOf[$right], $names[$right]]);
+                if ($parents === []) {
+                    $roots[] = $device->id;
+                } else {
+                    $children[$parents[0]][] = $device->id;
+                }
+            }
+        }
+        $byName = fn (array $ids): array => collect($ids)->sortBy(fn (int $id): string => mb_strtolower($names[$id]), SORT_NATURAL)->values()->all();
+
+        // Leaves of one parent and one layer wrap into several sub-rows past WRAP.
+        $extraRows = [];
+        $widths = [];
+        $blocks = [];
+        $measure = function (int $id) use (&$measure, &$children, &$extraRows, &$widths, &$blocks, $levelOf, $column, $byName): int {
+            $kids = $byName($children[$id] ?? []);
+            $branches = array_values(array_filter($kids, fn (int $kid): bool => isset($children[$kid])));
+            $leaves = array_values(array_filter($kids, fn (int $kid): bool => ! isset($children[$kid])));
+            $blocks[$id] = array_map(fn (int $branch): array => ['branch' => $branch], $branches);
+            $total = 0;
+            foreach ($branches as $branch) {
+                $total += $measure($branch);
+            }
+            foreach (collect($leaves)->groupBy(fn (int $leaf): int => $levelOf[$leaf])->sortKeys() as $level => $group) {
+                $columns = min(self::WRAP, $group->count());
+                $rows = (int) ceil($group->count() / self::WRAP);
+                $extraRows[$level] = max($extraRows[$level] ?? 0, $rows - 1);
+                $blocks[$id][] = ['leaves' => $group->values()->all(), 'columns' => $columns];
+                $total += $columns * $column;
+            }
+
+            return $widths[$id] = max($column, $total);
+        };
+        $roots = collect($roots)->sortBy(fn (int $id): string => $levelOf[$id].' '.mb_strtolower($names[$id]), SORT_NATURAL)->values()->all();
+        $treeWidth = array_sum(array_map($measure, $roots));
+
+        $levelY = [];
+        $y = $top;
+        foreach (array_keys($levels) as $level) {
+            $levelY[$level] = $y;
+            $y += $rowHeight + ($extraRows[$level] ?? 0) * $subRow;
+        }
+
+        $isolatedColumns = min(self::WRAP + 2, count($isolated));
+        $width = max(900, $treeWidth + 60, $isolatedColumns * $column + 60);
         $nodes = collect();
+        $put = function (int $id, int $x, int $y) use ($nodes, $devices, $levelOf): void {
+            $nodes->put($id, ['device' => $devices->firstWhere('id', $id), 'x' => $x, 'y' => $y, 'level' => $levelOf[$id] ?? 0]);
+        };
+        $place = function (int $id, float $left) use (&$place, &$blocks, &$widths, $put, $levelOf, $levelY, $column, $subRow): void {
+            $put($id, (int) round($left + $widths[$id] / 2), $levelY[$levelOf[$id]]);
+            $used = array_sum(array_map(fn (array $block): int => isset($block['branch']) ? $widths[$block['branch']] : $block['columns'] * $column, $blocks[$id]));
+            $cursor = $left + ($widths[$id] - $used) / 2;
+            foreach ($blocks[$id] as $block) {
+                if (isset($block['branch'])) {
+                    $place($block['branch'], $cursor);
+                    $cursor += $widths[$block['branch']];
 
-        $place = function (array $row, int $y, int $level) use (&$placed, $nodes, $neighbours, $width, $column): void {
-            // Barycentre of the neighbours already placed above, then name.
-            usort($row, function (NetworkDevice $left, NetworkDevice $right) use ($placed, $neighbours): int {
-                $centre = function (NetworkDevice $device) use ($placed, $neighbours): float {
-                    $xs = array_values(array_filter(array_map(fn (int $id): ?int => $placed[$id] ?? null, $neighbours[$device->id] ?? [])));
-
-                    return $xs === [] ? PHP_INT_MAX : array_sum($xs) / count($xs);
-                };
-
-                return [$centre($left), $left->name] <=> [$centre($right), $right->name];
-            });
-            $start = ($width - (count($row) - 1) * $column) / 2;
-            foreach ($row as $index => $device) {
-                $x = (int) round($start + $index * $column);
-                $placed[$device->id] = $x;
-                $nodes->put($device->id, ['device' => $device, 'x' => $x, 'y' => $y, 'level' => $level]);
+                    continue;
+                }
+                foreach ($block['leaves'] as $index => $leaf) {
+                    $row = intdiv($index, self::WRAP);
+                    $inRow = min(self::WRAP, count($block['leaves']) - $row * self::WRAP);
+                    $offset = ($block['columns'] - $inRow) * $column / 2;
+                    $put($leaf, (int) round($cursor + $offset + ($index % self::WRAP + .5) * $column), $levelY[$levelOf[$leaf]] + $row * $subRow);
+                }
+                $cursor += $block['columns'] * $column;
             }
         };
-
-        $y = $top;
-        foreach ($levels as $level => $devicesOfLevel) {
-            $place($devicesOfLevel, $y, $level);
-            $y += $rowHeight;
+        $cursor = ($width - $treeWidth) / 2;
+        foreach ($roots as $root) {
+            $place($root, $cursor);
+            $cursor += $widths[$root];
         }
+
         $isolatedY = null;
         if ($isolated !== []) {
             $isolatedY = $y - 30;
-            $place($isolated, $isolatedY + 60, 0);
-            $y = $isolatedY + 60 + $rowHeight;
+            $isolatedIds = $byName(array_map(fn (NetworkDevice $device): int => $device->id, $isolated));
+            foreach ($isolatedIds as $index => $id) {
+                $row = intdiv($index, $isolatedColumns);
+                $inRow = min($isolatedColumns, count($isolatedIds) - $row * $isolatedColumns);
+                $put($id, (int) round(($width - $inRow * $column) / 2 + ($index % $isolatedColumns + .5) * $column), $isolatedY + 60 + $row * $subRow);
+            }
+            $y = $isolatedY + 60 + (int) (ceil(count($isolatedIds) / $isolatedColumns) - 1) * $subRow + $rowHeight;
         }
 
         $internet = $wanPorts->isNotEmpty() ? ['x' => (int) round($width / 2), 'y' => 62] : null;

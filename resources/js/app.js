@@ -2,6 +2,7 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import './select';
 import './racks';
+import './topology';
 
 function showToast({ message, tone = 'info' }) {
     const container = document.getElementById('nexora-toasts');

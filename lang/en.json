@@ -928,5 +928,17 @@
     "Seules les prises libres sont proposées.": "Only free outlets are listed.",
     "Voir le port": "View port",
     ":count équipement|:count équipements": ":count device|:count devices",
-    ":count prise brassée|:count prises brassées": ":count patched outlet|:count patched outlets"
+    ":count prise brassée|:count prises brassées": ":count patched outlet|:count patched outlets",
+    "Aucun équipement trouvé.": "No device found.",
+    "Aucune liaison connue": "No known link",
+    "Ctrl + molette pour zoomer, glisser pour se déplacer.": "Ctrl + wheel to zoom, drag to move around.",
+    "Dézoomer": "Zoom out",
+    "Ouvrir la fiche": "Open details",
+    "Taille réelle": "Actual size",
+    "Tout afficher": "Show all",
+    "Trouver un équipement dans la topologie": "Find a device in the topology",
+    "Trouver un équipement…": "Find a device…",
+    "Voisins directs": "Direct neighbours",
+    "Zoom": "Zoom",
+    "Zoomer": "Zoom in"
 }
