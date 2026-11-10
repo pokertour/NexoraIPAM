@@ -7,6 +7,7 @@ use Database\Factories\WallOutletFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A wall outlet of a location, optionally patched to a port of a switch.
@@ -36,6 +37,24 @@ class WallOutlet extends Model
     public function devicePort(): ?DevicePort
     {
         return $this->port ? $this->device?->ports->firstWhere('name', $this->port) : null;
+    }
+
+    /**
+     * Patches an outlet to a port of a device, or unpatches the port when no
+     * outlet is given. The outlet patched there before is freed, and an
+     * outlet moved from another port leaves it.
+     */
+    public static function patch(int $deviceId, string $port, ?int $outletId): void
+    {
+        DB::transaction(function () use ($deviceId, $port, $outletId): void {
+            $current = self::where('network_device_id', $deviceId)->where('port', $port)->lockForUpdate()->first();
+            $chosen = $outletId !== null ? self::lockForUpdate()->findOrFail($outletId) : null;
+            if ($current?->is($chosen)) {
+                return;
+            }
+            $current?->update(['network_device_id' => null, 'port' => null]);
+            $chosen?->update(['network_device_id' => $deviceId, 'port' => $port]);
+        }, attempts: 3);
     }
 
     /**

@@ -915,5 +915,18 @@
     "Baies plus étroites, sans les listes de liaisons, pour en voir davantage à l’écran.": "Narrower racks without link lists, to see more of them on screen.",
     "Baies de :location": "Racks of :location",
     "Baies précédentes": "Previous racks",
-    "Baies suivantes": "Next racks"
+    "Baies suivantes": "Next racks",
+    ":patched / :total ports brassés": ":patched / :total ports patched",
+    "Ajoutez un switch dans Équipements : ses ports apparaîtront ici après la première interrogation SNMP.": "Add a switch in Devices: its ports will appear here after the first SNMP poll.",
+    "Aucun port relevé": "No ports polled yet",
+    "Aucune, port libre": "None, free port",
+    "Brassage de :port": "Patching of :port",
+    "Imprimer": "Print",
+    "Les ports de chaque switch, colorés selon leur VLAN natif, avec la prise murale brassée sur chacun.": "The ports of each switch, coloured by native VLAN, with the wall outlet patched to each one.",
+    "Légende": "Legend",
+    "Plan de brassage": "Patch plan",
+    "Seules les prises libres sont proposées.": "Only free outlets are listed.",
+    "Voir le port": "View port",
+    ":count équipement|:count équipements": ":count device|:count devices",
+    ":count prise brassée|:count prises brassées": ":count patched outlet|:count patched outlets"
 }

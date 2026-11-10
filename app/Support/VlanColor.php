@@ -50,6 +50,17 @@ final class VlanColor
         return $numbers->mapWithKeys(fn (int $number): array => [$number => self::for($number, $chosen->get($number))])->all();
     }
 
+    /** Text colour that stays readable on a VLAN colour: dark on light colours, white otherwise. */
+    public static function ink(string $color): string
+    {
+        if (! preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $color, $matches)) {
+            return '#ffffff';
+        }
+        $luminance = (0.299 * hexdec($matches[1]) + 0.587 * hexdec($matches[2]) + 0.114 * hexdec($matches[3])) / 255;
+
+        return $luminance > 0.6 ? '#111827' : '#ffffff';
+    }
+
     private static function hslToHex(float $hue, float $saturation, float $lightness): string
     {
         $chroma = (1 - abs(2 * $lightness - 1)) * $saturation;

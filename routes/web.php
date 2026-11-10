@@ -17,6 +17,7 @@ use App\Livewire\Metadata;
 use App\Livewire\NetworkDevices;
 use App\Livewire\NetworkTools;
 use App\Livewire\NetworkTopology;
+use App\Livewire\PatchPlan;
 use App\Livewire\Preferences;
 use App\Livewire\Racks;
 use App\Livewire\ScanHistory;
@@ -60,6 +61,7 @@ Route::middleware(['auth', WorkspaceAccess::class])->group(function (): void {
     Route::livewire('/devices/{device}', DeviceDetail::class)->name('devices.show');
     Route::livewire('/racks', Racks::class)->name('racks');
     Route::livewire('/outlets', WallOutlets::class)->name('outlets');
+    Route::livewire('/patch-plan', PatchPlan::class)->name('patch-plan');
     Route::livewire('/topology', NetworkTopology::class)->name('topology');
     Route::livewire('/locations', Inventory::class)->defaults('section', 'locations')->name('locations');
     Route::livewire('/subnets', Inventory::class)->defaults('section', 'subnets')->name('subnets');
