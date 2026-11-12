@@ -324,6 +324,32 @@ class RackTopologyTest extends TestCase
         $this->assertSame(12, $view->viewData('links')->count());
     }
 
+    public function test_a_switch_chained_behind_a_peer_of_its_layer_hangs_below_it(): void
+    {
+        $this->withoutVite();
+        $core = NetworkDevice::factory()->create(['name' => 'core-1', 'sys_name' => 'core-1', 'role' => 'core']);
+        $backup = NetworkDevice::factory()->create(['name' => 'core-2', 'sys_name' => 'core-2', 'role' => 'core']);
+        $first = NetworkDevice::factory()->create(['name' => 'acc-1', 'sys_name' => 'acc-1', 'role' => 'access']);
+        $second = NetworkDevice::factory()->create(['name' => 'acc-2', 'sys_name' => 'acc-2', 'role' => 'access']);
+        $third = NetworkDevice::factory()->create(['name' => 'acc-3', 'sys_name' => 'acc-3', 'role' => 'access']);
+        $ring = NetworkDevice::factory()->create(['name' => 'acc-ring', 'sys_name' => 'acc-ring', 'role' => 'access']);
+        $this->port($backup, 1, 'ether1', ['neighbor_name' => 'core-1', 'neighbor_port' => 'ether9']);
+        $this->port($first, 1, 'up', ['neighbor_name' => 'core-1', 'neighbor_port' => 'ether1']);
+        $this->port($second, 1, 'up', ['neighbor_name' => 'acc-1', 'neighbor_port' => 'ge24']);
+        $this->port($third, 1, 'up', ['neighbor_name' => 'acc-2', 'neighbor_port' => 'ge24']);
+        $this->port($ring, 1, 'up', ['neighbor_name' => 'core-1', 'neighbor_port' => 'ether2']);
+        $this->port($ring, 2, 'ge2', ['neighbor_name' => 'acc-1', 'neighbor_port' => 'ge23']);
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+
+        $nodes = Livewire::test(NetworkTopology::class)->viewData('nodes');
+        $this->assertSame([2, 2], [$nodes[$core->id]['level'], $nodes[$backup->id]['level']], 'Two linked cores stay peers.');
+        $this->assertSame($nodes[$core->id]['y'], $nodes[$backup->id]['y']);
+        $this->assertSame([4, 5, 6], [$nodes[$first->id]['level'], $nodes[$second->id]['level'], $nodes[$third->id]['level']]);
+        $this->assertTrue($nodes[$first->id]['y'] < $nodes[$second->id]['y'] && $nodes[$second->id]['y'] < $nodes[$third->id]['y'], 'A chain of access switches goes down.');
+        $this->assertSame($nodes[$first->id]['x'], $nodes[$second->id]['x'], 'A chained switch sits under the one it hangs from.');
+        $this->assertSame($nodes[$first->id]['y'], $nodes[$ring->id]['y'], 'A switch with its own uplink stays in its layer.');
+    }
+
     /** @param array<string, mixed> $attributes */
     private function port(NetworkDevice $device, int $index, string $name, array $attributes = []): DevicePort
     {
