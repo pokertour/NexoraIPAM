@@ -88,6 +88,11 @@ class NetworkDevice extends Model
         return $this->hasMany(DevicePortMac::class);
     }
 
+    public function destinations(): HasMany
+    {
+        return $this->hasMany(PortDestination::class);
+    }
+
     public function outlets(): HasMany
     {
         return $this->hasMany(WallOutlet::class);

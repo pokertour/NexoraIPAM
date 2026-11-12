@@ -14,7 +14,7 @@
             </x-select>
         @endif
         <span class="count-pill ml-auto">{{ trans_choice(':count équipement|:count équipements', $devices->count()) }}</span>
-        <span class="count-pill">{{ trans_choice(':count prise brassée|:count prises brassées', $patched) }}</span>
+        <span class="count-pill">{{ trans_choice(':count port brassé|:count ports brassés', $patched) }}</span>
     </div>
 
     @if ($devices->isEmpty())
@@ -43,6 +43,7 @@
             @foreach ($devices as $device)
                 @php
                     $deviceOutlets = $outlets->get($device->id, collect());
+                    $deviceDestinations = $destinations->get($device->id, collect());
                 @endphp
                 <section class="card patch-device" wire:key="patch-device-{{ $device->id }}">
                     <header class="patch-device-head">
@@ -56,7 +57,7 @@
                                 ])->filter()->implode(' · ') }}
                             </p>
                         </div>
-                        <span class="count-pill">{{ __(':patched / :total ports brassés', ['patched' => $deviceOutlets->count(), 'total' => $device->ports->count()]) }}</span>
+                        <span class="count-pill">{{ __(':patched / :total ports brassés', ['patched' => $deviceOutlets->count() + $deviceDestinations->count(), 'total' => $device->ports->count()]) }}</span>
                     </header>
                     <div class="patch-panel-scroll">
                         <div class="patch-panel">
@@ -65,6 +66,7 @@
                                     @foreach ($group as $port)
                                         @php
                                             $outlet = $deviceOutlets->get($port->name);
+                                            $destination = $outlet ? null : $deviceDestinations->get($port->name)?->label;
                                             $color = $port->pvid ? ($vlanColors[$port->pvid] ?? \App\Support\VlanColor::for($port->pvid)) : null;
                                             $vlanName = $port->pvid ? $vlans->get($port->pvid)?->first()?->name : null;
                                             $title = implode(' · ', array_filter([
@@ -74,6 +76,7 @@
                                                 ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$port->state()],
                                                 $port->neighbor_name,
                                                 $outlet ? __('Prise :name', ['name' => $outlet->name]) : null,
+                                                $destination ? '→ '.$destination : null,
                                             ]));
                                             $jack = new \Illuminate\View\ComponentAttributeBag(array_filter([
                                                 'class' => 'patch-jack', 'data-state' => $port->state(), 'data-trunk' => $port->isTrunk(), 'data-uplink' => (bool) $port->neighbor_name,
@@ -83,7 +86,7 @@
                                         @endphp
                                         <div class="patch-port" wire:key="patch-{{ $device->id }}-{{ $port->if_index }}" data-vlans="{{ $port->pvid }}"
                                             :class="{ 'is-dimmed': vlan !== null && $el.dataset.vlans !== String(vlan) }">
-                                            <span @class(['patch-outlet', 'is-empty' => ! $outlet])>{{ $outlet?->name }}</span>
+                                            <span @class(['patch-outlet', 'is-free' => $destination, 'is-empty' => ! $outlet && ! $destination])>{{ $outlet?->name ?? $destination }}</span>
                                             @if ($canEdit)
                                                 <button type="button" {{ $jack }} wire:click="patch({{ $device->id }}, {{ $port->if_index }})">{{ $port->shortName() }}</button>
                                             @else
@@ -103,10 +106,19 @@
     @if ($editedPort)
         <x-modal id="patch-port" :title="__('Brassage de :port', ['port' => $editedPort->name])" :description="$editing->name.($editedPort->alias ? ' · '.$editedPort->alias : '')">
             <form wire:submit="save" class="mt-6 grid gap-4">
-                <x-field name="outlet" :label="__('Prise murale')" wire:model="outlet" :hint="__('Seules les prises libres sont proposées.')">
-                    <option value="">{{ __('Aucune, port libre') }}</option>
-                    @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
-                </x-field>
+                <nav class="segmented justify-self-start" aria-label="{{ __('Brassé vers') }}">
+                    <button type="button" @class(['active' => $mode === 'outlet']) wire:click="$set('mode', 'outlet')" aria-pressed="{{ $mode === 'outlet' ? 'true' : 'false' }}"><x-icon name="outlet" class="size-3.5"/> {{ __('Prise murale') }}</button>
+                    <button type="button" @class(['active' => $mode === 'text']) wire:click="$set('mode', 'text')" aria-pressed="{{ $mode === 'text' ? 'true' : 'false' }}"><x-icon name="edit" class="size-3.5"/> {{ __('Autre destination') }}</button>
+                </nav>
+                @if ($mode === 'text')
+                    <x-field name="destination" :label="__('Destination')" wire:model="destination" maxlength="{{ \App\Models\PortDestination::MAX_LENGTH }}" :placeholder="__('ex. Imprimante accueil, borne Wi-Fi, baie B panneau 2')"
+                        :hint="__('Texte libre, pour un port qui ne va pas sur une prise murale. Laissez vide pour libérer le port.')" wire:key="destination-input" autofocus/>
+                @else
+                    <x-field name="outlet" :label="__('Prise murale')" wire:model="outlet" :hint="__('Seules les prises libres sont proposées.')" wire:key="outlet-select">
+                        <option value="">{{ __('Aucune, port libre') }}</option>
+                        @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
+                    </x-field>
+                @endif
                 <div class="dialog-actions">
                     <a class="link-button mr-auto" href="{{ route('devices.show', ['device' => $editing->id, 'port' => $editedPort->if_index]) }}" wire:navigate>{{ __('Voir le port') }}</a>
                     <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>

@@ -7,6 +7,7 @@ use App\Models\DevicePortMac;
 use App\Models\IpAddress;
 use App\Models\Location;
 use App\Models\NetworkDevice;
+use App\Models\PortDestination;
 use App\Models\Subnet;
 use App\Models\Tag;
 use App\Models\Vlan;
@@ -111,6 +112,19 @@ class GlobalSearch extends Component
                         ? route('devices.show', ['device' => $outlet->network_device_id] + ($port ? ['port' => $port->if_index] : []))
                         : route('outlets', ['search' => $outlet->name]),
                     'icon' => 'outlet',
+                ];
+            })->all();
+
+        $groups['Destinations de ports'] = PortDestination::with(['device.ports' => fn ($query) => $query->where('physical', true)])
+            ->whereLike('label', $like)->orderBy('label')->limit(self::LIMIT)->get()
+            ->map(function (PortDestination $destination): array {
+                $port = $destination->device->ports->firstWhere('name', $destination->port);
+
+                return [
+                    'label' => $destination->label,
+                    'detail' => $destination->device->name.' · '.$destination->port,
+                    'url' => route('devices.show', ['device' => $destination->network_device_id] + ($port ? ['port' => $port->if_index] : [])),
+                    'icon' => 'link',
                 ];
             })->all();
 

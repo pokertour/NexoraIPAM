@@ -114,14 +114,19 @@
                         @endcan
                     </dd></div>
                     @if ($port->physical)
-                        <div><dt>{{ __('Prise murale') }}</dt><dd>
+                        <div><dt>{{ __('Brassage') }}</dt><dd>
                             @can('edit-inventory')
-                                <x-select name="outlet" wire:model.live="outlet" class="port-outlet" aria-label="{{ __('Prise murale brassée sur ce port') }}" wire:key="outlet-{{ $port->if_index }}">
-                                    <option value="">{{ __('Aucune') }}</option>
-                                    @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
-                                </x-select>
+                                <div class="port-patch">
+                                    <x-select name="outlet" wire:model.live="outlet" class="port-outlet" aria-label="{{ __('Prise murale brassée sur ce port') }}" wire:key="outlet-{{ $port->if_index }}">
+                                        <option value="">{{ __('Aucune prise murale') }}</option>
+                                        @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
+                                    </x-select>
+                                    <input type="text" class="input port-destination" wire:model.blur="destination" @keydown.enter.prevent="$el.blur()" maxlength="{{ \App\Models\PortDestination::MAX_LENGTH }}" wire:key="destination-{{ $port->if_index }}"
+                                        placeholder="{{ __('ou autre destination : imprimante, borne Wi-Fi…') }}" aria-label="{{ __('Autre destination de ce port, en texte libre') }}">
+                                    @error('destination')<p class="field-error">{{ $message }}</p>@enderror
+                                </div>
                             @else
-                                @if ($outlets->has($port->name))<span class="outlet-name"><x-icon name="outlet" class="size-3.5"/> {{ $outlets[$port->name]->name }}</span>@else — @endif
+                                <x-port-patch :outlet="$outlets[$port->name] ?? null" :destination="$destinations[$port->name] ?? null"/>
                             @endcan
                         </dd></div>
                     @endif
@@ -183,7 +188,7 @@
             <x-empty-state icon="switch" :title="__('Aucun port')" :text="__('Aucun port ne correspond à ces critères.')"/>
         @else
             <div class="table-scroll"><table>
-                <thead><tr><th>{{ __('Port') }}</th><th>{{ __('État') }}</th><th>{{ __('Vitesse') }}</th><th>{{ __('Connecteur') }}</th><th>VLAN</th><th>{{ __('Entrant') }}</th><th>{{ __('Sortant') }}</th><th>MAC</th><th>{{ __('Voisin LLDP') }}</th><th>{{ __('Prise') }}</th></tr></thead>
+                <thead><tr><th>{{ __('Port') }}</th><th>{{ __('État') }}</th><th>{{ __('Vitesse') }}</th><th>{{ __('Connecteur') }}</th><th>VLAN</th><th>{{ __('Entrant') }}</th><th>{{ __('Sortant') }}</th><th>MAC</th><th>{{ __('Voisin LLDP') }}</th><th>{{ __('Brassage') }}</th></tr></thead>
                 <tbody>
                     @foreach ($listed as $row)
                         <tr wire:key="row-{{ $row->if_index }}" @class(['row-selected' => $port?->is($row)])>
@@ -196,7 +201,7 @@
                             <td class="whitespace-nowrap tabular-nums">{{ \App\Models\DevicePort::rate($row->out_bps) }}</td>
                             <td class="tabular-nums">{{ $row->mac_count ?: '—' }}</td>
                             <td>{{ $row->neighbor_name ?? '—' }}@if ($row->neighbor_port)<small class="muted block font-mono">{{ $row->neighbor_port }}</small>@endif</td>
-                            <td>@if ($outlets->has($row->name))<span class="outlet-name"><x-icon name="outlet" class="size-3.5"/> {{ $outlets[$row->name]->name }}</span>@else — @endif</td>
+                            <td><x-port-patch :outlet="$outlets[$row->name] ?? null" :destination="$destinations[$row->name] ?? null"/></td>
                         </tr>
                     @endforeach
                 </tbody>

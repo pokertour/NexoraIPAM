@@ -5,11 +5,13 @@ namespace App\Livewire;
 use App\Models\DevicePort;
 use App\Models\Location;
 use App\Models\NetworkDevice;
+use App\Models\PortDestination;
 use App\Models\Vlan;
 use App\Models\WallOutlet;
 use App\Support\VlanColor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -32,8 +34,14 @@ class PatchPlan extends Component
     #[Locked]
     public ?int $ifIndex = null;
 
+    /** Where the port leads: a wall outlet, or free text for anything else. */
+    public string $mode = 'outlet';
+
     /** Outlet chosen for that port, empty to free it. */
     public string $outlet = '';
+
+    /** Free destination, such as a printer or another rack. */
+    public string $destination = '';
 
     public function patch(int $deviceId, int $ifIndex): void
     {
@@ -43,11 +51,13 @@ class PatchPlan extends Component
         $this->deviceId = $deviceId;
         $this->ifIndex = $port->if_index;
         $this->outlet = (string) (WallOutlet::where('network_device_id', $deviceId)->where('port', $port->name)->value('id') ?? '');
+        $this->destination = (string) PortDestination::where('network_device_id', $deviceId)->where('port', $port->name)->value('label');
+        $this->mode = $this->outlet === '' && $this->destination !== '' ? 'text' : 'outlet';
     }
 
     public function close(): void
     {
-        $this->reset('deviceId', 'ifIndex', 'outlet');
+        $this->reset('deviceId', 'ifIndex', 'mode', 'outlet', 'destination');
         $this->resetValidation();
     }
 
@@ -56,13 +66,22 @@ class PatchPlan extends Component
         Gate::authorize('edit-inventory');
         abort_if($this->deviceId === null || $this->ifIndex === null, 409);
         $port = $this->port($this->deviceId, $this->ifIndex);
-        $this->validate(['outlet' => ['nullable', 'integer', 'exists:wall_outlets,id']]);
+        $this->destination = trim($this->destination);
+        $this->validate([
+            'mode' => ['required', Rule::in(['outlet', 'text'])],
+            'outlet' => ['nullable', 'integer', 'exists:wall_outlets,id'],
+            'destination' => ['nullable', 'string', 'max:'.PortDestination::MAX_LENGTH],
+        ]);
+        $text = $this->mode === 'text';
+        $outletId = ! $text && ctype_digit($this->outlet) ? (int) $this->outlet : null;
 
-        WallOutlet::patch($this->deviceId, $port->name, ctype_digit($this->outlet) ? (int) $this->outlet : null);
+        PortDestination::assign($this->deviceId, $port->name, $outletId, $text ? $this->destination : null);
 
-        $this->dispatch('nexora-toast', tone: 'success', message: $this->outlet !== ''
-            ? __('Prise brassée sur :port.', ['port' => $port->name])
-            : __('Prise débrassée de :port.', ['port' => $port->name]));
+        $this->dispatch('nexora-toast', tone: 'success', message: match (true) {
+            $outletId !== null => __('Prise brassée sur :port.', ['port' => $port->name]),
+            $text && $this->destination !== '' => __('Destination de :port enregistrée.', ['port' => $port->name]),
+            default => __('Port :port libéré.', ['port' => $port->name]),
+        });
         $this->close();
     }
 
@@ -82,6 +101,8 @@ class PatchPlan extends Component
 
         $outlets = WallOutlet::whereIn('network_device_id', $devices->pluck('id'))->get()
             ->groupBy('network_device_id')->map(fn (Collection $outlets): Collection => $outlets->keyBy('port'));
+        $destinations = PortDestination::whereIn('network_device_id', $devices->pluck('id'))->get()
+            ->groupBy('network_device_id')->map(fn (Collection $destinations): Collection => $destinations->keyBy('port'));
         $ports = $devices->flatMap->ports;
         $vlanNumbers = $ports->pluck('pvid')->filter()->unique()->sort()->values();
         $editing = $this->deviceId !== null ? $devices->firstWhere('id', $this->deviceId) : null;
@@ -91,10 +112,11 @@ class PatchPlan extends Component
             'devices' => $devices,
             'groups' => $devices->mapWithKeys(fn (NetworkDevice $device): array => [$device->id => DeviceDetail::faceplate($device->ports)]),
             'outlets' => $outlets,
+            'destinations' => $destinations,
             'vlanColors' => VlanColor::map($vlanNumbers),
             'vlans' => Vlan::whereIn('number', $vlanNumbers)->get()->groupBy('number'),
             'locations' => Location::with('parent.parent')->orderBy('name')->get(),
-            'patched' => $outlets->sum(fn (Collection $outlets): int => $outlets->count()),
+            'patched' => $outlets->sum(fn (Collection $outlets): int => $outlets->count()) + $destinations->sum(fn (Collection $destinations): int => $destinations->count()),
             'editing' => $editing,
             'editedPort' => $editedPort,
             'outletChoices' => $editedPort

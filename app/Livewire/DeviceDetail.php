@@ -7,6 +7,7 @@ use App\Models\DevicePort;
 use App\Models\IpAddress;
 use App\Models\Location;
 use App\Models\NetworkDevice;
+use App\Models\PortDestination;
 use App\Models\Vlan;
 use App\Models\WallOutlet;
 use App\Support\Audit;
@@ -47,6 +48,9 @@ class DeviceDetail extends Component
     /** Wall outlet patched to the selected port, as chosen in its panel. */
     public string $outlet = '';
 
+    /** Free destination of the selected port when it does not reach an outlet. */
+    public string $destination = '';
+
     public function mount(NetworkDevice $device): void
     {
         $this->deviceId = $device->id;
@@ -68,6 +72,8 @@ class DeviceDetail extends Component
     {
         $port = $this->selectedPort();
         $this->outlet = (string) ($port ? WallOutlet::where('network_device_id', $this->deviceId)->where('port', $port->name)->value('id') : '');
+        $this->destination = (string) ($port ? PortDestination::where('network_device_id', $this->deviceId)->where('port', $port->name)->value('label') : '');
+        $this->resetValidation('destination');
     }
 
     /**
@@ -80,11 +86,39 @@ class DeviceDetail extends Component
         $port = $this->selectedPort();
         abort_unless($port?->physical, 409);
 
-        WallOutlet::patch($this->deviceId, $port->name, ctype_digit($this->outlet) ? (int) $this->outlet : null);
+        if (ctype_digit($this->outlet)) {
+            PortDestination::assign($this->deviceId, $port->name, (int) $this->outlet, null);
+            $this->destination = '';
+        } else {
+            WallOutlet::patch($this->deviceId, $port->name, null);
+        }
 
         $this->dispatch('nexora-toast', tone: 'success', message: $this->outlet !== ''
             ? __('Prise brassée sur :port.', ['port' => $port->name])
             : __('Prise débrassée de :port.', ['port' => $port->name]));
+    }
+
+    /**
+     * Records where the selected port leads when it does not reach a wall
+     * outlet; the outlet patched there, if any, is freed. Empty text clears it.
+     */
+    public function updatedDestination(): void
+    {
+        Gate::authorize('edit-inventory');
+        $port = $this->selectedPort();
+        abort_unless($port?->physical, 409);
+        $this->destination = trim($this->destination);
+        $this->validate(['destination' => ['nullable', 'string', 'max:'.PortDestination::MAX_LENGTH]]);
+
+        $outlet = $this->destination === '' ? (ctype_digit($this->outlet) ? (int) $this->outlet : null) : null;
+        PortDestination::assign($this->deviceId, $port->name, $outlet, $this->destination);
+        if ($this->destination !== '') {
+            $this->outlet = '';
+        }
+
+        $this->dispatch('nexora-toast', tone: 'success', message: $this->destination !== ''
+            ? __('Destination de :port enregistrée.', ['port' => $port->name])
+            : __('Destination de :port effacée.', ['port' => $port->name]));
     }
 
     public function openWan(int $ifIndex): void
@@ -199,9 +233,10 @@ class DeviceDetail extends Component
         $mac = MacAddress::normalize($search);
 
         $outlets = WallOutlet::where('network_device_id', $device->id)->get()->keyBy('port');
+        $destinations = PortDestination::where('network_device_id', $device->id)->pluck('label', 'port');
         $listed = $ports->filter(fn (DevicePort $port): bool => $this->logical || $port->physical)
-            ->when($search !== '', fn (Collection $ports) => $ports->filter(function (DevicePort $port) use ($search, $mac, $outlets): bool {
-                $haystack = mb_strtolower(implode(' ', [$port->name, $port->alias, $port->descr, $port->neighbor_name, $port->pvid, implode(' ', $port->tagged_vlans ?? []), $outlets[$port->name]->name ?? '']));
+            ->when($search !== '', fn (Collection $ports) => $ports->filter(function (DevicePort $port) use ($search, $mac, $outlets, $destinations): bool {
+                $haystack = mb_strtolower(implode(' ', [$port->name, $port->alias, $port->descr, $port->neighbor_name, $port->pvid, implode(' ', $port->tagged_vlans ?? []), $outlets[$port->name]->name ?? '', $destinations[$port->name] ?? '']));
 
                 return str_contains($haystack, mb_strtolower($search))
                     || ($mac !== null && $port->macs()->where('mac_address', $mac)->exists());
@@ -216,6 +251,7 @@ class DeviceDetail extends Component
         return view('livewire.device-detail', [
             'device' => $device,
             'outlets' => $outlets,
+            'destinations' => $destinations,
             'outletChoices' => $selected?->physical && Gate::allows('edit-inventory')
                 ? WallOutlet::with('location')->where(fn ($query) => $query->whereNull('network_device_id')
                     ->orWhere(fn ($query) => $query->where('network_device_id', $device->id)->where('port', $selected->name)))

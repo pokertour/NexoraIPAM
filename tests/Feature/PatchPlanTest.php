@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\DeviceDetail;
+use App\Livewire\GlobalSearch;
 use App\Livewire\PatchPlan;
 use App\Models\AuditLog;
 use App\Models\DevicePort;
 use App\Models\Location;
 use App\Models\NetworkDevice;
+use App\Models\PortDestination;
 use App\Models\User;
 use App\Models\Vlan;
 use App\Models\WallOutlet;
@@ -46,7 +49,7 @@ class PatchPlanTest extends TestCase
             ->assertDontSeeHtml('wire:click="patch(')
             ->set('location', (string) $site->id)
             ->assertSee('sw-etage1')->assertDontSee('sw-agence')
-            ->assertSee('1 prise brassée');
+            ->assertSee('1 port brassé');
     }
 
     public function test_operators_patch_an_outlet_from_the_plan_and_the_change_is_audited(): void
@@ -80,5 +83,62 @@ class PatchPlanTest extends TestCase
         $this->assertNull($free->fresh()->network_device_id);
 
         $plan->call('patch', $switch->id, 12)->set('outlet', '999999')->call('save')->assertHasErrors('outlet');
+    }
+
+    public function test_a_port_that_does_not_reach_an_outlet_gets_a_free_destination(): void
+    {
+        $this->withoutVite();
+        $switch = NetworkDevice::factory()->create(['name' => 'sw-accueil']);
+        DevicePort::create(['network_device_id' => $switch->id, 'if_index' => 7, 'name' => 'Gi1/0/7', 'physical' => true]);
+        $outlet = WallOutlet::create(['name' => 'C4', 'network_device_id' => $switch->id, 'port' => 'Gi1/0/7']);
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        $plan = Livewire::test(PatchPlan::class)->call('patch', $switch->id, 7)->assertSet('mode', 'outlet')
+            ->set('mode', 'text')->assertSee('Autre destination')
+            ->set('destination', str_repeat('x', PortDestination::MAX_LENGTH + 1))->call('save')->assertHasErrors('destination')
+            ->set('destination', '  Imprimante accueil  ')->call('save')->assertHasNoErrors()
+            ->assertDispatched('nexora-toast', tone: 'success', message: 'Destination de Gi1/0/7 enregistrée.');
+
+        $destination = PortDestination::sole();
+        $this->assertSame([$switch->id, 'Gi1/0/7', 'Imprimante accueil'], [$destination->network_device_id, $destination->port, $destination->label]);
+        $this->assertNull($outlet->fresh()->network_device_id, 'A port leads to one place: the outlet is freed.');
+        $this->assertSame('Imprimante accueil · sw-accueil Gi1/0/7', AuditLog::where('action', 'created')->where('subject_type', 'port_destination')->sole()->subject_label);
+        $plan->assertSeeHtml('patch-outlet is-free')->assertSee('Imprimante accueil')->assertSee('1 port brassé');
+
+        $plan->call('patch', $switch->id, 7)->assertSet('mode', 'text')->assertSet('destination', 'Imprimante accueil')
+            ->set('mode', 'outlet')->set('outlet', (string) $outlet->id)->call('save');
+        $this->assertSame(0, PortDestination::count());
+        $this->assertSame('Gi1/0/7', $outlet->fresh()->port);
+        $this->assertSame(1, AuditLog::where('action', 'deleted')->where('subject_type', 'port_destination')->count());
+
+        $plan->call('patch', $switch->id, 7)->set('mode', 'text')->set('destination', '')->call('save')
+            ->assertDispatched('nexora-toast', tone: 'success', message: 'Port Gi1/0/7 libéré.');
+        $this->assertNull($outlet->fresh()->network_device_id);
+        $this->assertSame(0, PortDestination::count());
+    }
+
+    public function test_the_port_panel_records_a_free_destination_and_the_search_finds_it(): void
+    {
+        $this->withoutVite();
+        $switch = NetworkDevice::factory()->create(['name' => 'sw-etage']);
+        DevicePort::create(['network_device_id' => $switch->id, 'if_index' => 3, 'name' => 'ge3', 'physical' => true]);
+        $outlet = WallOutlet::create(['name' => 'D1', 'network_device_id' => $switch->id, 'port' => 'ge3']);
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(DeviceDetail::class, ['device' => $switch])->call('select', 3)->set('destination', 'Borne Wi-Fi')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        $page = Livewire::test(DeviceDetail::class, ['device' => $switch])->call('select', 3)->assertSet('outlet', (string) $outlet->id)
+            ->set('destination', 'Borne Wi-Fi plafond')->assertSet('outlet', '')->assertSee('Borne Wi-Fi plafond');
+        $this->assertNull($outlet->fresh()->network_device_id);
+        $this->assertSame('Borne Wi-Fi plafond', PortDestination::sole()->label);
+
+        Livewire::test(GlobalSearch::class)->set('query', 'wi-fi plaf')->assertSee('Borne Wi-Fi plafond')->assertSee('sw-etage · ge3')
+            ->assertSeeHtml('href="'.route('devices.show', ['device' => $switch->id, 'port' => 3]).'"');
+
+        $page->set('outlet', (string) $outlet->id)->assertSet('destination', '');
+        $this->assertSame(0, PortDestination::count());
+        $page->set('destination', 'Baie B')->set('destination', '');
+        $this->assertSame(0, PortDestination::count());
     }
 }
