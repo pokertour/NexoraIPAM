@@ -43,6 +43,9 @@ class PatchPlan extends Component
     /** Free destination, such as a printer or another rack. */
     public string $destination = '';
 
+    /** Description of the chosen outlet, edited along with the patch. */
+    public string $note = '';
+
     public function patch(int $deviceId, int $ifIndex): void
     {
         Gate::authorize('edit-inventory');
@@ -53,11 +56,18 @@ class PatchPlan extends Component
         $this->outlet = (string) (WallOutlet::where('network_device_id', $deviceId)->where('port', $port->name)->value('id') ?? '');
         $this->destination = (string) PortDestination::where('network_device_id', $deviceId)->where('port', $port->name)->value('label');
         $this->mode = $this->outlet === '' && $this->destination !== '' ? 'text' : 'outlet';
+        $this->updatedOutlet();
+    }
+
+    /** Shows the description of the outlet just chosen, ready to edit. */
+    public function updatedOutlet(): void
+    {
+        $this->note = (string) (ctype_digit($this->outlet) ? WallOutlet::whereKey((int) $this->outlet)->value('description') : '');
     }
 
     public function close(): void
     {
-        $this->reset('deviceId', 'ifIndex', 'mode', 'outlet', 'destination');
+        $this->reset('deviceId', 'ifIndex', 'mode', 'outlet', 'destination', 'note');
         $this->resetValidation();
     }
 
@@ -67,7 +77,9 @@ class PatchPlan extends Component
         abort_if($this->deviceId === null || $this->ifIndex === null, 409);
         $port = $this->port($this->deviceId, $this->ifIndex);
         $this->destination = trim($this->destination);
+        $this->note = trim($this->note);
         $this->validate([
+            'note' => ['nullable', 'string', 'max:255'],
             'mode' => ['required', Rule::in(['outlet', 'text'])],
             'outlet' => ['nullable', 'integer', 'exists:wall_outlets,id'],
             'destination' => ['nullable', 'string', 'max:'.PortDestination::MAX_LENGTH],
@@ -76,6 +88,13 @@ class PatchPlan extends Component
         $outletId = ! $text && ctype_digit($this->outlet) ? (int) $this->outlet : null;
 
         PortDestination::assign($this->deviceId, $port->name, $outletId, $text ? $this->destination : null);
+        if ($outletId !== null) {
+            $outlet = WallOutlet::findOrFail($outletId);
+            $outlet->description = $this->note !== '' ? $this->note : null;
+            if ($outlet->isDirty('description')) {
+                $outlet->save();
+            }
+        }
 
         $this->dispatch('nexora-toast', tone: 'success', message: match (true) {
             $outletId !== null => __('Prise brassée sur :port.', ['port' => $port->name]),
@@ -99,7 +118,7 @@ class PatchPlan extends Component
             ->sortBy(fn (NetworkDevice $device): string => mb_strtolower(($device->location?->path() ?? "\u{10FFFF}").' '.$device->name), SORT_NATURAL)
             ->values();
 
-        $outlets = WallOutlet::whereIn('network_device_id', $devices->pluck('id'))->get()
+        $outlets = WallOutlet::with('location')->whereIn('network_device_id', $devices->pluck('id'))->get()
             ->groupBy('network_device_id')->map(fn (Collection $outlets): Collection => $outlets->keyBy('port'));
         $destinations = PortDestination::whereIn('network_device_id', $devices->pluck('id'))->get()
             ->groupBy('network_device_id')->map(fn (Collection $destinations): Collection => $destinations->keyBy('port'));

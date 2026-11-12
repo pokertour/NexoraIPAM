@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\DeviceDetail;
 use App\Livewire\GlobalSearch;
 use App\Livewire\PatchPlan;
+use App\Livewire\WallOutlets;
 use App\Models\AuditLog;
 use App\Models\DevicePort;
 use App\Models\Location;
@@ -140,5 +141,52 @@ class PatchPlanTest extends TestCase
         $this->assertSame(0, PortDestination::count());
         $page->set('destination', 'Baie B')->set('destination', '');
         $this->assertSame(0, PortDestination::count());
+    }
+
+    public function test_the_outlet_description_shows_on_the_plan_and_is_edited_with_the_patch(): void
+    {
+        $this->withoutVite();
+        $switch = NetworkDevice::factory()->create();
+        DevicePort::create(['network_device_id' => $switch->id, 'if_index' => 8, 'name' => 'ge8', 'physical' => true, 'pvid' => 10]);
+        DevicePort::create(['network_device_id' => $switch->id, 'if_index' => 9, 'name' => 'ge9', 'physical' => true]);
+        $outlet = WallOutlet::create(['name' => 'C8', 'description' => 'Bureau système', 'network_device_id' => $switch->id, 'port' => 'ge8']);
+        $free = WallOutlet::create(['name' => 'C9', 'description' => 'Salle de réunion']);
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(PatchPlan::class)->assertSeeHtml('data-note="data-note"')
+            ->assertSeeHtml('&quot;note&quot;:&quot;Bureau syst\\u00e8me&quot;');
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        $plan = Livewire::test(PatchPlan::class)->call('patch', $switch->id, 8)->assertSet('note', 'Bureau système')
+            ->assertSee('Description de la prise')
+            ->set('note', str_repeat('x', 256))->call('save')->assertHasErrors('note')
+            ->set('note', ' Brassée prise C8 - Baie bureau système ')->call('save')->assertHasNoErrors();
+        $this->assertSame('Brassée prise C8 - Baie bureau système', $outlet->fresh()->description);
+        $this->assertSame(['description' => ['Bureau système', 'Brassée prise C8 - Baie bureau système']],
+            AuditLog::where('action', 'updated')->where('subject_id', $outlet->id)->sole()->changes);
+
+        $plan->call('patch', $switch->id, 9)->assertSet('note', '')->set('outlet', (string) $free->id)->assertSet('note', 'Salle de réunion')
+            ->call('save');
+        $this->assertSame([$switch->id, 'ge9', 'Salle de réunion'], [$free->fresh()->network_device_id, $free->fresh()->port, $free->fresh()->description]);
+        $this->assertSame(0, AuditLog::where('action', 'updated')->where('subject_id', $free->id)->where('changes', 'like', '%description%')->count(), 'An unchanged description is not logged.');
+    }
+
+    public function test_outlet_descriptions_are_edited_in_place_from_the_list(): void
+    {
+        $this->withoutVite();
+        $outlet = WallOutlet::create(['name' => 'C8', 'description' => 'Ancien texte']);
+
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+        Livewire::test(WallOutlets::class)->assertDontSee('Ajouter une description')->call('describe', $outlet->id, 'X')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(WallOutlets::class)->assertSeeHtml('aria-label="Modifier la description de C8"')
+            ->call('describe', $outlet->id, '  Baie bureau système  ')->assertDispatched('nexora-toast', tone: 'success');
+        $this->assertSame('Baie bureau système', $outlet->fresh()->description);
+        $this->assertSame(1, AuditLog::where('action', 'updated')->where('subject_id', $outlet->id)->count());
+
+        Livewire::test(WallOutlets::class)->call('describe', $outlet->id, str_repeat('x', 256))->assertDispatched('nexora-toast', tone: 'error');
+        Livewire::test(WallOutlets::class)->call('describe', $outlet->id, '')->assertSee('Ajouter une description');
+        $this->assertNull($outlet->fresh()->description);
     }
 }

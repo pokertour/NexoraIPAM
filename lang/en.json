@@ -961,5 +961,16 @@
     ":count port brassé|:count ports brassés": ":count patched port|:count patched ports",
     "Texte libre, pour un port qui ne va pas sur une prise murale. Laissez vide pour libérer le port.": "Free text, for a port that does not lead to a wall outlet. Leave empty to free the port.",
     "Destinations de ports": "Port destinations",
-    "Destination de port": "Port destination"
+    "Destination de port": "Port destination",
+    "Ajouter une description": "Add a description",
+    "Description de la prise": "Outlet description",
+    "Description": "Description",
+    "Sans VLAN natif": "No native VLAN",
+    "ex. Brassée prise C8, baie bureau système": "e.g. Patched to outlet C8, systems office rack",
+    "La même description que dans la liste des prises murales.": "The same description as in the wall outlet list.",
+    "Description de :name": "Description of :name",
+    "La description ne doit pas dépasser 255 caractères.": "The description must not exceed 255 characters.",
+    "Port libre": "Free port",
+    "Modifier la description de :name": "Edit the description of :name",
+    "Description de la prise :name enregistrée.": "Description of outlet :name saved."
 }

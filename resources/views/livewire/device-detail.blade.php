@@ -124,6 +124,7 @@
                                     <input type="text" class="input port-destination" wire:model.blur="destination" @keydown.enter.prevent="$el.blur()" maxlength="{{ \App\Models\PortDestination::MAX_LENGTH }}" wire:key="destination-{{ $port->if_index }}"
                                         placeholder="{{ __('ou autre destination : imprimante, borne Wi-Fi…') }}" aria-label="{{ __('Autre destination de ce port, en texte libre') }}">
                                     @error('destination')<p class="field-error">{{ $message }}</p>@enderror
+                                    @if ($outlets[$port->name]?->description ?? null)<small class="muted">{{ __('Prise :name', ['name' => $outlets[$port->name]->name]) }} · {{ $outlets[$port->name]->description }}</small>@endif
                                 </div>
                             @else
                                 <x-port-patch :outlet="$outlets[$port->name] ?? null" :destination="$destinations[$port->name] ?? null"/>

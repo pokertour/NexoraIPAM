@@ -1,4 +1,4 @@
-<div x-data="{ vlan: null }">
+<div x-data="patchPlan" @scroll.window="hide()">
     <div class="page-heading">
         <div><p class="eyebrow">{{ __('INFRASTRUCTURE') }}</p><h1 class="page-title mt-2">{{ __('Plan de brassage') }}</h1><p class="muted mt-2">{{ __('Les ports de chaque switch, colorés selon leur VLAN natif, avec la prise murale brassée sur chacun.') }}</p></div>
         <div class="flex flex-wrap gap-2 print-hidden">
@@ -30,6 +30,7 @@
             <span class="patch-legend-keys">
                 <span><i class="patch-key" data-trunk></i>{{ __('Trunk') }}</span>
                 <span><i class="patch-key" data-uplink></i>{{ __('Voisin LLDP') }}</span>
+                <span><i class="patch-key" data-note></i>{{ __('Description') }}</span>
                 <span><i class="patch-key" data-state="up"></i>{{ __('Connecté') }}</span>
                 <span><i class="patch-key" data-state="down"></i>{{ __('Déconnecté') }}</span>
                 <span><i class="patch-key" data-state="disabled"></i>{{ __('Désactivé') }}</span>
@@ -65,28 +66,33 @@
                                 <div class="patch-group" @if ($group->count() > 1) data-rows="2" @endif>
                                     @foreach ($group as $port)
                                         @php
-                                            $outlet = $deviceOutlets->get($port->name);
-                                            $destination = $outlet ? null : $deviceDestinations->get($port->name)?->label;
+                                            $portOutlet = $deviceOutlets->get($port->name);
+                                            $freeDestination = $portOutlet ? null : $deviceDestinations->get($port->name)?->label;
                                             $color = $port->pvid ? ($vlanColors[$port->pvid] ?? \App\Support\VlanColor::for($port->pvid)) : null;
                                             $vlanName = $port->pvid ? $vlans->get($port->pvid)?->first()?->name : null;
-                                            $title = implode(' · ', array_filter([
-                                                $port->name, $port->alias,
-                                                $port->pvid ? trim('VLAN '.$port->pvid.' '.$vlanName) : null,
-                                                $port->isTrunk() ? __('Trunk') : null,
-                                                ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$port->state()],
-                                                $port->neighbor_name,
-                                                $outlet ? __('Prise :name', ['name' => $outlet->name]) : null,
-                                                $destination ? '→ '.$destination : null,
-                                            ]));
+                                            $note = $portOutlet?->description;
+                                            $state = ['up' => __('Connecté'), 'down' => __('Déconnecté'), 'disabled' => __('Désactivé')][$port->state()];
+                                            $card = array_filter([
+                                                'port' => $port->name,
+                                                'alias' => $port->alias,
+                                                'vlan' => $port->pvid ? trim('VLAN '.$port->pvid.' '.$vlanName) : null,
+                                                'state' => $state.($port->isTrunk() ? ' · '.__('Trunk') : ''),
+                                                'neighbor' => $port->neighbor_name,
+                                                'outlet' => $portOutlet ? __('Prise :name', ['name' => $portOutlet->name]).($portOutlet->location ? ' · '.$portOutlet->location->name : '') : null,
+                                                'destination' => $freeDestination,
+                                                'note' => $note,
+                                            ]);
+                                            $title = implode(' · ', array_filter([$card['port'], $card['alias'] ?? null, $card['vlan'] ?? null, $card['state'], $card['neighbor'] ?? null, $card['outlet'] ?? null, $freeDestination ? '→ '.$freeDestination : null, $note]));
                                             $jack = new \Illuminate\View\ComponentAttributeBag(array_filter([
                                                 'class' => 'patch-jack', 'data-state' => $port->state(), 'data-trunk' => $port->isTrunk(), 'data-uplink' => (bool) $port->neighbor_name,
-                                                'data-vlan' => (bool) $color, 'style' => $color ? '--vlan: '.$color.'; --ink: '.\App\Support\VlanColor::ink($color) : null,
-                                                'title' => $title, 'aria-label' => $title,
+                                                'data-vlan' => (bool) $color, 'data-note' => (bool) $note, 'style' => $color ? '--vlan: '.$color.'; --ink: '.\App\Support\VlanColor::ink($color) : null,
+                                                'aria-label' => $title,
                                             ]));
                                         @endphp
-                                        <div class="patch-port" wire:key="patch-{{ $device->id }}-{{ $port->if_index }}" data-vlans="{{ $port->pvid }}"
-                                            :class="{ 'is-dimmed': vlan !== null && $el.dataset.vlans !== String(vlan) }">
-                                            <span @class(['patch-outlet', 'is-free' => $destination, 'is-empty' => ! $outlet && ! $destination])>{{ $outlet?->name ?? $destination }}</span>
+                                        <div class="patch-port" wire:key="patch-{{ $device->id }}-{{ $port->if_index }}" data-vlans="{{ $port->pvid }}" data-card="{{ json_encode($card) }}"
+                                            :class="{ 'is-dimmed': vlan !== null && $el.dataset.vlans !== String(vlan) }"
+                                            @mouseenter="show($el)" @mouseleave="hide()" @focusin="show($el)" @focusout="hide()">
+                                            <span @class(['patch-outlet', 'is-free' => $freeDestination, 'is-empty' => ! $portOutlet && ! $freeDestination])>{{ $portOutlet?->name ?? $freeDestination }}</span>
                                             @if ($canEdit)
                                                 <button type="button" {{ $jack }} wire:click="patch({{ $device->id }}, {{ $port->if_index }})">{{ $port->shortName() }}</button>
                                             @else
@@ -114,10 +120,14 @@
                     <x-field name="destination" :label="__('Destination')" wire:model="destination" maxlength="{{ \App\Models\PortDestination::MAX_LENGTH }}" :placeholder="__('ex. Imprimante accueil, borne Wi-Fi, baie B panneau 2')"
                         :hint="__('Texte libre, pour un port qui ne va pas sur une prise murale. Laissez vide pour libérer le port.')" wire:key="destination-input" autofocus/>
                 @else
-                    <x-field name="outlet" :label="__('Prise murale')" wire:model="outlet" :hint="__('Seules les prises libres sont proposées.')" wire:key="outlet-select">
+                    <x-field name="outlet" :label="__('Prise murale')" wire:model.live="outlet" :hint="__('Seules les prises libres sont proposées.')" wire:key="outlet-select">
                         <option value="">{{ __('Aucune, port libre') }}</option>
                         @foreach ($outletChoices as $choice)<option value="{{ $choice->id }}">{{ $choice->name }}@if ($choice->location) · {{ $choice->location->name }}@endif</option>@endforeach
                     </x-field>
+                    @if ($outlet !== '')
+                        <x-field name="note" :label="__('Description de la prise')" wire:model="note" maxlength="255" wire:key="outlet-note-{{ $outlet }}"
+                            :placeholder="__('ex. Brassée prise C8, baie bureau système')" :hint="__('La même description que dans la liste des prises murales.')"/>
+                    @endif
                 @endif
                 <div class="dialog-actions">
                     <a class="link-button mr-auto" href="{{ route('devices.show', ['device' => $editing->id, 'port' => $editedPort->if_index]) }}" wire:navigate>{{ __('Voir le port') }}</a>
@@ -127,4 +137,17 @@
             </form>
         </x-modal>
     @endif
+    <div class="patch-card" x-show="card" x-cloak role="tooltip" :style="cardStyle" wire:ignore>
+        <template x-if="card">
+            <div>
+                <p class="patch-card-title"><span x-text="card.port"></span><span class="muted" x-show="card.alias" x-text="' · ' + card.alias"></span></p>
+                <p class="patch-card-meta"><span x-text="card.vlan ?? @js(__('Sans VLAN natif'))"></span> · <span x-text="card.state"></span></p>
+                <p x-show="card.neighbor" class="patch-card-meta"><span>{{ __('Voisin LLDP') }} :</span> <span x-text="card.neighbor"></span></p>
+                <p x-show="card.outlet" class="patch-card-outlet"><x-icon name="outlet" class="size-3.5"/> <span x-text="card.outlet"></span></p>
+                <p x-show="card.destination" class="patch-card-outlet"><x-icon name="link" class="size-3.5"/> <span x-text="card.destination"></span></p>
+                <p x-show="card.note" class="patch-card-note" x-text="card.note"></p>
+                <p x-show="! card.outlet && ! card.destination" class="patch-card-meta muted">{{ __('Port libre') }}</p>
+            </div>
+        </template>
+    </div>
 </div>

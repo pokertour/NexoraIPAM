@@ -71,7 +71,23 @@
                                     <span class="badge">{{ __('Libre') }}</span>
                                 @endif
                             </td>
-                            <td class="muted">{{ $outlet->description ?? '' }}</td>
+                            @can('edit-inventory')
+                                <td class="outlet-note-cell" x-data="{ editing: false, text: @js($outlet->description ?? ''), saved: @js($outlet->description ?? '') }"
+                                    wire:key="outlet-note-{{ $outlet->id }}-{{ md5($outlet->description ?? '') }}">
+                                    <button type="button" class="outlet-note" x-show="! editing" @click="editing = true; $nextTick(() => $refs.input.focus())"
+                                        aria-label="{{ __('Modifier la description de :name', ['name' => $outlet->name]) }}">
+                                        @if ($outlet->description)<span>{{ $outlet->description }}</span>@else<span class="muted">{{ __('Ajouter une description') }}</span>@endif
+                                        <x-icon name="edit" class="size-3.5"/>
+                                    </button>
+                                    <input x-ref="input" x-show="editing" x-cloak type="text" class="input outlet-note-input" x-model="text" maxlength="255"
+                                        aria-label="{{ __('Description de :name', ['name' => $outlet->name]) }}"
+                                        @keydown.enter.prevent="editing = false; if (text.trim() !== saved) $wire.describe({{ $outlet->id }}, text)"
+                                        @keydown.escape.prevent.stop="text = saved; editing = false"
+                                        @blur="if (editing) { editing = false; if (text.trim() !== saved) $wire.describe({{ $outlet->id }}, text) }">
+                                </td>
+                            @else
+                                <td class="muted">{{ $outlet->description ?? '' }}</td>
+                            @endcan
                             @can('edit-inventory')
                                 <td class="text-right whitespace-nowrap">
                                     <button type="button" class="icon-button" aria-label="{{ __('Modifier :name', ['name' => $outlet->name]) }}" wire:click="open('outlet', {{ $outlet->id }})"><x-icon name="edit" class="size-4"/></button>
