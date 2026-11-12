@@ -163,6 +163,24 @@ class WallOutlets extends Component
         return __('Entrée enregistrée.');
     }
 
+    /** Edits the description of an outlet in place, from the list. */
+    public function describe(int $id, string $description): void
+    {
+        Gate::authorize('edit-inventory');
+        $outlet = WallOutlet::findOrFail($id);
+        $description = trim($description);
+        if (mb_strlen($description) > 255) {
+            $this->dispatch('nexora-toast', tone: 'error', message: __('La description ne doit pas dépasser 255 caractères.'));
+
+            return;
+        }
+        $outlet->description = $description !== '' ? $description : null;
+        if ($outlet->isDirty('description')) {
+            $outlet->save();
+            $this->dispatch('nexora-toast', tone: 'success', message: __('Description de la prise :name enregistrée.', ['name' => $outlet->name]));
+        }
+    }
+
     public function confirmDelete(?int $id = null): void
     {
         Gate::authorize('edit-inventory');

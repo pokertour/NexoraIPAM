@@ -3,6 +3,7 @@ import '@fontsource-variable/jetbrains-mono';
 import './select';
 import './racks';
 import './topology';
+import './patch-plan';
 
 function showToast({ message, tone = 'info' }) {
     const container = document.getElementById('nexora-toasts');
