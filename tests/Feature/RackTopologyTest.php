@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\CableEditor;
+use App\Livewire\DeviceDetail;
 use App\Livewire\NetworkTopology;
 use App\Livewire\Racks;
 use App\Models\AuditLog;
@@ -109,23 +111,26 @@ class RackTopologyTest extends TestCase
         $panel = Rack::factory()->create(['name' => 'Baie B', 'units' => 10])->items()->create(['kind' => 'patch_panel', 'label' => 'Tiroir F', 'position' => 9, 'height' => 1]);
 
         $this->actingAs(User::factory()->create(['role' => 'viewer']));
-        Livewire::test(Racks::class)->call('open', 'cable', null, $device->id)->assertForbidden();
+        Livewire::test(CableEditor::class)->call('openEditor', from: 'item:'.$device->id)->assertForbidden();
+        $this->get(route('racks'))->assertDontSee('open-cable-editor');
 
         $this->actingAs(User::factory()->create(['role' => 'operator']));
-        Livewire::test(Racks::class)
-            ->call('open', 'cable', null, $device->id)->assertSet('form.a_rack_item_id', $device->id)
+        $this->get(route('racks'))->assertSee("\$dispatch('open-cable-editor', { from: 'item:{$device->id}' })", false);
+        Livewire::test(CableEditor::class)
+            ->call('openEditor', from: 'device:'.$switch->id)->assertSet('form.a', 'item:'.$device->id)
             ->assertSeeHtml('<div class="select-layer" data-select-layer wire:ignore></div>')
-            ->call('save')->assertHasErrors('form.b_rack_item_id')
-            ->set('form.b_rack_item_id', $device->id)->call('save')->assertHasErrors('form.b_rack_item_id')
-            ->set('form.b_rack_item_id', $panel->id)->set('form.a_port', 'ether99')->call('save')->assertHasErrors('form.a_port')
+            ->call('save')->assertHasErrors('form.b')
+            ->set('form.b', 'item:'.$device->id)->call('save')->assertHasErrors('form.b')
+            ->set('form.b', 'item:'.$panel->id)->set('form.a_port', 'ether99')->call('save')->assertHasErrors('form.a_port')
             ->set('form.a_port', 'ether1')->set('form.b_port', ' 12 ')->set('form.medium', 'laser')->call('save')->assertHasErrors('form.medium')
-            ->set('form.medium', 'fiber')->set('form.label', 'F12')->call('save')->assertHasNoErrors();
+            ->set('form.medium', 'fiber')->set('form.label', 'F12')->call('save')->assertHasNoErrors()->assertDispatched('cable-saved')->assertSet('open', false);
 
         $cable = CableLink::sole();
         $this->assertSame([$device->id, 'ether1', $panel->id, '12', 'fiber', 'F12'], [$cable->a_rack_item_id, $cable->a_port, $cable->b_rack_item_id, $cable->b_port, $cable->medium, $cable->label]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'subject_type' => 'cable_link', 'subject_label' => 'F12 · sw-a ether1 ↔ Tiroir F 12']);
 
-        Livewire::test(Racks::class)->call('open', 'cable', $cable->id)->set('form.b_rack_item_id', $device->id)->assertSet('form.b_port', '');
+        Livewire::test(CableEditor::class)->call('openEditor', cable: $cable->id)->assertSet('form.b', 'item:'.$panel->id)->assertSet('form.b_port', '12')
+            ->set('form.b', 'item:'.$device->id)->assertSet('form.b_port', '');
         $this->get(route('racks'))->assertSee('Tiroir F')->assertSee('MANUEL')->assertSee('Fibre');
 
         Livewire::test(Racks::class)->call('confirmDelete', 'item', $panel->id)->call('delete');
@@ -244,9 +249,9 @@ class RackTopologyTest extends TestCase
         $rack = Rack::factory()->create(['units' => 10]);
         $a = $rack->items()->create(['network_device_id' => $access->id, 'kind' => 'device', 'position' => 2, 'height' => 1]);
         $c = $rack->items()->create(['network_device_id' => $core->id, 'kind' => 'device', 'position' => 8, 'height' => 1]);
-        Livewire::test(Racks::class)->assertSeeHtml('wire:click="describe(')
-            ->call('describe', $a->id, 'ether48', $c->id, 'ether1')
-            ->assertSet('form.a_rack_item_id', $a->id)->assertSet('form.b_port', 'ether1')
+        Livewire::test(Racks::class)->assertSeeHtml("\$dispatch('open-cable-editor', { from: 'item:{$c->id}', fromPort: 'ether1', to: 'item:{$a->id}', toPort: 'ether48' })");
+        Livewire::test(CableEditor::class)->call('openEditor', from: 'item:'.$a->id, fromPort: 'ether48', to: 'item:'.$c->id, toPort: 'ether1')
+            ->assertSet('form.a', 'item:'.$a->id)->assertSet('form.b_port', 'ether1')
             ->set('form.medium', 'copper')->call('save')->assertHasNoErrors();
         $this->assertSame([$a->id, $c->id, 'copper'], [CableLink::sole()->a_rack_item_id, CableLink::sole()->b_rack_item_id, CableLink::sole()->medium]);
         $this->assertTrue(app(Topology::class)->links()->sole()['confirmed']);
@@ -348,6 +353,33 @@ class RackTopologyTest extends TestCase
         $this->assertTrue($nodes[$first->id]['y'] < $nodes[$second->id]['y'] && $nodes[$second->id]['y'] < $nodes[$third->id]['y'], 'A chain of access switches goes down.');
         $this->assertSame($nodes[$first->id]['x'], $nodes[$second->id]['x'], 'A chained switch sits under the one it hangs from.');
         $this->assertSame($nodes[$first->id]['y'], $nodes[$ring->id]['y'], 'A switch with its own uplink stays in its layer.');
+    }
+
+    public function test_cables_are_added_from_the_topology_and_a_device_port_between_devices_that_are_not_racked(): void
+    {
+        $this->withoutVite();
+        $switch = NetworkDevice::factory()->create(['name' => 'sw-bureau']);
+        $printer = NetworkDevice::factory()->create(['name' => 'imprimante']);
+        $this->port($switch, 5, 'ge5');
+        $this->port($printer, 1, 'eth0');
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+
+        $this->get(route('topology'))->assertOk()->assertSee('Ajouter une liaison')->assertSee("Livewire.dispatch('open-cable-editor'", false);
+        Livewire::test(DeviceDetail::class, ['device' => $switch])->call('select', 5)
+            ->assertSeeHtml("\$dispatch('open-cable-editor', { from: 'device:{$switch->id}', fromPort: 'ge5' })");
+
+        Livewire::test(CableEditor::class)->call('openEditor', from: 'device:'.$switch->id, fromPort: 'ge5')
+            ->assertSet('form.a', 'device:'.$switch->id)->assertSet('form.a_port', 'ge5')->assertSee('Hors baie')
+            ->set('form.b', 'device:'.$printer->id)->set('form.b_port', 'eth1')->call('save')->assertHasErrors('form.b_port')
+            ->set('form.b_port', 'eth0')->call('save')->assertHasNoErrors();
+
+        $cable = CableLink::sole();
+        $this->assertSame([null, $switch->id, 'ge5', null, $printer->id, 'eth0'], [$cable->a_rack_item_id, $cable->a_network_device_id, $cable->a_port, $cable->b_rack_item_id, $cable->b_network_device_id, $cable->b_port]);
+        $this->assertSame('manual', app(Topology::class)->links()->sole()['source']);
+        $this->assertSame(1, AuditLog::where('action', 'created')->where('subject_type', 'cable_link')->count());
+
+        Livewire::test(CableEditor::class)->call('openEditor', cable: $cable->id)->assertSet('form.b', 'device:'.$printer->id)->set('form.label', 'Jarretière bleue')->call('save');
+        $this->assertSame('Jarretière bleue', $cable->fresh()->label);
     }
 
     /** @param array<string, mixed> $attributes */

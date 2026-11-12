@@ -1,7 +1,10 @@
 <div>
     <div class="page-heading">
         <div><p class="eyebrow">{{ __('INFRASTRUCTURE') }}</p><h1 class="page-title mt-2">{{ __('Topologie') }}</h1><p class="muted mt-2">{{ __('Liaisons entre équipements déduites des voisins LLDP, ou des adresses MAC que chaque switch apprend de l’autre.') }}</p></div>
-        <a class="button button-secondary" href="{{ route('racks') }}" wire:navigate><x-icon name="rack" class="size-4"/> {{ __('Baies') }}</a>
+        <div class="flex flex-wrap gap-2">
+            <a class="button button-secondary" href="{{ route('racks') }}" wire:navigate><x-icon name="rack" class="size-4"/> {{ __('Baies') }}</a>
+            @can('edit-inventory')<x-button icon="link" wire:click="$dispatch('open-cable-editor')">{{ __('Ajouter une liaison') }}</x-button>@endcan
+        </div>
     </div>
 
     @if ($locations->isNotEmpty())
@@ -75,14 +78,38 @@
                         <text class="topology-wan-label" data-side="{{ $wan['side'] }}" x="{{ $wan['x'] + ($wan['side'] === 'right' ? 10 : -10) }}" y="{{ $wan['y'] - 48 }}">{{ \Illuminate\Support\Str::limit($wan['port']->wan_label ?: $wan['port']->name, 26) }}</text>
                     </g>
                 @endforeach
+                @php
+                    $degree = collect($neighbours)->map(fn (array $ids): int => count($ids))->all();
+                @endphp
                 @foreach ($links as $link)
                     @php
                         [$a, $b] = [$nodes[$link['a']->id], $nodes[$link['b']->id]];
+                        // Lines fanning out of a busy device are too close to it for labels: its
+                        // port goes far along the line, where the lines are apart, and the
+                        // other end's port right next to that end.
+                        [$hubA, $hubB] = [($degree[$link['a']->id] ?? 0) > 2, ($degree[$link['b']->id] ?? 0) > 2];
+                        $busyA = $hubA && (! $hubB || ($degree[$link['a']->id] >= $degree[$link['b']->id]));
+                        $busyB = $hubB && ! $busyA;
+                        // A busy end's label sits at the same height for all lines to its first
+                        // row of devices. A device on a wrapped row gets one label for both ports,
+                        // right above it, in the gap between the rows.
+                        $wrapped = abs($b['y'] - $a['y']) > 170 && ($busyA || $busyB);
+                        $far = fn (array $from, array $to): float => abs($to['y'] - $from['y']) > 0 ? min(.64, 86 / abs($to['y'] - $from['y'])) : .5;
+                        $alongA = $busyA ? $far($a, $b) : ($busyB ? .14 : .3);
+                        $alongB = $busyB ? $far($b, $a) : ($busyA ? .14 : .3);
+                        $pair = $wrapped ? implode(' · ', array_filter($busyA ? [$link['a_port']?->name, $link['b_port']?->name] : [$link['b_port']?->name, $link['a_port']?->name])) : null;
                     @endphp
                     <g class="topology-link" data-source="{{ $link['source'] }}" :class="{ 'is-lit': litLink({{ $link['a']->id }}, {{ $link['b']->id }}) }">
                         <line x1="{{ $a['x'] }}" y1="{{ $a['y'] }}" x2="{{ $b['x'] }}" y2="{{ $b['y'] }}"/>
-                        @if ($link['a_port'])<text x="{{ (int) round($a['x'] + ($b['x'] - $a['x']) * .3) }}" y="{{ (int) round($a['y'] + ($b['y'] - $a['y']) * .3) - 6 }}">{{ $link['a_port']->name }}</text>@endif
-                        @if ($link['b_port'])<text x="{{ (int) round($b['x'] + ($a['x'] - $b['x']) * .3) }}" y="{{ (int) round($b['y'] + ($a['y'] - $b['y']) * .3) - 6 }}">{{ $link['b_port']->name }}</text>@endif
+                        @if ($pair)
+                            @php
+                                [$hub, $leaf] = $busyA ? [$a, $b] : [$b, $a];
+                            @endphp
+                            <text x="{{ (int) round($leaf['x'] + ($hub['x'] - $leaf['x']) * .14) }}" y="{{ (int) round($leaf['y'] + ($hub['y'] - $leaf['y']) * .14) - 6 }}" class="topology-port-far"><title>{{ $link['a']->name }} {{ $link['a_port']?->name }} ↔ {{ $link['b']->name }} {{ $link['b_port']?->name }}</title>{{ $pair }}</text>
+                        @else
+                            @if ($link['a_port'])<text x="{{ (int) round($a['x'] + ($b['x'] - $a['x']) * $alongA) }}" y="{{ (int) round($a['y'] + ($b['y'] - $a['y']) * $alongA) - 6 }}" @if ($busyA) class="topology-port-far" @endif><title>{{ $link['a']->name }} · {{ $link['a_port']->name }}</title>{{ $link['a_port']->name }}</text>@endif
+                            @if ($link['b_port'])<text x="{{ (int) round($b['x'] + ($a['x'] - $b['x']) * $alongB) }}" y="{{ (int) round($b['y'] + ($a['y'] - $b['y']) * $alongB) - 6 }}" @if ($busyB) class="topology-port-far" @endif><title>{{ $link['b']->name }} · {{ $link['b_port']->name }}</title>{{ $link['b_port']->name }}</text>@endif
+                        @endif
                     </g>
                 @endforeach
                 @if ($internet)
@@ -117,6 +144,9 @@
                         <p class="muted text-xs mt-1" x-text="(neighbours[focused] ?? []).length === 0 ? @js(__('Aucune liaison connue')) : @js(__('Voisins directs')) + ' : ' + (neighbours[focused] ?? []).length"></p>
                         <div class="mt-3 flex gap-2">
                             <button type="button" class="button button-primary topology-open" @click="open()">{{ __('Ouvrir la fiche') }}</button>
+                            @can('edit-inventory')
+                                <button type="button" class="icon-button" @click="Livewire.dispatch('open-cable-editor', { from: 'device:' + focused })" aria-label="{{ __('Ajouter une liaison depuis cet équipement') }}" title="{{ __('Ajouter une liaison depuis cet équipement') }}"><x-icon name="link" class="size-4"/></button>
+                            @endcan
                             <button type="button" class="icon-button" @click="clear()" aria-label="{{ __('Fermer') }}"><x-icon name="close" class="size-4"/></button>
                         </div>
                     </div>

@@ -57,7 +57,7 @@
                     @endif
                     @can('edit-inventory')
                         <span class="rack-item-actions">
-                            <button class="icon-button" type="button" aria-label="{{ __('Ajouter une liaison depuis :name', ['name' => $item->displayName()]) }}" title="{{ __('Ajouter une liaison') }}" wire:click="open('cable', null, {{ $item->id }})"><x-icon name="link" class="size-3.5"/></button>
+                            <button class="icon-button" type="button" aria-label="{{ __('Ajouter une liaison depuis :name', ['name' => $item->displayName()]) }}" title="{{ __('Ajouter une liaison') }}" wire:click="$dispatch('open-cable-editor', { from: 'item:{{ $item->id }}' })"><x-icon name="link" class="size-3.5"/></button>
                             <button class="icon-button" type="button" aria-label="{{ __('Modifier :name', ['name' => $item->displayName()]) }}" wire:click="open('item', {{ $item->id }})"><x-icon name="edit" class="size-3.5"/></button>
                             <button class="icon-button danger-text" type="button" aria-label="{{ __('Retirer :name de la baie', ['name' => $item->displayName()]) }}" wire:click="confirmDelete('item', {{ $item->id }})"><x-icon name="trash" class="size-3.5"/></button>
                         </span>
@@ -105,16 +105,14 @@
                         @can('edit-inventory')
                             <span class="rack-link-actions">
                                 <button class="icon-button" type="button" aria-label="{{ __('Préciser le type de la liaison') }}" title="{{ __('Préciser le type de la liaison') }}"
-                                    wire:click="describe({{ $cable['near']['item']->id }}, @js($cable['near']['port']), {{ $cable['far']['item']->id }}, @js($cable['far']['port']))"><x-icon name="edit" class="size-3.5"/></button>
+                                    wire:click="$dispatch('open-cable-editor', { from: 'item:{{ $cable['near']['item']->id }}', fromPort: @js($cable['near']['port']), to: 'item:{{ $cable['far']['item']->id }}', toPort: @js($cable['far']['port']) })"><x-icon name="edit" class="size-3.5"/></button>
                             </span>
                         @endcan
                     @endif
                     @if ($cable['cable'])
                         @can('edit-inventory')
                             <span class="rack-link-actions">
-                                @if ($cable['cable']->a_rack_item_id && $cable['cable']->b_rack_item_id)
-                                    <button class="icon-button" type="button" aria-label="{{ __('Modifier la liaison') }}" wire:click="open('cable', {{ $cable['cable']->id }})"><x-icon name="edit" class="size-3.5"/></button>
-                                @endif
+                                <button class="icon-button" type="button" aria-label="{{ __('Modifier la liaison') }}" wire:click="$dispatch('open-cable-editor', { cable: {{ $cable['cable']->id }} })"><x-icon name="edit" class="size-3.5"/></button>
                                 <button class="icon-button danger-text" type="button" aria-label="{{ __('Supprimer la liaison') }}" wire:click="confirmDelete('cable', {{ $cable['cable']->id }})"><x-icon name="trash" class="size-3.5"/></button>
                             </span>
                         @endcan

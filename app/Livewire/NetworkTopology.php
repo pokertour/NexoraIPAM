@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -48,6 +49,10 @@ class NetworkTopology extends Component
         $this->cableId = $cable?->id;
         $this->form = ['medium' => $cable?->medium ?? 'copper', 'label' => $cable?->label ?? ''];
     }
+
+    /** Cables are added in the shared cable form; the map redraws once it saves. */
+    #[On('cable-saved')]
+    public function cableSaved(): void {}
 
     public function close(): void
     {

@@ -972,5 +972,11 @@
     "La description ne doit pas dépasser 255 caractères.": "The description must not exceed 255 characters.",
     "Port libre": "Free port",
     "Modifier la description de :name": "Edit the description of :name",
-    "Description de la prise :name enregistrée.": "Description of outlet :name saved."
+    "Description de la prise :name enregistrée.": "Description of outlet :name saved.",
+    "Choisissez un élément ou un équipement.": "Choose an item or a device.",
+    "Élément ou équipement": "Item or device",
+    "Dans une baie": "In a rack",
+    "Ajouter une liaison depuis cet équipement": "Add a link from this device",
+    "Liaison enregistrée.": "Link saved.",
+    "Ajouter une liaison depuis ce port": "Add a link from this port"
 }

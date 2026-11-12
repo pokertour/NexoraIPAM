@@ -139,22 +139,33 @@ document.addEventListener('alpine:init', () => {
             this.details = {};
             this.groups = {};
 
-            // Ends of each cable: its item, its rack and the rack's cable gutter.
+            // Ends of each cable: its item, its rack and the edges of the rack frame.
             const ends = cable => [cable.a, cable.b].map(id => {
                 const item = this.$el.querySelector(`[data-item="${id}"]`);
                 const frame = item?.closest('.rack-frame');
                 const rack = item?.closest('[data-rack]');
                 if (!item || !frame || !rack) return null;
                 const itemBox = item.getBoundingClientRect();
-                return { item: id, rack: rack.dataset.rack, x: itemBox.right - box.left, y: itemBox.top + itemBox.height / 2 - box.top, gutter: frame.getBoundingClientRect().right - box.left };
+                const frameBox = frame.getBoundingClientRect();
+                return {
+                    item: id, rack: rack.dataset.rack, y: itemBox.top + itemBox.height / 2 - box.top,
+                    itemLeft: itemBox.left - box.left, itemRight: itemBox.right - box.left,
+                    frameLeft: frameBox.left - box.left, frameRight: frameBox.right - box.left,
+                };
             });
 
             // One bundle per pair of racks, so twenty uplinks to the core make one trunk, not twenty lines.
+            // Each rack uses the side facing the other: the left rack leaves by its right
+            // gutter, the right rack by its left one, so a trunk never runs over a rack.
             const bundles = new Map();
+            const exits = {};
             for (const cable of cables) {
                 const pair = ends(cable);
                 if (pair.includes(null)) continue;
-                pair.sort((left, right) => left.gutter - right.gutter);
+                pair.sort((left, right) => left.frameLeft - right.frameLeft);
+                pair[0] = { ...pair[0], side: 'right', x: pair[0].itemRight, gutter: pair[0].frameRight };
+                pair[1] = { ...pair[1], side: 'left', x: pair[1].itemLeft, gutter: pair[1].frameLeft };
+                for (const end of pair) (exits[end.item] ??= new Set()).add(end.side);
                 const id = pair.map(end => end.rack).join('-');
                 if (!bundles.has(id)) bundles.set(id, { id, left: pair[0].rack, right: pair[1].rack, span: pair[1].gutter - pair[0].gutter, cables: [] });
                 bundles.get(id).cables.push({ ...cable, ends: pair });
@@ -165,9 +176,10 @@ document.addEventListener('alpine:init', () => {
             const columns = {};
             list.forEach((bundle, index) => {
                 bundle.lane = index;
-                for (const rack of [bundle.left, bundle.right]) {
-                    columns[rack] = (columns[rack] ?? -1) + 1;
-                    bundle[rack === bundle.left ? 'leftColumn' : 'rightColumn'] = columns[rack];
+                for (const [rack, side, key] of [[bundle.left, 'right', 'leftColumn'], [bundle.right, 'left', 'rightColumn']]) {
+                    const gutter = `${rack}:${side}`;
+                    columns[gutter] = (columns[gutter] ?? -1) + 1;
+                    bundle[key] = columns[gutter];
                 }
             });
             const trayHeight = Math.max(52, 16 + list.length * 7);
@@ -178,13 +190,21 @@ document.addEventListener('alpine:init', () => {
             const bodies = [...this.$el.querySelectorAll('.rack-body')].map(body => body.getBoundingClientRect().top - box.top);
             const trayTop = (bodies.length ? Math.max(...bodies) : 0) + 8;
             const radius = 5;
-            const column = (gutter, index) => gutter + 7 + (index % 8) * 6;
+            // Columns move away from the frame: rightwards in a right gutter, leftwards in a left one.
+            const column = (gutter, index, direction) => gutter + direction * (7 + (index % 5) * 6);
+
+            // The exit tag of an item sits on the side its cables leave from.
+            this.$el.querySelectorAll('.rack-item[data-exits]').forEach(item => { if (!exits[item.dataset.item]) delete item.dataset.exits; });
+            for (const [id, sides] of Object.entries(exits)) {
+                const item = this.$el.querySelector(`[data-item="${id}"]`);
+                if (item) item.dataset.exits = sides.size > 1 ? 'both' : [...sides][0];
+            }
 
             for (const bundle of list) {
                 const tray = trayTop + bundle.lane * 7;
                 const [leftEnds, rightEnds] = [0, 1].map(side => bundle.cables.map(cable => cable.ends[side]));
-                const leftX = column(leftEnds[0].gutter, bundle.leftColumn);
-                const rightX = column(rightEnds[0].gutter, bundle.rightColumn);
+                const leftX = column(leftEnds[0].gutter, bundle.leftColumn, 1);
+                const rightX = column(rightEnds[0].gutter, bundle.rightColumn, -1);
                 const leftBottom = Math.max(...leftEnds.map(end => end.y));
                 const rightBottom = Math.max(...rightEnds.map(end => end.y));
                 const sources = [...new Set(bundle.cables.map(cable => cable.source))];
@@ -237,7 +257,7 @@ document.addEventListener('alpine:init', () => {
                             `M${left.x} ${left.y}`, `H${leftX - radius}`, `Q${leftX} ${left.y} ${leftX} ${left.y - radius}`,
                             `V${tray + radius}`, `Q${leftX} ${tray} ${leftX + radius} ${tray}`,
                             `H${rightX - radius}`, `Q${rightX} ${tray} ${rightX} ${tray + radius}`,
-                            `V${right.y - radius}`, `Q${rightX} ${right.y} ${rightX - radius} ${right.y}`, `H${right.x}`,
+                            `V${right.y - radius}`, `Q${rightX} ${right.y} ${rightX + radius} ${right.y}`, `H${right.x}`,
                         ].join(' '),
                     };
                 }

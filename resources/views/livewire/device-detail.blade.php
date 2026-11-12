@@ -131,7 +131,13 @@
                             @endcan
                         </dd></div>
                     @endif
-                    <div><dt>{{ __('Voisin LLDP') }}</dt><dd>@if ($port->neighbor_name)<span class="font-semibold">{{ $port->neighbor_name }}</span>@if ($port->neighbor_port) · <code>{{ $port->neighbor_port }}</code>@endif @else — @endif</dd></div>
+                    <div><dt>{{ __('Voisin LLDP') }}</dt><dd>@if ($port->neighbor_name)<span class="font-semibold">{{ $port->neighbor_name }}</span>@if ($port->neighbor_port) · <code>{{ $port->neighbor_port }}</code>@endif @else — @endif
+                        @if ($port->physical)
+                            @can('edit-inventory')
+                                <button type="button" class="link-button mt-1 inline-flex items-center gap-1" wire:click="$dispatch('open-cable-editor', { from: 'device:{{ $device->id }}', fromPort: @js($port->name) })"><x-icon name="link" class="size-3.5"/> {{ __('Ajouter une liaison depuis ce port') }}</button>
+                            @endcan
+                        @endif
+                    </dd></div>
                     <div><dt>{{ __('Erreurs entrée / sortie') }}</dt><dd class="tabular-nums">{{ number_format($port->in_errors ?? 0, 0, ',', ' ') }} / {{ number_format($port->out_errors ?? 0, 0, ',', ' ') }}</dd></div>
                 </dl>
                 <div class="traffic">
