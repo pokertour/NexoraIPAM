@@ -15,6 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -40,22 +41,10 @@ class Racks extends Component
     public function open(string $kind, ?int $id = null, ?int $rackId = null, ?int $position = null): void
     {
         Gate::authorize('edit-inventory');
-        abort_unless(in_array($kind, ['rack', 'item', 'cable'], true), 404);
+        abort_unless(in_array($kind, ['rack', 'item'], true), 404);
         $this->close();
         $this->editing = $kind;
         $this->recordId = $id;
-
-        if ($kind === 'cable') {
-            // For a new cable, $rackId carries the item the cable starts from.
-            $cable = $id ? CableLink::findOrFail($id) : null;
-            $this->form = [
-                'a_rack_item_id' => $cable?->a_rack_item_id ?? ($rackId ? RackItem::findOrFail($rackId)->id : null), 'a_port' => $cable?->a_port ?? '',
-                'b_rack_item_id' => $cable?->b_rack_item_id, 'b_port' => $cable?->b_port ?? '',
-                'medium' => $cable?->medium ?? 'copper', 'label' => $cable?->label ?? '',
-            ];
-
-            return;
-        }
 
         if ($kind === 'rack') {
             $rack = $id ? Rack::findOrFail($id) : null;
@@ -75,15 +64,9 @@ class Racks extends Component
         ];
     }
 
-    /**
-     * Documents a detected link between two racked items: the cable form opens
-     * with both ends filled in, to set its medium and tag.
-     */
-    public function describe(int $aItem, ?string $aPort, int $bItem, ?string $bPort): void
-    {
-        $this->open('cable', null, $aItem);
-        $this->form = ['b_rack_item_id' => RackItem::findOrFail($bItem)->id, 'a_port' => $aPort ?? '', 'b_port' => $bPort ?? ''] + $this->form;
-    }
+    /** Cables are edited in the shared cable form; the racks redraw once it saves. */
+    #[On('cable-saved')]
+    public function cableSaved(): void {}
 
     public function close(): void
     {
@@ -115,12 +98,6 @@ class Racks extends Component
                 return;
             }
 
-            if ($this->editing === 'cable') {
-                $this->saveCable();
-
-                return;
-            }
-
             $item = $this->recordId ? RackItem::lockForUpdate()->findOrFail($this->recordId) : new RackItem;
             $device = ($this->form['kind'] ?? null) === 'device';
             if (! $device) {
@@ -144,14 +121,6 @@ class Racks extends Component
 
         $this->close();
         $this->dispatch('nexora-toast', tone: 'success', message: __('Entrée enregistrée.'));
-    }
-
-    /** A port typed for one item does not belong to another. */
-    public function updatedForm(mixed $value, string $key): void
-    {
-        if ($this->editing === 'cable' && in_array($key, ['a_rack_item_id', 'b_rack_item_id'], true)) {
-            $this->form[$key[0].'_port'] = '';
-        }
     }
 
     public function confirmDelete(string $kind, int $id): void
@@ -182,37 +151,6 @@ class Racks extends Component
         }
         $this->close();
         $this->dispatch('nexora-toast', tone: 'success', message: __('Entrée supprimée.'));
-    }
-
-    /**
-     * Validates and stores a cable documented by hand. On a device, the port
-     * must be one of its physical ports; on a passive item it is free text.
-     */
-    private function saveCable(): void
-    {
-        $cable = $this->recordId ? CableLink::lockForUpdate()->findOrFail($this->recordId) : new CableLink;
-        foreach (['a', 'b'] as $end) {
-            $this->form[$end.'_port'] = trim((string) ($this->form[$end.'_port'] ?? '')) ?: null;
-        }
-        $this->form['label'] = trim((string) ($this->form['label'] ?? '')) ?: null;
-        $ports = fn (string $end): ?array => ($item = RackItem::with('device.ports')->find($this->form[$end.'_rack_item_id'] ?? 0))?->device
-            ? $item->device->ports->where('physical', true)->pluck('name')->all() : null;
-        $portRules = fn (string $end): array => ['nullable', 'string', 'max:100', ...($ports($end) !== null ? [Rule::in($ports($end))] : [])];
-
-        $data = $this->validate([
-            'form.a_rack_item_id' => ['required', 'integer', 'exists:rack_items,id'],
-            'form.b_rack_item_id' => ['required', 'integer', 'exists:rack_items,id', 'different:form.a_rack_item_id'],
-            'form.a_port' => $portRules('a'),
-            'form.b_port' => $portRules('b'),
-            'form.medium' => ['required', Rule::in(array_keys(CableLink::MEDIA))],
-            'form.label' => ['nullable', 'string', 'max:100'],
-        ], [
-            'form.b_rack_item_id.different' => __('Une liaison relie deux éléments différents.'),
-            'form.a_port.in' => __('Choisissez un port de cet équipement.'),
-            'form.b_port.in' => __('Choisissez un port de cet équipement.'),
-        ])['form'];
-
-        $cable->fill($data)->save();
     }
 
     /**
@@ -282,8 +220,6 @@ class Racks extends Component
             'racks' => $racks,
             'rows' => self::rows($racks, $cables),
             'cables' => $cables,
-            'cableItems' => $this->editing === 'cable' ? RackItem::with(['rack', 'device.ports' => fn ($query) => $query->where('physical', true)])->get()
-                ->sortBy(fn (RackItem $item): string => mb_strtolower($item->rack->name).sprintf('%03d', 999 - $item->position)) : collect(),
             'locations' => Location::with('parent.parent')->orderBy('name')->get(),
             'devices' => $this->editing === 'item'
                 ? NetworkDevice::whereDoesntHave('rackItem', fn ($query) => $query->whereKeyNot($this->recordId ?? 0))->orderBy('name')->get()

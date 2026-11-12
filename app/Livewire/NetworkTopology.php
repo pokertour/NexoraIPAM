@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -48,6 +49,10 @@ class NetworkTopology extends Component
         $this->cableId = $cable?->id;
         $this->form = ['medium' => $cable?->medium ?? 'copper', 'label' => $cable?->label ?? ''];
     }
+
+    /** Cables are added in the shared cable form; the map redraws once it saves. */
+    #[On('cable-saved')]
+    public function cableSaved(): void {}
 
     public function close(): void
     {
@@ -166,6 +171,33 @@ class NetworkTopology extends Component
                 continue;
             }
             $levels[$role ?? min(6, ($distance[$device->id] ?? 0) + 1)][] = $device;
+        }
+
+        // A device reached only through a peer of the same layer, such as an
+        // access switch chained behind another one, hangs one layer below it.
+        // Edge and core devices stay side by side: two linked cores are peers.
+        $layer = [];
+        foreach ($levels as $level => $devicesOfLevel) {
+            foreach ($devicesOfLevel as $device) {
+                $layer[$device->id] = $level;
+            }
+        }
+        $byDistance = collect($layer)->keys()->sortBy(fn (int $id): array => [$distance[$id] ?? PHP_INT_MAX, $id])->values();
+        foreach ($byDistance as $id) {
+            $uplinks = array_filter($neighbours[$id] ?? [], fn (int $other): bool => isset($layer[$other]) && $layer[$other] < $layer[$id]);
+            if ($uplinks !== [] || ! isset($distance[$id]) || $layer[$id] <= 2) {
+                continue;
+            }
+            $closer = array_filter($neighbours[$id] ?? [], fn (int $other): bool => isset($layer[$other], $distance[$other]) && $distance[$other] < $distance[$id]);
+            if ($closer !== []) {
+                $layer[$id] = max($layer[$id], min(array_map(fn (int $other): int => $layer[$other], $closer)) + 1);
+            }
+        }
+        $levels = [];
+        foreach ($devices as $device) {
+            if (isset($layer[$device->id])) {
+                $levels[$layer[$device->id]][] = $device;
+            }
         }
         ksort($levels);
 

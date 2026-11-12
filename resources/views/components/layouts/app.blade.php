@@ -129,6 +129,9 @@
             </footer>
         </main>
     </div>
+    @if ($workspace)
+        @can('edit-inventory')<livewire:cable-editor/>@endcan
+    @endif
     <x-toasts/>
     <x-modal id="request-recovery" :title="__('Actualiser la page')" :automatic="false">
         <span hidden data-recovery-copy

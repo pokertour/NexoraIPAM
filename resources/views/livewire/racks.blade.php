@@ -44,7 +44,7 @@
                         <div class="rack-room-topbar" x-show="overflowing" x-cloak aria-hidden="true"><div></div></div>
                     @endif
                     <div class="rack-room-scroll">
-                        <div class="rack-row" x-data="rackRoom" data-cables="{{ json_encode($row['cables']) }}" @class(['has-cables' => $row['cables'] !== []])>
+                        <div @class(['rack-row', 'has-cables' => $row['cables'] !== []]) x-data="rackRoom" data-cables="{{ json_encode($row['cables']) }}">
                             <svg class="rack-room-cables" data-room-cables wire:ignore aria-hidden="true"></svg>
                             @foreach ($row['racks'] as $rack)
                                 @include('livewire.partials.rack-card', ['rack' => $rack])
@@ -99,43 +99,6 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-field name="form.position" :label="__('Unité basse (U)')" type="number" min="1" max="60" wire:model="form.position" required :hint="__('U1 est en bas de la baie.')"/>
                     <x-field name="form.height" :label="__('Hauteur (U)')" type="number" min="1" max="20" wire:model="form.height" required/>
-                </div>
-                <div class="dialog-actions">
-                    <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>
-                    <x-button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('Enregistrer') }}</x-button>
-                </div>
-            </form>
-        </x-modal>
-    @endif
-
-    @if ($editing === 'cable')
-        <x-modal id="cable-edit" wide :title="__($recordId ? 'Modifier la liaison' : 'Ajouter une liaison')" :description="__('Documentez un câble que LLDP et les tables MAC ne voient pas : brassage, fibre entre baies, équipement sans SNMP. Une liaison détectée entre les mêmes ports la confirme.')">
-            <form wire:submit="save" class="mt-6 grid gap-4">
-                @foreach (['a' => __('Extrémité A'), 'b' => __('Extrémité B')] as $end => $title)
-                    @php($chosen = $cableItems->firstWhere('id', (int) ($form[$end.'_rack_item_id'] ?? 0)))
-                    <fieldset class="form-section">
-                        <legend>{{ $title }}</legend>
-                        <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem]">
-                            <x-field :name="'form.'.$end.'_rack_item_id'" :label="__('Élément')" wire:model.live="form.{{ $end }}_rack_item_id">
-                                <option value="">{{ __('Choisir un élément') }}</option>
-                                @foreach ($cableItems as $option)<option value="{{ $option->id }}">{{ $option->rack->name }} · U{{ $option->position }} · {{ $option->displayName() }}</option>@endforeach
-                            </x-field>
-                            @if ($chosen?->device)
-                                <x-field :name="'form.'.$end.'_port'" :label="__('Port')" wire:model="form.{{ $end }}_port" wire:key="port-{{ $end }}-{{ $chosen->id }}">
-                                    <option value="">{{ __('Non précisé') }}</option>
-                                    @foreach ($chosen->device->ports->sortBy('name', SORT_NATURAL) as $port)<option value="{{ $port->name }}">{{ $port->name }}</option>@endforeach
-                                </x-field>
-                            @else
-                                <x-field :name="'form.'.$end.'_port'" :label="__('Port')" wire:model="form.{{ $end }}_port" maxlength="100" :placeholder="__('ex. 12')" wire:key="port-{{ $end }}-text"/>
-                            @endif
-                        </div>
-                    </fieldset>
-                @endforeach
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <x-field name="form.medium" label="Type" wire:model="form.medium">
-                        @foreach (\App\Models\CableLink::MEDIA as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
-                    </x-field>
-                    <x-field name="form.label" :label="__('Repère')" wire:model="form.label" maxlength="100" :placeholder="__('ex. fibre F12')"/>
                 </div>
                 <div class="dialog-actions">
                     <x-button variant="secondary" wire:click="close">{{ __('Annuler') }}</x-button>

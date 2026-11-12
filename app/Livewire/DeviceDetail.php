@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -56,6 +57,10 @@ class DeviceDetail extends Component
         $this->deviceId = $device->id;
         $this->syncOutlet();
     }
+
+    /** Cables are added in the shared cable form; the page refreshes once it saves. */
+    #[On('cable-saved')]
+    public function cableSaved(): void {}
 
     public function close(): void
     {
