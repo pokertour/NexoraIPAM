@@ -114,6 +114,7 @@ class RackTopologyTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'operator']));
         Livewire::test(Racks::class)
             ->call('open', 'cable', null, $device->id)->assertSet('form.a_rack_item_id', $device->id)
+            ->assertSeeHtml('<div class="select-layer" data-select-layer wire:ignore></div>')
             ->call('save')->assertHasErrors('form.b_rack_item_id')
             ->set('form.b_rack_item_id', $device->id)->call('save')->assertHasErrors('form.b_rack_item_id')
             ->set('form.b_rack_item_id', $panel->id)->set('form.a_port', 'ether99')->call('save')->assertHasErrors('form.a_port')

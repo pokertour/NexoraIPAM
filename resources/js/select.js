@@ -47,8 +47,11 @@ document.addEventListener('alpine:init', () => {
 
                 label = select.labels[0];
                 // The list is drawn outside the field, fixed to the screen, so a
-                // modal or a card that hides its overflow never cuts it off.
-                const parent = this.$el.closest('dialog') ?? document.body;
+                // modal or a card that hides its overflow never cuts it off. In a
+                // modal it goes to a layer Livewire leaves alone: anywhere else in
+                // the modal, the next refresh would remove it.
+                const dialog = this.$el.closest('dialog');
+                const parent = dialog ? (dialog.querySelector(':scope > [data-select-layer]') ?? this.$el) : document.body;
                 control = new TomSelect(select, {
                     dropdownParent: parent,
                     dropdownClass: 'ts-dropdown select-dropdown',

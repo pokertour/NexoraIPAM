@@ -17,4 +17,6 @@
         </div>
         {{ $slot }}
     </div>
+    {{-- Open select lists live here, out of the content Livewire refreshes. --}}
+    <div class="select-layer" data-select-layer wire:ignore></div>
 </dialog>
