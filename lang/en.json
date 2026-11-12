@@ -948,5 +948,18 @@
     "Réduire ou agrandir le menu": "Collapse or expand the menu",
     "Sections de la page": "Page sections",
     "À propos de NexoraIPAM :version": "About NexoraIPAM :version",
-    "Pages": "Pages"
+    "Pages": "Pages",
+    "Port :port libéré.": "Port :port freed.",
+    "Autre destination de ce port, en texte libre": "Other destination of this port, as free text",
+    "Destination de :port enregistrée.": "Destination of :port saved.",
+    "Brassé vers": "Patched to",
+    "ex. Imprimante accueil, borne Wi-Fi, baie B panneau 2": "e.g. Reception printer, Wi-Fi access point, rack B panel 2",
+    "Destination de :port effacée.": "Destination of :port cleared.",
+    "ou autre destination : imprimante, borne Wi-Fi…": "or another destination: printer, access point…",
+    "Autre destination": "Other destination",
+    "Destination": "Destination",
+    ":count port brassé|:count ports brassés": ":count patched port|:count patched ports",
+    "Texte libre, pour un port qui ne va pas sur une prise murale. Laissez vide pour libérer le port.": "Free text, for a port that does not lead to a wall outlet. Leave empty to free the port.",
+    "Destinations de ports": "Port destinations",
+    "Destination de port": "Port destination"
 }

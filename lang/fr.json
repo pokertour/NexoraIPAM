@@ -93,5 +93,6 @@
     ":count prise supprimée.|:count prises supprimées.": ":count prise supprimée.|:count prises supprimées.",
     ":count prise débrassée.|:count prises débrassées.": ":count prise débrassée.|:count prises débrassées.",
     ":count équipement|:count équipements": ":count équipement|:count équipements",
-    ":count prise brassée|:count prises brassées": ":count prise brassée|:count prises brassées"
+    ":count prise brassée|:count prises brassées": ":count prise brassée|:count prises brassées",
+    ":count port brassé|:count ports brassés": ":count port brassé|:count ports brassés"
 }

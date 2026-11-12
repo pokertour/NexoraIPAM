@@ -51,6 +51,7 @@ class AuditLog extends Model
         'rack_item' => 'Élément de baie',
         'cable_link' => 'Liaison manuelle',
         'wall_outlet' => 'Prise murale',
+        'port_destination' => 'Destination de port',
         'alert' => 'Alerte',
         'settings' => 'Paramètres',
     ];
