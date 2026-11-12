@@ -92,6 +92,18 @@ class DevicePoller
     /** Ethernet, fast Ethernet, ISO 88023 and gigabit Ethernet interface types. */
     private const PHYSICAL_TYPES = [6, 7, 62, 69, 117];
 
+    /**
+     * Whether an interface is a front port: an Ethernet-like type whose name
+     * is not a logical interface. Short prefixes such as Po (port-channel), Vl,
+     * Lo or Br only count when a number follows, so names like Port1, Local
+     * or Bureau stay physical.
+     */
+    public static function isPhysical(?int $type, string $name): bool
+    {
+        return in_array($type, self::PHYSICAL_TYPES, true)
+            && ! preg_match('/^(vlan|loopback|port-channel|null|tunnel|mgmt|management|cpu|stack|bond|bridge|(vl|lo|po|br)[\s\-_.\/]?\d)/i', trim($name));
+    }
+
     public function __construct(private SnmpClient $snmp, private AddressHistory $history, private AlertMonitor $monitor) {}
 
     /**
@@ -153,7 +165,7 @@ class DevicePoller
             foreach ($interfaces as $index => $values) {
                 $type = isset($values['type']) ? (int) $values['type'] : null;
                 $name = $values['name'] ?? $values['descr'] ?? (string) $index;
-                $physical = in_array($type, self::PHYSICAL_TYPES, true) && ! preg_match('/^(vlan|vl|lo|loopback|port-channel|po|null|tunnel|mgmt|management|cpu|stack|bond|br)/i', $name);
+                $physical = self::isPhysical($type, $name);
                 $old = $previous->get($index);
                 $bridge = $ifToBridge[$index] ?? null;
                 $speed = isset($values['high_speed']) && (int) $values['high_speed'] > 0 ? (int) $values['high_speed'] : (isset($values['speed']) ? intdiv((int) $values['speed'], 1_000_000) : null);
