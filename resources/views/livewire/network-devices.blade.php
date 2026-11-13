@@ -12,6 +12,11 @@
             <x-icon name="search" class="size-4"/>
             <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('Rechercher…') }}" maxlength="100" aria-label="{{ __('Rechercher un équipement') }}">
         </label>
+        @if ($locations->isNotEmpty())
+            <x-select class="location-filter" name="location" wire:model.live="location" aria-label="{{ __('Filtrer par emplacement') }}">
+                <x-location-options :locations="$locations" :placeholder="__('Tous les emplacements')"/>
+            </x-select>
+        @endif
         <span class="count-pill ml-auto">{{ $devices->count() }} {{ $devices->count() === 1 ? __('entrée') : __('entrées') }}</span>
     </div>
 

@@ -10,6 +10,7 @@ use App\Models\Alert;
 use App\Models\AuditLog;
 use App\Models\DevicePort;
 use App\Models\IpAddress;
+use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\ScanRun;
 use App\Models\Subnet;
@@ -67,6 +68,26 @@ class NetworkDeviceTest extends TestCase
         Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
             ->assertSet('form.community', '')->set('form.name', 'Switch RDC 1')->call('save')->assertHasNoErrors();
         $this->assertSame(['community' => 'r34d-only'], $device->fresh()->credentials);
+    }
+
+    public function test_devices_are_filtered_by_location_with_its_sub_locations(): void
+    {
+        $this->withoutVite();
+        $site = Location::factory()->create(['name' => 'Siège']);
+        $floor = Location::factory()->create(['name' => '2e étage', 'parent_id' => $site->id]);
+        $agency = Location::factory()->create(['name' => 'Agence Nantes']);
+        NetworkDevice::factory()->create(['name' => 'sw-siege', 'location_id' => $site->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-etage2', 'location_id' => $floor->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-nantes', 'location_id' => $agency->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-sans-lieu']);
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+
+        $this->get(route('devices', ['location' => $site->id]))->assertOk()->assertSee('Filtrer par emplacement')
+            ->assertSee(['sw-siege', 'sw-etage2'])->assertDontSee(['sw-nantes', 'sw-sans-lieu']);
+        Livewire::test(NetworkDevices::class)->assertSee(['sw-siege', 'sw-nantes', 'sw-sans-lieu'])
+            ->set('location', (string) $agency->id)->assertSee('sw-nantes')->assertDontSee('sw-siege')
+            ->set('location', (string) $site->id)->set('search', 'etage')->assertSee('sw-etage2')->assertDontSee('sw-siege')
+            ->set('location', '')->set('search', '')->assertSee('sw-sans-lieu');
     }
 
     public function test_polling_reads_ports_vlans_macs_neighbours_and_the_arp_table(): void
