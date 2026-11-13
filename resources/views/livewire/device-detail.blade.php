@@ -16,8 +16,9 @@
         @endcan
     </div>
 
-    @if ($device->poll_status === 'failed' && $device->poll_error)
-        <div class="callout callout-danger mb-4" role="status"><x-icon name="info" class="size-4"/> {{ $device->poll_error }}</div>
+    @if (in_array($device->poll_status, ['failed', 'unstable'], true) && $device->poll_error)
+        <div @class(['callout mb-4', 'callout-danger' => $device->poll_status === 'failed', 'callout-warning' => $device->poll_status === 'unstable']) role="status"><x-icon name="info" class="size-4"/>
+            @if ($device->poll_status === 'unstable'){{ __('Échec ponctuel, une nouvelle tentative suit :') }}@endif {{ $device->poll_error }}</div>
     @endif
     @if ($device->api_driver && $device->api_error)
         <div class="callout callout-warning mb-4" role="status"><x-icon name="info" class="size-4"/> {{ __('VLAN lus en SNMP : :error', ['error' => $device->api_error]) }}</div>

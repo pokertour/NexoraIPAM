@@ -39,6 +39,7 @@ trait EditsNetworkDevice
             'name' => $device?->name ?? '', 'role' => $device?->role ?? 'other', 'host' => $device?->host ?? '', 'port' => $device?->port ?? 161,
             'snmp_version' => $device?->snmp_version ?? '2c', 'location_id' => $device?->location_id, 'description' => $device?->description ?? '',
             'poll_interval' => $device?->poll_interval ?? 15,
+            'snmp_timeout' => $device?->snmp_timeout, 'snmp_retries' => $device?->snmp_retries, 'snmp_bulk' => (string) ($device?->snmp_bulk ?? 10),
             'community' => '', 'username' => $credentials['username'] ?? '', 'security_level' => $credentials['security_level'] ?? 'authPriv',
             'auth_protocol' => $credentials['auth_protocol'] ?? 'SHA', 'auth_password' => '',
             'privacy_protocol' => $credentials['privacy_protocol'] ?? 'AES', 'privacy_password' => '',
@@ -71,6 +72,9 @@ trait EditsNetworkDevice
         $this->form['host'] = strtolower(trim((string) ($this->form['host'] ?? '')));
         $this->form['location_id'] = filled($this->form['location_id'] ?? null) ? $this->form['location_id'] : null;
         $this->form['poll_interval'] = filled($this->form['poll_interval'] ?? null) ? $this->form['poll_interval'] : null;
+        foreach (['snmp_timeout', 'snmp_retries'] as $key) {
+            $this->form[$key] = filled($this->form[$key] ?? null) ? $this->form[$key] : null;
+        }
         $v3 = ($this->form['snmp_version'] ?? null) === '3';
         $level = $this->form['security_level'] ?? 'authPriv';
         $keep = fn (string $key): bool => blank($this->form[$key] ?? null) && filled($stored[$key] ?? null);
@@ -93,6 +97,9 @@ trait EditsNetworkDevice
             'form.location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'form.description' => ['nullable', 'string', 'max:255'],
             'form.poll_interval' => ['nullable', 'integer', 'between:5,10080'],
+            'form.snmp_timeout' => ['nullable', 'integer', 'between:1,30'],
+            'form.snmp_retries' => ['nullable', 'integer', 'between:0,10'],
+            'form.snmp_bulk' => ['required', Rule::in(array_map('strval', array_keys(NetworkDevice::SNMP_BULK)))],
             'form.community' => [Rule::requiredIf(! $v3 && ! $keep('community')), 'nullable', 'string', 'max:255'],
             'form.username' => [Rule::requiredIf($v3), 'nullable', 'string', 'max:255'],
             'form.security_level' => [Rule::requiredIf($v3), Rule::in(array_keys(NetworkDevice::SECURITY_LEVELS))],
@@ -118,6 +125,9 @@ trait EditsNetworkDevice
             'name' => $data['name'], 'role' => $data['role'], 'host' => $data['host'], 'port' => (int) $data['port'], 'snmp_version' => $data['snmp_version'],
             'location_id' => $data['location_id'], 'description' => $data['description'] ?: null,
             'poll_interval' => $data['poll_interval'] === null ? null : (int) $data['poll_interval'],
+            'snmp_timeout' => filled($data['snmp_timeout'] ?? null) ? (int) $data['snmp_timeout'] : null,
+            'snmp_retries' => filled($data['snmp_retries'] ?? null) ? (int) $data['snmp_retries'] : null,
+            'snmp_bulk' => (int) $data['snmp_bulk'] === 10 ? null : (int) $data['snmp_bulk'],
             'api_driver' => $data['api_driver'],
             // An empty port follows the default port of the chosen API.
             'api_port' => $api && $data['api_port'] !== null && (int) $data['api_port'] !== DeviceApis::DRIVERS[$data['api_driver']]['port'] ? (int) $data['api_port'] : null,
