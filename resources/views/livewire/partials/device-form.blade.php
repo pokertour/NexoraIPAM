@@ -44,6 +44,17 @@
                 @else
                     <x-field name="form.community" :label="__('Communauté')" type="password" wire:model="form.community" autocomplete="new-password" :hint="$recordId ? __('Laissez vide pour conserver le secret enregistré.') : __('Accès en lecture seule recommandé.')"/>
                 @endif
+                <details class="form-advanced" @if (filled($form['snmp_timeout'] ?? null) || filled($form['snmp_retries'] ?? null) || (int) ($form['snmp_bulk'] ?? 10) !== 10) open @endif>
+                    <summary>{{ __('Réglages avancés : VPN ou lien lent') }}</summary>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-[8rem_8rem_minmax(0,1fr)]">
+                        <x-field name="form.snmp_timeout" :label="__('Délai (s)')" type="number" min="1" max="30" wire:model="form.snmp_timeout" :placeholder="(string) \App\Models\NetworkDevice::SNMP_TIMEOUT"/>
+                        <x-field name="form.snmp_retries" :label="__('Tentatives')" type="number" min="0" max="10" wire:model="form.snmp_retries" :placeholder="(string) \App\Models\NetworkDevice::SNMP_RETRIES"/>
+                        <x-field name="form.snmp_bulk" :label="__('Taille des paquets')" wire:model="form.snmp_bulk">
+                            @foreach (\App\Models\NetworkDevice::SNMP_BULK as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                        </x-field>
+                    </div>
+                    <p class="muted mt-2 text-xs">{{ __('À travers un VPN IPsec, des réponses SNMP trop grandes peuvent être fragmentées puis perdues : réduisez la taille des paquets, allongez le délai ou ajoutez des tentatives. Vides, le délai et les tentatives valent :timeout s et :retries.', ['timeout' => \App\Models\NetworkDevice::SNMP_TIMEOUT, 'retries' => \App\Models\NetworkDevice::SNMP_RETRIES]) }}</p>
+                </details>
             </fieldset>
             <fieldset class="form-section">
                 <legend>{{ __('API de l’équipement') }}</legend>

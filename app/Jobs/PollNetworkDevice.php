@@ -16,7 +16,10 @@ class PollNetworkDevice implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 300;
+    /** Minutes before polling again a device whose last poll failed once. */
+    public const RETRY_MINUTES = 2;
+
+    public int $timeout = 900;
 
     public int $tries = 1;
 
@@ -39,15 +42,29 @@ class PollNetworkDevice implements ShouldQueue
         try {
             $summary = $poller->poll($device);
         } catch (RuntimeException $exception) {
-            $device->forceFill(['poll_status' => 'failed', 'poll_error' => mb_substr($exception->getMessage(), 0, 255)])->save();
-            Audit::record('device.polled', $device, ['result' => [null, 'failed'], 'error' => [null, $device->poll_error]]);
-            $monitor->raise('device_unreachable', $device, ['error' => $device->poll_error], 'critical');
+            // One lost poll, common through a VPN, is retried soon and only a
+            // second failure in a row marks the device unreachable.
+            $failures = $device->poll_failures + 1;
+            $confirmed = $failures >= NetworkDevice::FAILURES_BEFORE_ALERT;
+            $device->forceFill([
+                'poll_status' => $confirmed ? 'failed' : 'unstable',
+                'poll_error' => mb_substr($exception->getMessage(), 0, 255),
+                'poll_failures' => $failures,
+            ]);
+            if (! $confirmed && $device->poll_interval) {
+                $device->next_poll_at = now()->addMinutes(min(self::RETRY_MINUTES, $device->poll_interval));
+            }
+            $device->save();
+            Audit::record('device.polled', $device, ['result' => [null, $confirmed ? 'failed' : 'unstable'], 'error' => [null, $device->poll_error]]);
+            if ($confirmed) {
+                $monitor->raise('device_unreachable', $device, ['error' => $device->poll_error, 'failures' => $failures], 'critical');
+            }
             ScanRun::finish($this->runId, 'failed', error: $device->poll_error);
 
             return;
         }
 
-        $device->forceFill(['poll_status' => 'completed', 'poll_error' => null])->save();
+        $device->forceFill(['poll_status' => 'completed', 'poll_error' => null, 'poll_failures' => 0])->save();
         $monitor->resolve('device_unreachable', $device);
         $changes = array_map(fn (int $value): array => [null, $value], $summary);
         if ($device->api_error) {

@@ -10,6 +10,7 @@ use App\Models\Alert;
 use App\Models\AuditLog;
 use App\Models\DevicePort;
 use App\Models\IpAddress;
+use App\Models\Location;
 use App\Models\NetworkDevice;
 use App\Models\ScanRun;
 use App\Models\Subnet;
@@ -67,6 +68,26 @@ class NetworkDeviceTest extends TestCase
         Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
             ->assertSet('form.community', '')->set('form.name', 'Switch RDC 1')->call('save')->assertHasNoErrors();
         $this->assertSame(['community' => 'r34d-only'], $device->fresh()->credentials);
+    }
+
+    public function test_devices_are_filtered_by_location_with_its_sub_locations(): void
+    {
+        $this->withoutVite();
+        $site = Location::factory()->create(['name' => 'Siège']);
+        $floor = Location::factory()->create(['name' => '2e étage', 'parent_id' => $site->id]);
+        $agency = Location::factory()->create(['name' => 'Agence Nantes']);
+        NetworkDevice::factory()->create(['name' => 'sw-siege', 'location_id' => $site->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-etage2', 'location_id' => $floor->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-nantes', 'location_id' => $agency->id]);
+        NetworkDevice::factory()->create(['name' => 'sw-sans-lieu']);
+        $this->actingAs(User::factory()->create(['role' => 'viewer']));
+
+        $this->get(route('devices', ['location' => $site->id]))->assertOk()->assertSee('Filtrer par emplacement')
+            ->assertSee(['sw-siege', 'sw-etage2'])->assertDontSee(['sw-nantes', 'sw-sans-lieu']);
+        Livewire::test(NetworkDevices::class)->assertSee(['sw-siege', 'sw-nantes', 'sw-sans-lieu'])
+            ->set('location', (string) $agency->id)->assertSee('sw-nantes')->assertDontSee('sw-siege')
+            ->set('location', (string) $site->id)->set('search', 'etage')->assertSee('sw-etage2')->assertDontSee('sw-siege')
+            ->set('location', '')->set('search', '')->assertSee('sw-sans-lieu');
     }
 
     public function test_polling_reads_ports_vlans_macs_neighbours_and_the_arp_table(): void
@@ -356,18 +377,87 @@ class NetworkDeviceTest extends TestCase
         $this->assertSame('50,0 Mb/s', DevicePort::rate($port->in_bps));
     }
 
-    public function test_unreachable_devices_fail_and_raise_an_alert(): void
+    public function test_a_device_is_unreachable_after_two_failed_polls_in_a_row(): void
     {
+        $this->travelTo(now()->startOfMinute());
         $this->agent->online = false;
-        $device = $this->poll(NetworkDevice::factory()->create(['name' => 'sw-cave']));
+        $device = $this->poll(NetworkDevice::factory()->create(['name' => 'sw-cave', 'poll_interval' => 15]));
 
-        $this->assertSame('failed', $device->poll_status);
+        $this->assertSame(['unstable', 1], [$device->poll_status, $device->poll_failures]);
+        $this->assertStringStartsWith('Informations système : ', $device->poll_error);
         $this->assertStringContainsString('ne répond pas en SNMP', $device->poll_error);
-        $this->assertSame('critical', Alert::where('type', 'device_unreachable')->sole()->severity);
+        $this->assertSame(0, Alert::count(), 'One lost poll raises no alert.');
+        $this->assertEquals(now()->addMinutes(PollNetworkDevice::RETRY_MINUTES), $device->next_poll_at, 'A failed poll is tried again soon.');
+        $this->assertSame('unstable', AuditLog::where('action', 'device.polled')->latest('id')->first()->changes['result'][1]);
+
+        $device = $this->poll($device);
+        $this->assertSame(['failed', 2], [$device->poll_status, $device->poll_failures]);
+        $alert = Alert::where('type', 'device_unreachable')->sole();
+        $this->assertSame(['critical', 2], [$alert->severity, $alert->details['failures']]);
 
         $this->agent->online = true;
-        $this->poll($device);
-        $this->assertNotNull(Alert::where('type', 'device_unreachable')->sole()->resolved_at);
+        $device = $this->poll($device);
+        $this->assertSame(['completed', 0], [$device->poll_status, $device->poll_failures]);
+        $this->assertNotNull($alert->fresh()->resolved_at);
+    }
+
+    public function test_a_request_lost_once_is_retried_without_failing_the_poll(): void
+    {
+        $calls = 0;
+        Process::fake(function ($process) use (&$calls) {
+            $calls++;
+
+            return $calls === 3
+                ? Process::result(errorOutput: 'Timeout: No Response from 192.0.2.2:161.', exitCode: 1)
+                : Process::result(output: $this->agent->respond($process->command));
+        });
+
+        $device = $this->poll(NetworkDevice::factory()->create());
+        $this->assertSame(['completed', 0], [$device->poll_status, $device->poll_failures]);
+        $this->assertGreaterThan(0, $device->ports()->count());
+    }
+
+    public function test_snmp_timeout_retries_and_packet_size_follow_the_device_settings(): void
+    {
+        $commands = [];
+        Process::fake(function ($process) use (&$commands) {
+            $commands[] = $process->command;
+
+            return Process::result(output: $this->agent->respond($process->command));
+        });
+
+        $this->poll(NetworkDevice::factory()->create());
+        $this->assertSame(['-t', '2', '-r', '1'], array_slice($commands[0], 5, 4));
+        $this->assertSame('snmpbulkwalk', $commands[1][0]);
+        $this->assertEmpty(preg_grep('/^-Cr/', $commands[1]), 'The default packet size is the one of net-snmp.');
+
+        $commands = [];
+        $this->poll(NetworkDevice::factory()->create(['snmp_timeout' => 5, 'snmp_retries' => 3, 'snmp_bulk' => 2]));
+        $this->assertSame(['-t', '5', '-r', '3'], array_slice($commands[0], 5, 4));
+        $this->assertContains('-Cr2', $commands[1]);
+
+        $commands = [];
+        $this->poll(NetworkDevice::factory()->create(['snmp_bulk' => 0]));
+        $this->assertSame('snmpwalk', $commands[1][0]);
+    }
+
+    public function test_administrators_tune_snmp_for_a_device_behind_a_vpn(): void
+    {
+        $this->withoutVite();
+        $device = NetworkDevice::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->assertSet('form.snmp_bulk', '10')->assertSee('Réglages avancés : VPN ou lien lent')
+            ->set('form.snmp_timeout', '45')->call('save')->assertHasErrors('form.snmp_timeout')
+            ->set('form.snmp_timeout', '4')->set('form.snmp_retries', '3')->set('form.snmp_bulk', '2')->call('save')->assertHasNoErrors();
+        $this->assertSame([4, 3, 2], [$device->fresh()->snmp_timeout, $device->fresh()->snmp_retries, $device->fresh()->snmp_bulk]);
+        $this->assertSame(['snmp_timeout' => [null, 4], 'snmp_retries' => [null, 3], 'snmp_bulk' => [null, 2]],
+            array_intersect_key(AuditLog::where('action', 'updated')->where('subject_type', 'network_device')->latest('id')->first()->changes, array_flip(['snmp_timeout', 'snmp_retries', 'snmp_bulk'])));
+
+        Livewire::actingAs($admin)->test(NetworkDevices::class)->call('open', $device->id)
+            ->set('form.snmp_timeout', '')->set('form.snmp_retries', '')->set('form.snmp_bulk', '10')->call('save')->assertHasNoErrors();
+        $this->assertSame([null, null, null], [$device->fresh()->snmp_timeout, $device->fresh()->snmp_retries, $device->fresh()->snmp_bulk]);
     }
 
     public function test_the_faceplate_shows_ports_and_the_selected_port_details(): void

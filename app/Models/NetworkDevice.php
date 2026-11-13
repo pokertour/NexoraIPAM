@@ -41,7 +41,24 @@ class NetworkDevice extends Model
     /** @var list<string> */
     public const PRIVACY_PROTOCOLS = ['AES', 'AES-256', 'DES'];
 
-    protected $fillable = ['name', 'role', 'host', 'port', 'snmp_version', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
+    /** Seconds to wait for each SNMP answer, and tries after the first, unless set on the device. */
+    public const SNMP_TIMEOUT = 2;
+
+    public const SNMP_RETRIES = 1;
+
+    /**
+     * Values per SNMP packet when walking a table. Fewer values make smaller
+     * packets, which a VPN tunnel does not have to fragment; 0 walks one value
+     * at a time, like snmpwalk.
+     *
+     * @var array<int, string>
+     */
+    public const SNMP_BULK = [10 => 'Standard, 10 valeurs par paquet', 5 => 'Réduit, 5 valeurs', 2 => 'Petits paquets, 2 valeurs', 0 => 'Une valeur à la fois'];
+
+    /** Failed polls in a row before a device counts as unreachable. */
+    public const FAILURES_BEFORE_ALERT = 2;
+
+    protected $fillable = ['name', 'role', 'host', 'port', 'snmp_version', 'snmp_timeout', 'snmp_retries', 'snmp_bulk', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
 
     protected $hidden = ['credentials', 'api_credentials'];
 
@@ -50,6 +67,7 @@ class NetworkDevice extends Model
         return [
             'credentials' => 'encrypted:array', 'api_credentials' => 'encrypted:array', 'api_verify_tls' => 'boolean', 'api_port' => 'integer', 'next_poll_at' => 'datetime', 'poll_requested_at' => 'datetime',
             'polled_at' => 'datetime', 'port' => 'integer', 'poll_interval' => 'integer',
+            'snmp_timeout' => 'integer', 'snmp_retries' => 'integer', 'snmp_bulk' => 'integer', 'poll_failures' => 'integer',
         ];
     }
 
@@ -57,7 +75,7 @@ class NetworkDevice extends Model
     public function auditIgnored(): array
     {
         return [
-            'next_poll_at', 'poll_token', 'poll_status', 'poll_error', 'api_error', 'poll_requested_at', 'polled_at',
+            'next_poll_at', 'poll_token', 'poll_status', 'poll_error', 'poll_failures', 'api_error', 'poll_requested_at', 'polled_at',
             'sys_name', 'sys_descr', 'sys_object_id', 'sys_uptime', 'arp_entries',
         ];
     }

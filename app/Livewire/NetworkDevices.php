@@ -23,6 +23,10 @@ class NetworkDevices extends Component
     #[Url(except: '')]
     public string $search = '';
 
+    /** Location whose devices are listed, sub-locations included. */
+    #[Url(except: '')]
+    public string $location = '';
+
     public function close(): void
     {
         $this->resetDeviceForm();
@@ -59,6 +63,7 @@ class NetworkDevices extends Component
         $devices = NetworkDevice::with(['location.parent.parent', 'ports' => fn ($query) => $query->where('physical', true)])
             ->when($search !== '', fn (Builder $query) => $query->where(fn (Builder $query) => $query->whereLike('name', '%'.$search.'%')
                 ->orWhereLike('host', '%'.$search.'%')->orWhereLike('sys_name', '%'.$search.'%')->orWhereLike('sys_descr', '%'.$search.'%')))
+            ->when(ctype_digit($this->location), fn (Builder $query) => $query->whereIn('location_id', Location::findOrFail($this->location)->descendantsAndSelf()))
             ->orderBy('name')->get();
 
         return view('livewire.network-devices', [

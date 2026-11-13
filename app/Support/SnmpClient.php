@@ -13,29 +13,95 @@ use Symfony\Component\Process\Exception\ProcessStartFailedException;
  */
 class SnmpClient
 {
+    /** Tables read by the poller, named in errors so a failing one stands out. */
+    private const TABLES = [
+        '1.3.6.1.2.1.1.' => 'Informations système',
+        '1.3.6.1.2.1.2.2.' => 'Interfaces',
+        '1.3.6.1.2.1.31.1.1.' => 'Interfaces',
+        '1.3.6.1.2.1.17.1.4.' => 'Ports du pont',
+        '1.3.6.1.2.1.17.4.3.' => 'Table MAC',
+        '1.3.6.1.2.1.17.7.1.2.2.' => 'Table MAC',
+        '1.3.6.1.2.1.17.7.1.4.' => 'VLAN',
+        '1.3.6.1.2.1.47.1.' => 'Inventaire matériel',
+        '1.0.8802.1.1.2.' => 'LLDP',
+        '1.3.6.1.2.1.4.22.' => 'Table ARP',
+    ];
+
+    /** Exit code of the shell when a command is missing: retrying does not help. */
+    private const MISSING_TOOLS = 127;
+
     /**
      * @param  list<string>  $oids
      * @return array<string, string> Values keyed by numeric OID without the leading dot.
      */
     public function get(NetworkDevice $device, array $oids): array
     {
-        return self::parse($this->run($device, 'snmpget', $oids, false, 10));
+        return self::parse($this->attempt($device, 'snmpget', $oids, false, $this->patience($device) + 5));
     }
 
     /**
+     * Walks a table, with the packet size set on the device: GETBULK by
+     * default, or one value at a time for links that drop large packets.
+     *
      * @return array<string, string> Values keyed by the OID suffix below $oid.
      */
     public function walk(NetworkDevice $device, string $oid, bool $hex = false): array
     {
         $base = ltrim($oid, '.');
+        $bulk = $device->snmp_bulk ?? 10;
+        $timeout = max(60, $this->patience($device) * ($bulk <= 2 ? 6 : 3));
         $values = [];
-        foreach (self::parse($this->run($device, 'snmpbulkwalk', [$oid], $hex, 60)) as $key => $value) {
+        foreach (self::parse($this->attempt($device, $bulk === 0 ? 'snmpwalk' : 'snmpbulkwalk', [$oid], $hex, $timeout)) as $key => $value) {
             if (str_starts_with($key, $base.'.')) {
                 $values[substr($key, strlen($base) + 1)] = $value;
             }
         }
 
         return $values;
+    }
+
+    /** The name of the table an OID belongs to, for error messages. */
+    public static function table(string $oid): ?string
+    {
+        $oid = ltrim($oid, '.').'.';
+        foreach (self::TABLES as $prefix => $label) {
+            if (str_starts_with($oid, $prefix)) {
+                return $label;
+            }
+        }
+
+        return null;
+    }
+
+    /** Longest wait for one answer, all tries included, in seconds. */
+    private function patience(NetworkDevice $device): int
+    {
+        return ($device->snmp_timeout ?? NetworkDevice::SNMP_TIMEOUT) * (($device->snmp_retries ?? NetworkDevice::SNMP_RETRIES) + 1);
+    }
+
+    /**
+     * Runs a request, and once more when it fails: through a VPN, a packet
+     * lost twice in a row should not fail a whole poll. The error names the
+     * table that could not be read.
+     *
+     * @param  list<string>  $oids
+     */
+    private function attempt(NetworkDevice $device, string $tool, array $oids, bool $hex, int $timeout): string
+    {
+        try {
+            return $this->run($device, $tool, $oids, $hex, $timeout);
+        } catch (RuntimeException $exception) {
+            if ($exception->getCode() === self::MISSING_TOOLS) {
+                throw $exception;
+            }
+            try {
+                return $this->run($device, $tool, $oids, $hex, $timeout);
+            } catch (RuntimeException $retry) {
+                $table = self::table($oids[0] ?? '');
+
+                throw new RuntimeException($table ? __(':table : :error', ['table' => __($table), 'error' => $retry->getMessage()]) : $retry->getMessage(), $retry->getCode(), $retry);
+            }
+        }
     }
 
     /**
@@ -114,9 +180,12 @@ class SnmpClient
     private function run(NetworkDevice $device, string $tool, array $oids, bool $hex, int $timeout): string
     {
         $credentials = $device->credentials ?? [];
-        $command = [$tool, '-On', '-Oq', '-Oe', '-Ot', '-t', '2', '-r', '1'];
+        $command = [$tool, '-On', '-Oq', '-Oe', '-Ot', '-t', (string) ($device->snmp_timeout ?? NetworkDevice::SNMP_TIMEOUT), '-r', (string) ($device->snmp_retries ?? NetworkDevice::SNMP_RETRIES)];
         if ($hex) {
             $command[] = '-Ox';
+        }
+        if ($tool === 'snmpbulkwalk' && ($device->snmp_bulk ?? 10) !== 10) {
+            $command[] = '-Cr'.$device->snmp_bulk;
         }
 
         if ($device->snmp_version === '3') {
@@ -141,11 +210,11 @@ class SnmpClient
         } catch (ProcessTimedOutException) {
             throw new RuntimeException(__('L’équipement n’a pas répondu à temps.'));
         } catch (ProcessStartFailedException) {
-            throw new RuntimeException(__('Les outils net-snmp sont introuvables sur le serveur.'));
+            throw new RuntimeException(__('Les outils net-snmp sont introuvables sur le serveur.'), self::MISSING_TOOLS);
         }
 
-        if ($result->exitCode() === 127) {
-            throw new RuntimeException(__('Les outils net-snmp sont introuvables sur le serveur.'));
+        if ($result->exitCode() === self::MISSING_TOOLS) {
+            throw new RuntimeException(__('Les outils net-snmp sont introuvables sur le serveur.'), self::MISSING_TOOLS);
         }
         if (! $result->successful()) {
             $error = trim(strtok($result->errorOutput() ?: $result->output(), "\n") ?: '');
