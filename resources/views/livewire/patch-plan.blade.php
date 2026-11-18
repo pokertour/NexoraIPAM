@@ -63,7 +63,7 @@
                     <div class="patch-panel-scroll">
                         <div class="patch-panel">
                             @foreach ($groups[$device->id] as $group)
-                                <div class="patch-group" @if ($group->count() > 1) data-rows="2" @endif>
+                                <div class="patch-group" @if (\App\Livewire\DeviceDetail::twoRows($group, $device->portLayout())) data-rows="2" @endif>
                                     @foreach ($group as $port)
                                         @php
                                             $portOutlet = $deviceOutlets->get($port->name);

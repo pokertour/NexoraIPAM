@@ -362,6 +362,8 @@
     .faceplate-brand { display: flex; flex-direction: column; justify-content: center; gap: .4rem; min-width: 6.5rem; padding: 0 .9rem 0 .6rem; border-right: 1px solid #ffffff12; color: #cbd5e1; font-family: var(--font-mono); font-size: .68rem; letter-spacing: .04em; }
     .faceplate-group { display: grid; grid-auto-flow: column; grid-template-rows: auto; gap: 7px; align-content: center; padding: .4rem .5rem; border-radius: .45rem; background: #0b0f17; box-shadow: inset 0 1px 3px #000c, 0 1px 0 #ffffff10; }
     .faceplate-group[data-rows="2"] { grid-template-rows: repeat(2, auto); }
+    .faceplate-options { display: flex; justify-content: flex-end; padding: 0 1.25rem 1rem; }
+    .faceplate-layout { width: min(100%, 19rem); }
     .switch-port { position: relative; display: grid; justify-items: center; gap: 3px; width: 2.7rem; padding: 3px 0 2px; border-radius: .3rem; transition: transform .12s, box-shadow .12s, background .12s; }
     .switch-port:hover { background: #ffffff0d; transform: translateY(-1px); }
     .switch-port[aria-pressed=true] { background: #a996ff26; box-shadow: 0 0 0 1.5px #a996ff, 0 0 18px #7c3aed88; }

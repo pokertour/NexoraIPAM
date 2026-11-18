@@ -18,6 +18,7 @@ use App\Support\PortMedia;
 use App\Support\VlanColor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -52,9 +53,13 @@ class DeviceDetail extends Component
     /** Free destination of the selected port when it does not reach an outlet. */
     public string $destination = '';
 
+    /** Port layout set on the device; empty follows its vendor. */
+    public string $portLayout = '';
+
     public function mount(NetworkDevice $device): void
     {
         $this->deviceId = $device->id;
+        $this->portLayout = (string) $device->port_layout;
         $this->syncOutlet();
     }
 
@@ -215,6 +220,16 @@ class DeviceDetail extends Component
         $this->dispatch('nexora-toast', tone: 'success', message: __('Connecteur du port :port enregistré.', ['port' => $port->name]));
     }
 
+    /** Changes the order of the ports on the faceplate, as numbered on the device. */
+    public function updatedPortLayout(): void
+    {
+        Gate::authorize('administer');
+        $this->validate(['portLayout' => ['nullable', Rule::in(array_keys(NetworkDevice::PORT_LAYOUTS))]]);
+        $device = NetworkDevice::findOrFail($this->deviceId);
+        $device->update(['port_layout' => $this->portLayout !== '' ? $this->portLayout : null]);
+        $this->dispatch('nexora-toast', tone: 'success', message: __('Sens des ports enregistré.'));
+    }
+
     /**
      * Groups physical ports by their name prefix, such as GigabitEthernet1/0/
      * and TenGigabitEthernet1/1/, so uplink modules are drawn apart.
@@ -222,12 +237,38 @@ class DeviceDetail extends Component
      * @param  Collection<int, DevicePort>  $ports
      * @return Collection<string, Collection<int, DevicePort>>
      */
-    public static function faceplate(Collection $ports): Collection
+    public static function faceplate(Collection $ports, string $layout = 'odd_top'): Collection
     {
         return $ports->where('physical', true)
             ->sortBy(fn (DevicePort $port): string => $port->name ?? '', SORT_NATURAL | SORT_FLAG_CASE)
             ->groupBy(fn (DevicePort $port): string => preg_replace('/\d+\D*$/', '', (string) $port->name) ?: '#')
-            ->map(fn (Collection $group): Collection => $group->values());
+            ->map(fn (Collection $group): Collection => self::arrange($group->values(), $layout));
+    }
+
+    /**
+     * Orders the ports of a group for a faceplate drawn column by column, top
+     * row first: each pair of ports in turn is one column.
+     *
+     * @param  Collection<int, DevicePort>  $group
+     * @return Collection<int, DevicePort>
+     */
+    public static function arrange(Collection $group, string $layout): Collection
+    {
+        return match ($layout) {
+            'odd_bottom' => $group->chunk(2)->flatMap(fn (Collection $pair): array => $pair->values()->reverse()->all())->values(),
+            'rows' => (function () use ($group): Collection {
+                $columns = (int) ceil($group->count() / 2);
+
+                return collect(range(0, $columns - 1))->flatMap(fn (int $column): array => array_filter([$group->get($column), $group->get($column + $columns)]))->values();
+            })(),
+            default => $group,
+        };
+    }
+
+    /** Whether a group of ports is drawn on two rows. */
+    public static function twoRows(Collection $group, string $layout): bool
+    {
+        return $layout !== 'single' && $group->count() > 1;
     }
 
     public function render(): View
@@ -263,7 +304,8 @@ class DeviceDetail extends Component
                     ->get()->sortBy(fn (WallOutlet $outlet): string => ($outlet->location_id === $device->location_id ? '0' : '1').mb_strtolower($outlet->location?->name ?? '').' '.$outlet->name, SORT_NATURAL)
                 : collect(),
             'locations' => $this->editing ? Location::with('parent.parent')->orderBy('name')->get() : collect(),
-            'groups' => self::faceplate($ports),
+            'groups' => self::faceplate($ports, $device->portLayout()),
+            'layout' => $device->portLayout(),
             'listed' => $listed,
             'port' => $selected,
             'macs' => $macs,

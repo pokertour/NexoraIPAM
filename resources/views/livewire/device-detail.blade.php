@@ -59,7 +59,7 @@
                 <div class="faceplate" role="group" aria-label="{{ __('Façade de :name', ['name' => $device->name]) }}">
                     <div class="faceplate-brand"><span class="pulse-dot"></span><span>{{ \Illuminate\Support\Str::limit($device->sys_name ?: $device->name, 18) }}</span></div>
                     @foreach ($groups as $prefix => $group)
-                        <div class="faceplate-group" @if ($group->count() > 1) data-rows="2" @endif>
+                        <div class="faceplate-group" @if (\App\Livewire\DeviceDetail::twoRows($group, $layout)) data-rows="2" @endif>
                             @foreach ($group as $item)
                                 <x-switch-port :port="$item" :selected="$port?->is($item)" :colors="$vlanColors" :outlet="$outlets[$item->name]?->name ?? null"/>
                             @endforeach
@@ -67,6 +67,14 @@
                     @endforeach
                 </div>
             </div>
+            @can('administer')
+                <div class="faceplate-options">
+                    <x-select name="portLayout" wire:model.live="portLayout" class="faceplate-layout" aria-label="{{ __('Sens des ports') }}">
+                        <option value="">{{ __('Sens automatique : :layout', ['layout' => __(\App\Models\NetworkDevice::PORT_LAYOUTS[$device->vendorPortLayout()])]) }}</option>
+                        @foreach (\App\Models\NetworkDevice::PORT_LAYOUTS as $value => $label)<option value="{{ $value }}">{{ __($label) }}</option>@endforeach
+                    </x-select>
+                </div>
+            @endcan
         @endif
     </section>
 

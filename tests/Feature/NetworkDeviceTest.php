@@ -90,6 +90,42 @@ class NetworkDeviceTest extends TestCase
             ->set('location', '')->set('search', '')->assertSee('sw-sans-lieu');
     }
 
+    public function test_ports_follow_the_numbering_of_the_device_front_panel(): void
+    {
+        $this->withoutVite();
+        $cisco = NetworkDevice::factory()->create(['sys_object_id' => '1.3.6.1.4.1.9.1.2494']);
+        $mikrotik = NetworkDevice::factory()->create(['sys_object_id' => '1.3.6.1.4.1.14988.1']);
+        foreach ([$cisco, $mikrotik] as $device) {
+            foreach (range(1, 6) as $number) {
+                DevicePort::create(['network_device_id' => $device->id, 'if_index' => $number, 'name' => 'ether'.$number, 'physical' => true]);
+            }
+        }
+        $order = fn (NetworkDevice $device): array => DeviceDetail::faceplate($device->fresh()->ports, $device->fresh()->portLayout())
+            ->flatten()->map(fn (DevicePort $port): string => $port->shortName())->all();
+
+        $this->assertSame(['odd_top', 'odd_bottom'], [$cisco->portLayout(), $mikrotik->portLayout()], 'MikroTik puts port 1 on the bottom row.');
+        $this->assertSame(['1', '2', '3', '4', '5', '6'], $order($cisco));
+        $this->assertSame(['2', '1', '4', '3', '6', '5'], $order($mikrotik), 'Drawn column by column, top row first.');
+        $cisco->update(['port_layout' => 'rows']);
+        $this->assertSame(['1', '4', '2', '5', '3', '6'], $order($cisco));
+        $this->assertFalse(DeviceDetail::twoRows(collect([1, 2]), 'single'));
+
+        $this->actingAs(User::factory()->create(['role' => 'operator']));
+        Livewire::test(DeviceDetail::class, ['device' => $mikrotik])->assertDontSee('Sens automatique')->set('portLayout', 'odd_top')->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Livewire::test(DeviceDetail::class, ['device' => $mikrotik])->assertSee('Sens automatique : 1 en bas, 2 au-dessus')
+            ->set('portLayout', 'sideways')->assertHasErrors('portLayout')
+            ->set('portLayout', 'odd_top')->assertHasNoErrors()->assertDispatched('nexora-toast', tone: 'success');
+        $this->assertSame(['1', '2', '3', '4', '5', '6'], $order($mikrotik));
+        $this->assertSame(['port_layout' => [null, 'odd_top']], AuditLog::where('action', 'updated')->where('subject_id', $mikrotik->id)->where('subject_type', 'network_device')->sole()->changes);
+
+        Livewire::test(NetworkDevices::class)->call('open', $mikrotik->id)->assertSet('form.port_layout', 'odd_top')
+            ->set('form.port_layout', '')->call('save')->assertHasNoErrors();
+        $this->assertNull($mikrotik->fresh()->port_layout);
+        $this->assertSame('odd_bottom', $mikrotik->fresh()->portLayout());
+    }
+
     public function test_polling_reads_ports_vlans_macs_neighbours_and_the_arp_table(): void
     {
         $subnet = Subnet::factory()->create(['cidr' => '192.0.2.0/24']);

@@ -129,7 +129,7 @@ class PatchPlan extends Component
 
         return view('livewire.patch-plan', [
             'devices' => $devices,
-            'groups' => $devices->mapWithKeys(fn (NetworkDevice $device): array => [$device->id => DeviceDetail::faceplate($device->ports)]),
+            'groups' => $devices->mapWithKeys(fn (NetworkDevice $device): array => [$device->id => DeviceDetail::faceplate($device->ports, $device->portLayout())]),
             'outlets' => $outlets,
             'destinations' => $destinations,
             'vlanColors' => VlanColor::map($vlanNumbers),
