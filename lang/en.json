@@ -998,5 +998,14 @@
     "À travers un VPN IPsec, des réponses SNMP trop grandes peuvent être fragmentées puis perdues : réduisez la taille des paquets, allongez le délai ou ajoutez des tentatives. Vides, le délai et les tentatives valent :timeout s et :retries.": "Through an IPsec VPN, large SNMP answers may be fragmented and lost: reduce the packet size, raise the timeout or add retries. Left empty, the timeout and retries are :timeout s and :retries.",
     "La dernière interrogation a échoué ; une nouvelle tentative suit. :error": "The last poll failed; another attempt follows. :error",
     "Échec ponctuel": "Transient failure",
-    "Échec ponctuel, une nouvelle tentative suit :": "Transient failure, another attempt follows:"
+    "Échec ponctuel, une nouvelle tentative suit :": "Transient failure, another attempt follows:",
+    "1 en haut, 2 en dessous": "1 on top, 2 below",
+    "1 en bas, 2 au-dessus": "1 at the bottom, 2 above",
+    "Rangée du haut, puis rangée du bas": "Top row, then bottom row",
+    "Une seule rangée": "Single row",
+    "Sens des ports": "Port order",
+    "Sens automatique : :layout": "Automatic order: :layout",
+    "Sens des ports enregistré.": "Port order saved.",
+    "Ordre de numérotation sur la façade de l’équipement.": "How ports are numbered on the front panel of the device.",
+    "Automatique selon le fabricant": "Automatic, from the vendor"
 }

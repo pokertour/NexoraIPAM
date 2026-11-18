@@ -55,10 +55,27 @@ class NetworkDevice extends Model
      */
     public const SNMP_BULK = [10 => 'Standard, 10 valeurs par paquet', 5 => 'Réduit, 5 valeurs', 2 => 'Petits paquets, 2 valeurs', 0 => 'Une valeur à la fois'];
 
+    /**
+     * How ports are numbered on the front panel. Most switches put port 1 on
+     * the top row and port 2 below it; MikroTik puts port 1 below; some
+     * number the whole top row first.
+     *
+     * @var array<string, string>
+     */
+    public const PORT_LAYOUTS = [
+        'odd_top' => '1 en haut, 2 en dessous',
+        'odd_bottom' => '1 en bas, 2 au-dessus',
+        'rows' => 'Rangée du haut, puis rangée du bas',
+        'single' => 'Une seule rangée',
+    ];
+
+    /** Enterprise number of MikroTik, whose switches put port 1 on the bottom row. */
+    private const MIKROTIK_OID = '1.3.6.1.4.1.14988';
+
     /** Failed polls in a row before a device counts as unreachable. */
     public const FAILURES_BEFORE_ALERT = 2;
 
-    protected $fillable = ['name', 'role', 'host', 'port', 'snmp_version', 'snmp_timeout', 'snmp_retries', 'snmp_bulk', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
+    protected $fillable = ['name', 'role', 'host', 'port', 'snmp_version', 'port_layout', 'snmp_timeout', 'snmp_retries', 'snmp_bulk', 'credentials', 'location_id', 'description', 'poll_interval', 'api_driver', 'api_port', 'api_verify_tls'];
 
     protected $hidden = ['credentials', 'api_credentials'];
 
@@ -78,6 +95,18 @@ class NetworkDevice extends Model
             'next_poll_at', 'poll_token', 'poll_status', 'poll_error', 'poll_failures', 'api_error', 'poll_requested_at', 'polled_at',
             'sys_name', 'sys_descr', 'sys_object_id', 'sys_uptime', 'arp_entries',
         ];
+    }
+
+    /** The port layout set on the device, or the one of its vendor. */
+    public function portLayout(): string
+    {
+        return isset(self::PORT_LAYOUTS[$this->port_layout ?? '']) ? $this->port_layout : $this->vendorPortLayout();
+    }
+
+    /** The usual port layout of the vendor, recognised by the SNMP object id. */
+    public function vendorPortLayout(): string
+    {
+        return str_starts_with((string) $this->sys_object_id, self::MIKROTIK_OID.'.') ? 'odd_bottom' : 'odd_top';
     }
 
     public function auditLabel(): string
